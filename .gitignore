@@ -1,0 +1,9 @@
+# Planning and internal docs — kept local only
+*.md
+CLAUDE.md
+
+# macOS
+.DS_Store
+
+# Claude/Cowork session data
+.claude/
