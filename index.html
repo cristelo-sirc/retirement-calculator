@@ -6305,6 +6305,253 @@
             }
         }
 
+        /* ===== v16.2: Clickable Levers ===== */
+        .improve-item {
+            position: relative;
+        }
+        .lever-apply-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+            background: #3b82f6;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        .lever-apply-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        .lever-apply-btn:disabled,
+        .lever-apply-btn.applied {
+            background: #94a3b8;
+            cursor: default;
+            transform: none;
+        }
+        .lever-apply-btn.applied {
+            background: #10b981;
+        }
+
+        .lever-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            animation: toastSlideUp 0.3s ease-out;
+        }
+        .lever-toast.positive { background: #059669; }
+        .lever-toast.negative { background: #dc2626; }
+        .lever-toast.neutral { background: #64748b; }
+        .lever-toast.fade-out { opacity: 0; transition: opacity 0.3s; }
+        .toast-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            cursor: pointer;
+            padding: 2px;
+            font-size: 1rem;
+        }
+        .toast-close:hover { color: #fff; }
+        @keyframes toastSlideUp {
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        /* ===== v16.2: Scenario Comparison Table ===== */
+        .scenario-cards-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .scenario-comparison-table {
+            margin-top: 16px;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .scenario-comparison-table table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .scenario-comparison-table th {
+            padding: 10px 12px;
+            background: #f8fafc;
+            text-align: left;
+            font-weight: 600;
+            color: #1e293b;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        .scenario-comparison-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+        }
+        .scenario-comparison-table tr:last-child td {
+            border-bottom: none;
+        }
+        .metric-label {
+            font-weight: 500;
+            color: #64748b;
+            white-space: nowrap;
+        }
+        .comparison-value {
+            font-weight: 500;
+        }
+        .comparison-delta {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        .comparison-delta.positive { color: #059669; }
+        .comparison-delta.negative { color: #dc2626; }
+        .comparison-delta.neutral { color: #94a3b8; }
+
+        /* ===== v16.2: Onboarding Tour ===== */
+        .tour-tooltip {
+            position: absolute;
+            z-index: 10001;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+            padding: 16px;
+            max-width: 340px;
+            width: 340px;
+            animation: tourFadeIn 0.3s ease-out;
+        }
+        .tour-tooltip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .tour-step-count {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        .tour-skip-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 2px;
+            font-size: 1.1rem;
+            line-height: 1;
+        }
+        .tour-skip-btn:hover { color: #64748b; }
+        .tour-tooltip-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        .tour-tooltip-text {
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin-bottom: 14px;
+        }
+        .tour-tooltip-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tour-dismiss-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .tour-dismiss-label input { width: 14px; height: 14px; }
+        .tour-next-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #fff;
+            background: #3b82f6;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .tour-next-btn:hover { background: #2563eb; }
+        .tour-highlight {
+            outline: 3px solid #3b82f6;
+            outline-offset: 4px;
+            border-radius: 8px;
+            transition: outline 0.3s;
+        }
+        .tour-link-container {
+            text-align: center;
+            padding: 8px 0 0;
+        }
+        .tour-link {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .tour-link:hover { color: #3b82f6; }
+        @keyframes tourFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 768px) {
+            .lever-apply-btn {
+                width: 100%;
+                justify-content: center;
+                margin-top: 8px;
+            }
+            .scenario-cards-row {
+                grid-template-columns: 1fr;
+            }
+            .scenario-comparison-table {
+                font-size: 0.78rem;
+            }
+            .lever-toast {
+                left: 16px;
+                right: 16px;
+                transform: none;
+                bottom: 80px;
+            }
+            @keyframes toastSlideUp {
+                from { transform: translateY(20px); opacity: 0; }
+                to { transform: translateY(0); opacity: 1; }
+            }
+            .tour-tooltip {
+                max-width: calc(100vw - 32px);
+                width: calc(100vw - 32px);
+            }
+        }
+
     </style>
 </head>
 
@@ -6327,7 +6574,7 @@
                 <i class="ph ph-chart-line"></i>
                 Charts
             </button>
-            <button class="nav-link" onclick="switchMainView('scenarios')">
+            <button class="nav-link" id="navScenarios" onclick="switchMainView('scenarios')">
                 <i class="ph ph-flask"></i>
                 What-If Scenarios
             </button>
@@ -7286,7 +7533,7 @@
                     </div>
 
                     <!-- COMPACT BUDGET CARD -->
-                    <div class="compact-budget-card">
+                    <div class="compact-budget-card" id="compactBudgetSection">
                         <div class="compact-budget-title">
                             <i class="ph ph-wallet"></i>
                             <span>Your Retirement Budget</span>
@@ -7340,6 +7587,11 @@
                         </div>
                         <div class="improve-list" id="improveList">
                             <!-- Populated by JavaScript -->
+                        </div>
+                        <div class="tour-link-container">
+                            <a href="javascript:void(0)" onclick="resetTour()" class="tour-link">
+                                <i class="ph ph-question"></i> Take a guided tour
+                            </a>
                         </div>
                     </div>
 
@@ -8561,10 +8813,14 @@
                 const grid = document.getElementById('scenariosGrid');
                 if (!grid || !savedScenarios) return;
 
-                grid.innerHTML = savedScenarios.map((scenario, index) => {
-                    const successRate = scenario.results?.successRate || '--';
-                    const monthlyPaycheck = scenario.results?.monthlyPaycheck || '--';
-                    const date = new Date(scenario.timestamp).toLocaleDateString();
+                let html = '';
+
+                // Scenario cards
+                html += '<div class="scenario-cards-row">';
+                html += savedScenarios.map((scenario, index) => {
+                    const successRate = scenario.results?.successRate != null ? scenario.results.successRate.toFixed(0) + '%' : '--';
+                    const spending = scenario.results?.sustainableSpending ? '$' + Math.round(scenario.results.sustainableSpending / 1000) + 'k/yr' : '--';
+                    const date = new Date(scenario.id).toLocaleDateString();
 
                     return `
                 <div class="scenario-card-full ${scenario.active ? 'active' : ''}" onclick="selectScenario(${scenario.id})">
@@ -8574,7 +8830,7 @@
                     </div>
                     <div class="scenario-card-metrics">
                         <div class="scenario-metric">Success: <strong>${successRate}</strong></div>
-                        <div class="scenario-metric">Monthly: <strong>${monthlyPaycheck}</strong></div>
+                        <div class="scenario-metric">Spending: <strong>${spending}</strong></div>
                     </div>
                     <div class="scenario-actions">
                         <button class="scenario-action-btn" onclick="event.stopPropagation(); restoreScenario(${scenario.id})">
@@ -8587,6 +8843,72 @@
                 </div>
             `;
                 }).join('');
+                html += '</div>';
+
+                // Comparison table (only if 2+ scenarios)
+                if (savedScenarios.length >= 2) {
+                    html += renderScenarioComparisonTable();
+                }
+
+                grid.innerHTML = html;
+            }
+
+            function renderScenarioComparisonTable() {
+                const metrics = [
+                    { label: 'Success Rate', key: 'successRate', format: v => v != null ? v.toFixed(0) + '%' : '--', higherBetter: true },
+                    { label: 'Spending', key: 'sustainableSpending', format: v => v ? '$' + Math.round(v).toLocaleString() + '/yr' : '--', higherBetter: true },
+                    { label: 'Coverage', key: 'coveragePercent', format: v => v != null ? v + '%' : '--', higherBetter: true },
+                    { label: 'Legacy', key: 'medianLegacy', format: v => v ? '$' + Math.round(v / 1000).toLocaleString() + 'k' : '--', higherBetter: true },
+                    { label: 'Lifetime Tax', key: 'lifetimeTax', format: v => v ? '$' + Math.round(v / 1000).toLocaleString() + 'k' : '--', higherBetter: false },
+                    { label: 'Poor Mkts Wall', key: 'poorWall', format: v => v != null ? 'Age ' + v : 'None', higherBetter: true },
+                    { label: 'Avg Mkts Wall', key: 'averageWall', format: v => v != null ? 'Age ' + v : 'None', higherBetter: true }
+                ];
+
+                // Use first scenario as baseline for delta
+                const baseline = savedScenarios[0].results;
+
+                let html = '<div class="scenario-comparison-table"><table>';
+                html += '<thead><tr><th>Metric</th>';
+                savedScenarios.forEach((s, i) => {
+                    html += `<th>${s.name || 'Scenario ' + (i + 1)}</th>`;
+                });
+                html += '</tr></thead><tbody>';
+
+                metrics.forEach(metric => {
+                    html += '<tr>';
+                    html += `<td class="metric-label">${metric.label}</td>`;
+                    savedScenarios.forEach((s, i) => {
+                        const val = s.results?.[metric.key];
+                        const formatted = metric.format(val);
+
+                        if (i === 0 || val == null || baseline[metric.key] == null) {
+                            html += `<td>${formatted}</td>`;
+                        } else {
+                            const baseVal = baseline[metric.key];
+                            // For wall ages, null means no depletion (best outcome)
+                            let delta;
+                            if (metric.key === 'poorWall' || metric.key === 'averageWall') {
+                                if (val === null && baseVal === null) delta = 0;
+                                else if (val === null) delta = 1; // improved to no wall
+                                else if (baseVal === null) delta = -1; // regressed to having a wall
+                                else delta = val - baseVal;
+                            } else {
+                                delta = val - baseVal;
+                            }
+                            const isGood = metric.higherBetter ? delta > 0 : delta < 0;
+                            const isBad = metric.higherBetter ? delta < 0 : delta > 0;
+                            let deltaClass = 'neutral';
+                            let deltaIcon = '';
+                            if (isGood) { deltaClass = 'positive'; deltaIcon = '<i class="ph ph-arrow-up"></i>'; }
+                            else if (isBad) { deltaClass = 'negative'; deltaIcon = '<i class="ph ph-arrow-down"></i>'; }
+                            html += `<td><span class="comparison-value">${formatted}</span> <span class="comparison-delta ${deltaClass}">${deltaIcon}</span></td>`;
+                        }
+                    });
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table></div>';
+                return html;
             }
 
             function selectScenario(id) {
@@ -10184,6 +10506,19 @@
 
                     restoreComputeButton();
                     progressLine.style.display = 'none';
+
+                    // Lever apply callback (v16.2)
+                    if (window._leverApplyCallback) {
+                        window._leverApplyCallback();
+                        window._leverApplyCallback = null;
+                    }
+
+                    // Onboarding tour trigger (v16.2)
+                    if (!hasCompletedFirstSimulation && shouldShowTour()) {
+                        hasCompletedFirstSimulation = true;
+                        setTimeout(startTour, 800);
+                    }
+                    hasCompletedFirstSimulation = true;
                 }, 100);
             }
 
@@ -12059,7 +12394,8 @@
                             wallBefore: baseWall,
                             wallAfter: newWall === null ? endAge + '+' : newWall,
                             improvement: Math.max(0, improvement),
-                            reachesEnd: newWall === null || newWall >= endAge
+                            reachesEnd: newWall === null || newWall >= endAge,
+                            applyChanges: [{ inputId: 'retireAge', value: newRetireAge }]
                         });
                     }
                 }
@@ -12078,7 +12414,8 @@
                         wallBefore: baseWall,
                         wallAfter: newWall === null ? endAge + '+' : newWall,
                         improvement: Math.max(0, improvement),
-                        reachesEnd: newWall === null || newWall >= endAge
+                        reachesEnd: newWall === null || newWall >= endAge,
+                        applyChanges: [{ inputId: 'lifestyleSpending', value: reducedSpending }]
                     });
                 }
 
@@ -12094,7 +12431,8 @@
                         wallBefore: baseWall,
                         wallAfter: newWall === null ? endAge + '+' : newWall,
                         improvement: Math.max(0, improvement),
-                        reachesEnd: newWall === null || newWall >= endAge
+                        reachesEnd: newWall === null || newWall >= endAge,
+                        applyChanges: [{ inputId: 'userClaimAge', value: 70 }]
                     });
                 }
 
@@ -12112,7 +12450,8 @@
                             wallBefore: baseWall,
                             wallAfter: newWall === null ? endAge + '+' : newWall,
                             improvement: Math.max(0, improvement),
-                            reachesEnd: newWall === null || newWall >= endAge
+                            reachesEnd: newWall === null || newWall >= endAge,
+                            applyChanges: [{ inputId: 'retireAge', value: newRetireAge }]
                         });
                     }
                 }
@@ -12131,7 +12470,8 @@
                         wallBefore: baseWall,
                         wallAfter: newWall === null ? endAge + '+' : newWall,
                         improvement: Math.max(0, improvement),
-                        reachesEnd: newWall === null || newWall >= endAge
+                        reachesEnd: newWall === null || newWall >= endAge,
+                        applyChanges: [{ inputId: 'lifestyleSpending', value: reducedSpending }]
                     });
                 }
 
@@ -12148,7 +12488,8 @@
                         wallBefore: baseWall,
                         wallAfter: newWall === null ? endAge + '+' : newWall,
                         improvement: Math.max(0, improvement),
-                        reachesEnd: newWall === null || newWall >= endAge
+                        reachesEnd: newWall === null || newWall >= endAge,
+                        applyChanges: [{ inputId: 'userSavingsRate', value: newSavingsRate }]
                     });
                 }
 
@@ -12237,7 +12578,7 @@
 
                     if (levers.length > 0) {
                         let html = '';
-                        levers.forEach((lever) => {
+                        levers.forEach((lever, leverIndex) => {
                             const maxImprovement = Math.max(...levers.map(l => l.improvement));
                             const impactPercent = Math.round((lever.improvement / maxImprovement) * 100);
                             let impactClass = 'low';
@@ -12255,7 +12596,7 @@
                             }
 
                             html += `
-                        <div class="improve-item">
+                        <div class="improve-item" id="leverCard${leverIndex}">
                             <div class="improve-item-badge ${impactClass}">${impactLabel}</div>
                             <div class="improve-item-content">
                                 <div class="improve-item-title">${lever.action}</div>
@@ -12263,6 +12604,9 @@
                                     Extends portfolio from age ${lever.wallBefore} to ${lever.wallAfter} (+${lever.improvement} years)
                                 </div>
                             </div>
+                            <button class="lever-apply-btn" onclick="applyLever(${leverIndex})" title="Apply this change to your plan">
+                                <i class="ph ph-play"></i> Apply
+                            </button>
                         </div>
                     `;
                         });
@@ -12321,6 +12665,253 @@
                         improveSection.style.display = 'block';
                     }
                 }
+            }
+
+            function applyLever(leverIndex) {
+                const lever = calculatedLevers[leverIndex];
+                if (!lever || !lever.applyChanges) return;
+
+                // Capture previous success rate for toast
+                const previousRate = simulationStats ? simulationStats.successRate : null;
+
+                // Snapshot for revert
+                inputSnapshots.push(getAllInputValues());
+                if (inputSnapshots.length > 3) inputSnapshots.shift();
+                updateRevertButton();
+
+                // Apply each input change
+                lever.applyChanges.forEach(change => {
+                    const el = document.getElementById(change.inputId);
+                    if (el) el.value = change.value;
+                });
+
+                // Disable the apply button to prevent double-apply
+                const btn = document.querySelector(`#leverCard${leverIndex} .lever-apply-btn`);
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="ph ph-check"></i> Applied';
+                    btn.classList.add('applied');
+                }
+
+                // Run simulation with callback to show toast
+                const onComplete = function() {
+                    if (previousRate !== null && simulationStats) {
+                        showLeverToast(previousRate, simulationStats.successRate);
+                    }
+                };
+
+                // Store callback and trigger simulation
+                window._leverApplyCallback = onComplete;
+                initiateSimulation();
+            }
+
+            function showLeverToast(beforeRate, afterRate) {
+                // Remove existing toast
+                const existing = document.getElementById('leverToast');
+                if (existing) existing.remove();
+
+                const delta = afterRate - beforeRate;
+                const deltaSign = delta >= 0 ? '+' : '';
+                const deltaClass = delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral';
+
+                const toast = document.createElement('div');
+                toast.id = 'leverToast';
+                toast.className = 'lever-toast ' + deltaClass;
+                toast.innerHTML = `
+                    <i class="ph ph-chart-line-up"></i>
+                    <span>Success rate: ${beforeRate.toFixed(0)}% &rarr; ${afterRate.toFixed(0)}% (${deltaSign}${delta.toFixed(0)}%)</span>
+                    <button onclick="this.parentElement.remove()" class="toast-close"><i class="ph ph-x"></i></button>
+                `;
+                document.body.appendChild(toast);
+
+                // Auto-remove after 6 seconds
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.classList.add('fade-out');
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 6000);
+            }
+
+            // ==========================================================================
+            // ONBOARDING TOUR (v16.2)
+            // ==========================================================================
+
+            let tourCurrentStep = -1;
+            const TOUR_STORAGE_KEY = 'retirementArchitect_tourDismissed';
+            let hasCompletedFirstSimulation = false;
+
+            const tourSteps = [
+                {
+                    target: 'gaugeAriaContainer',
+                    title: 'Success Rate',
+                    text: 'This gauge shows the probability your savings will last through retirement, based on hundreds of market simulations.',
+                    position: 'bottom'
+                },
+                {
+                    target: 'heroLifespanProgress',
+                    title: 'Lifespan Timeline',
+                    text: 'This timeline shows when your money may run out under different market conditions. Green means you&rsquo;re covered; red marks potential shortfalls.',
+                    position: 'bottom'
+                },
+                {
+                    target: 'compactBudgetSection',
+                    title: 'Spending Comparison',
+                    text: 'Compare your current spending to what the plan can sustain in retirement. The goal is to maintain your lifestyle.',
+                    position: 'top'
+                },
+                {
+                    target: 'budgetBarsSection',
+                    title: 'Income Sources',
+                    text: 'See where your retirement income comes from at each stage &mdash; Social Security, withdrawals, pensions, and more.',
+                    position: 'top'
+                },
+                {
+                    target: 'improveSection',
+                    title: 'Improvement Actions',
+                    text: 'Personalized suggestions to strengthen your plan. Click "Apply" to instantly test a change and see its impact.',
+                    position: 'top'
+                },
+                {
+                    target: 'navScenarios',
+                    title: 'What-If Scenarios',
+                    text: 'Save snapshots and compare different strategies side by side. Try "what if I retire earlier?" or "what if markets crash?"',
+                    position: 'bottom'
+                }
+            ];
+
+            function shouldShowTour() {
+                try {
+                    return !localStorage.getItem(TOUR_STORAGE_KEY);
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            function startTour() {
+                tourCurrentStep = -1;
+                advanceTour();
+            }
+
+            function advanceTour() {
+                // Remove previous tooltip
+                const prev = document.getElementById('tourTooltip');
+                if (prev) prev.remove();
+
+                tourCurrentStep++;
+
+                if (tourCurrentStep >= tourSteps.length) {
+                    endTour();
+                    return;
+                }
+
+                const step = tourSteps[tourCurrentStep];
+                const targetEl = document.getElementById(step.target);
+                if (!targetEl) {
+                    // Skip missing elements
+                    advanceTour();
+                    return;
+                }
+
+                // Scroll target into view
+                targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                setTimeout(() => {
+                    renderTourTooltip(step, targetEl);
+                }, 400);
+            }
+
+            function renderTourTooltip(step, targetEl) {
+                const rect = targetEl.getBoundingClientRect();
+                const tooltip = document.createElement('div');
+                tooltip.id = 'tourTooltip';
+                tooltip.className = 'tour-tooltip tour-' + step.position;
+
+                const stepNum = tourCurrentStep + 1;
+                const totalSteps = tourSteps.length;
+                const isLast = tourCurrentStep === tourSteps.length - 1;
+
+                tooltip.innerHTML = `
+                    <div class="tour-tooltip-header">
+                        <span class="tour-step-count">${stepNum} of ${totalSteps}</span>
+                        <button class="tour-skip-btn" onclick="endTour()"><i class="ph ph-x"></i></button>
+                    </div>
+                    <div class="tour-tooltip-title">${step.title}</div>
+                    <div class="tour-tooltip-text">${step.text}</div>
+                    <div class="tour-tooltip-footer">
+                        <label class="tour-dismiss-label">
+                            <input type="checkbox" id="tourDontShow"> Don&rsquo;t show again
+                        </label>
+                        <button class="tour-next-btn" onclick="advanceTour()">
+                            ${isLast ? 'Done' : 'Next'} <i class="ph ph-arrow-right"></i>
+                        </button>
+                    </div>
+                `;
+
+                document.body.appendChild(tooltip);
+
+                // Position tooltip
+                positionTourTooltip(tooltip, targetEl, step.position);
+
+                // Add highlight ring to target
+                targetEl.classList.add('tour-highlight');
+            }
+
+            function positionTourTooltip(tooltip, targetEl, position) {
+                const rect = targetEl.getBoundingClientRect();
+                const tooltipRect = tooltip.getBoundingClientRect();
+                const margin = 12;
+                const isMobile = window.innerWidth <= 768;
+
+                let top, left;
+
+                if (isMobile) {
+                    // On mobile, always position tooltip at bottom of viewport area
+                    left = 16;
+                    tooltip.style.width = 'calc(100vw - 32px)';
+                    tooltip.style.maxWidth = 'none';
+                    top = rect.bottom + margin;
+                    if (top + tooltipRect.height > window.innerHeight) {
+                        top = rect.top - tooltipRect.height - margin;
+                    }
+                } else {
+                    if (position === 'bottom') {
+                        top = rect.bottom + margin;
+                        left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                    } else {
+                        top = rect.top - tooltipRect.height - margin;
+                        left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                    }
+                    // Keep within viewport
+                    left = Math.max(16, Math.min(left, window.innerWidth - tooltipRect.width - 16));
+                }
+
+                tooltip.style.top = (top + window.scrollY) + 'px';
+                tooltip.style.left = left + 'px';
+            }
+
+            function endTour() {
+                const tooltip = document.getElementById('tourTooltip');
+                const dontShow = document.getElementById('tourDontShow');
+
+                // Always save dismissal (tour was completed or skipped)
+                try {
+                    localStorage.setItem(TOUR_STORAGE_KEY, 'true');
+                } catch (e) {}
+
+                if (tooltip) tooltip.remove();
+
+                // Remove all highlight rings
+                document.querySelectorAll('.tour-highlight').forEach(el => el.classList.remove('tour-highlight'));
+
+                tourCurrentStep = -1;
+            }
+
+            function resetTour() {
+                try {
+                    localStorage.removeItem(TOUR_STORAGE_KEY);
+                } catch (e) {}
+                startTour();
             }
 
             function renderProgressBar(walls) {
@@ -13301,6 +13892,12 @@
                     return;
                 }
 
+                // Enforce max 5 scenarios
+                if (savedScenarios.length >= 5) {
+                    alert("Maximum 5 scenarios saved. Delete one to save a new scenario.");
+                    return;
+                }
+
                 const defaultName = `Retire @ ${document.getElementById('retireAge').value}, Spend $${Math.round(document.getElementById('lifestyleSpending').value / 1000)}k`;
                 const name = prompt("Name this scenario:", defaultName);
                 if (!name) return;
@@ -13308,7 +13905,6 @@
                 // Calculate wall ages and coverage percent
                 const walls = calculateWallAges();
                 const currentSpending = params.lifestyleSpending || 0;
-                // Use sustainableSpendingResult (same as Paycheck Mirror)
                 const retirementSpending = sustainableSpendingResult || currentSpending;
                 const coveragePercent = currentSpending > 0 ? Math.round((retirementSpending / currentSpending) * 100) : 100;
 
@@ -13318,15 +13914,19 @@
                     inputs: getAllInputValues(),
                     results: {
                         successRate: simulationStats.successRate,
+                        sustainableSpending: sustainableSpendingResult || 0,
                         coveragePercent: coveragePercent,
                         poorWall: walls.poor,
                         averageWall: walls.average,
-                        endAge: params.endAge
+                        endAge: params.endAge,
+                        medianLegacy: simulationStats.medianFinalBalance || 0,
+                        lifetimeTax: simulationStats.totalLifetimeTax || 0
                     }
                 };
 
                 savedScenarios.push(snapshot);
-                renderScenariosGrid();  // Update the Scenarios view grid
+                persistScenarios();
+                updateScenariosView();
             }
 
             function renderScenarioTray() {
@@ -13338,13 +13938,20 @@
                 const scenario = savedScenarios.find(s => s.id === id);
                 if (!scenario) return;
 
+                if (!confirm('This will replace your current inputs. You can use "Revert to Last Run" to undo.')) return;
+
+                // Snapshot current state for revert
+                inputSnapshots.push(getAllInputValues());
+                if (inputSnapshots.length > 3) inputSnapshots.shift();
+                updateRevertButton();
+
                 setAllInputValues(scenario.inputs);
                 initiateSimulation();
 
                 // Highlight active card after re-render
                 setTimeout(() => {
-                    document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('active'));
-                    const cards = document.querySelectorAll('.scenario-card');
+                    document.querySelectorAll('.scenario-card-full').forEach(c => c.classList.remove('active'));
+                    const cards = document.querySelectorAll('.scenario-card-full');
                     const index = savedScenarios.findIndex(s => s.id === id);
                     if (cards[index]) cards[index].classList.add('active');
                 }, 100);
@@ -13352,7 +13959,28 @@
 
             function deleteScenario(id) {
                 savedScenarios = savedScenarios.filter(s => s.id !== id);
-                renderScenarioTray();
+                persistScenarios();
+                updateScenariosView();
+            }
+
+            function persistScenarios() {
+                try {
+                    localStorage.setItem('retirementArchitect_scenarios', JSON.stringify(savedScenarios));
+                } catch (e) {
+                    console.log('Could not save scenarios:', e);
+                }
+            }
+
+            function loadPersistedScenarios() {
+                try {
+                    const data = localStorage.getItem('retirementArchitect_scenarios');
+                    if (data) {
+                        savedScenarios = JSON.parse(data);
+                        updateScenariosView();
+                    }
+                } catch (e) {
+                    console.log('Could not load scenarios:', e);
+                }
             }
 
             /* ============================================
@@ -13376,6 +14004,9 @@
                 if (!hasData) {
                     showSetupWizard();
                 }
+
+                // Load persisted scenarios (v16.2)
+                loadPersistedScenarios();
 
                 // Build progress bar
                 buildWizProgressBar();
