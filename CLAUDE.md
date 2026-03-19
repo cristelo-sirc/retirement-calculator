@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Single-file HTML retirement planning calculator with Monte Carlo simulations. All HTML, CSS, and JS in one file (~14,530 lines).
+Single-file HTML retirement planning calculator with Monte Carlo simulations. All HTML, CSS, and JS in one file (~15,210 lines).
 
-**Current Version:** 16.0 (Mobile &amp; Accessibility)
+**Current Version:** 16.2 (Clickable Levers, Scenario Compare, Onboarding Tour)
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -90,7 +90,7 @@ Five-iteration convergence loop:
 5. Calculate taxable SS, IRMAA, federal/cap gains/NIIT/state tax
 6. Check convergence (diff < $1 or max 5 passes)
 
-### Key Function Locations (v16.0, ~14,530 lines)
+### Key Function Locations (v16.2, ~15,210 lines)
 
 | Function | ~Line | Purpose |
 |----------|-------|---------|
@@ -137,7 +137,15 @@ Five-iteration convergence loop:
 | `exportForAI()` | 11947 | AI-formatted data export |
 | `generatePDF()` | 12042 | PDF report generation |
 | `getAllInputValues()` | 12468 | Generic input capture for auto-save |
+| `applyLever()` | ~12670 | Applies lever changes to inputs, snapshots, re-runs simulation |
+| `showLeverToast()` | ~12700 | Before/after success rate toast notification |
 | `renderScenarioTray()` | 12683 | Scenario comparison tray |
+| `renderScenarioComparisonTable()` | ~12750 | Side-by-side scenario metrics with delta indicators |
+| `persistScenarios()` | ~13720 | Saves scenarios to localStorage |
+| `loadPersistedScenarios()` | ~13730 | Restores scenarios from localStorage on load |
+| `startTour()` | ~13800 | Initiates 6-step onboarding tooltip tour |
+| `renderTourTooltip()` | ~13840 | Positions and renders individual tour step |
+| `positionTourTooltip()` | ~13870 | Calculates tooltip placement via getBoundingClientRect |
 | `toggleWizFeature()` | ~12901 | Wizard feature toggle on/off with section expand |
 | `setWizFeatureState()` | ~12924 | Programmatic setter for wizard feature toggles |
 | `showSetupWizard()` | ~12796 | Guided setup wizard modal |
@@ -325,6 +333,18 @@ Optional features in the wizard (Windfall, Part-Time, Spending Reduction, Guardr
 ### Wizard Feature Toggle ID Mapping
 Wizard feature sections use a naming convention: `wiz{Section}Toggle` (bar), `wizEnable{Section}` (checkbox), `wiz{Section}Section` (content). The `{Section}` name uses lowercase with first letter capitalized in IDs (e.g., `wizEnableWindfall`, `wizParttimeToggle`). The sidebar uses different naming (e.g., `enablePartTime` with camelCase). Always verify both sides of the mapping when adding new wizard features.
 
+### Lever Apply &amp; Snapshot Coordination
+`applyLever()` pushes a snapshot before modifying inputs, then sets `window._skipNextSnapshot = true` so `initiateSimulation()` doesn't push a second snapshot. Without this flag, Revert pops the wrong state (post-lever instead of pre-lever). The `_leverApplyCallback` hook runs after simulation completes to show the before/after toast.
+
+### Scenario localStorage Persistence
+Scenarios are stored under `retirementArchitect_scenarios` (separate from auto-save). Max 5 enforced at save time. Each scenario stores full `getAllInputValues()` plus computed results (`successRate`, `sustainableSpending`, `medianLegacy`, `lifetimeTax`, wall ages). `loadPersistedScenarios()` runs on `DOMContentLoaded`.
+
+### Tour Tooltip Positioning
+Tour tooltips use `getBoundingClientRect()` on the target element to calculate absolute position. On mobile, tooltips are forced to `position: fixed` with full-width layout. The tour only triggers on first simulation for users without `retirementArchitect_tourDismissed` in localStorage and without existing auto-save data.
+
+### Native prompt() Blocks Chrome MCP
+`captureSnapshot()` uses `prompt()` for scenario naming, which blocks the entire page. Chrome MCP cannot interact with native dialogs. Future improvement: replace with inline modal dialog for naming.
+
 ---
 
 ## Version History (Summary)
@@ -342,6 +362,8 @@ Wizard feature sections use a naming convention: `wiz{Section}Toggle` (bar), `wi
 | v15.5 | Focus accessibility (`:focus-visible` rings, Escape key closes modals, focus trap in wizard/solver). Chart tooltips on all 4 Charts tab charts. Zoom/pan on Portfolio Balance chart. Clickable wizard steps with bidirectional navigation. Compute vs Solver button hierarchy. |
 | v15.6 | Click-to-toggle tooltips (77 info icons converted from hover). Revert to Last Run (3-snapshot undo stack, `inputSnapshots[]`). |
 | v16.0 | Mobile responsive layout (`@media max-width: 768px`): icon rail hidden, sidebar becomes full-screen overlay via FAB button, hero row stacks vertically, charts single-column, sticky table first column, mobile nav bar. ARIA: gauge `role="meter"`, lifespan `role="progressbar"`, dynamic `aria-label` on metric pills and budget bar segments. |
+| v16.1 | Bug fixes from live testing: sticky Done bar for mobile input panel close, Escape key dismisses mobile overlay, lifespan label proximity threshold increased (5&rarr;8) with `<=` comparison, compute button visual loading state (gray + spinner). |
+| v16.2 | Clickable improvement levers with Apply buttons (`applyLever()`), before/after success rate toast, `_skipNextSnapshot` flag for revert integration. Named scenario save &amp; compare (`savedScenarios[]`, `retirementArchitect_scenarios` localStorage key, max 5), comparison table with baseline deltas. 6-step onboarding tour (`tourSteps[]`, tooltip positioning via `getBoundingClientRect()`, `retirementArchitect_tourDismissed` localStorage key). |
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4
 
