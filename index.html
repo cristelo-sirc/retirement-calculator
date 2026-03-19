@@ -6390,6 +6390,31 @@
                 padding: 12px 16px !important;
             }
 
+            /* Fix 8: Wizard card height on iOS Safari */
+            /* Safari vh includes area behind browser chrome; dvh accounts for it */
+            .wizard-overlay {
+                align-items: flex-start !important;
+                padding: env(safe-area-inset-top, 8px) 0 0 0;
+            }
+            .wizard-card {
+                max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
+                max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 80px) !important;
+                border-radius: 12px 12px 0 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            /* Fix 9: Progress bar scroll fix for iOS */
+            .wizard-progress-scroll {
+                overflow: visible !important;
+            }
+            .wizard-progress-scroll .wizard-progress {
+                overflow-x: scroll !important;
+                -webkit-overflow-scrolling: touch;
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
             /* Fix 6: Done bar safe area */
             .mobile-done-bar {
                 padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
