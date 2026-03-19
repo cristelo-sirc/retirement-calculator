@@ -6390,16 +6390,22 @@
                 padding: 12px 16px !important;
             }
 
-            /* Fix 8: Wizard card height on iOS Safari */
-            /* Safari vh includes area behind browser chrome; dvh accounts for it */
+            /* Fix 8: Wizard as full-screen sheet on mobile iOS */
+            /* Safari vh is unreliable (includes area behind browser chrome). */
+            /* Use fixed positioning to fill the actual visible viewport. */
             .wizard-overlay {
-                align-items: flex-start !important;
-                padding: env(safe-area-inset-top, 8px) 0 0 0;
+                align-items: stretch !important;
+                padding: 0 !important;
             }
             .wizard-card {
-                max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)) !important;
-                max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 80px) !important;
-                border-radius: 12px 12px 0 0 !important;
+                position: fixed !important;
+                top: env(safe-area-inset-top, 0px) !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                max-height: none !important;
+                height: auto !important;
+                border-radius: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
             }
