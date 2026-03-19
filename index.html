@@ -6175,11 +6175,15 @@
                 display: none !important;
             }
 
-            /* Top nav: compact + safe area for viewport-fit=cover */
+            /* Top nav: compact + sticky with safe area for viewport-fit=cover */
             .top-nav {
                 padding: 0 12px;
                 padding-top: env(safe-area-inset-top);
                 height: calc(48px + env(safe-area-inset-top));
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                background: white;
             }
             .top-nav .brand {
                 font-size: 0.9rem;
