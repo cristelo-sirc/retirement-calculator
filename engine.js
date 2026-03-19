@@ -224,6 +224,27 @@
                         }
                     });
                 }
+
+                // v17.0: Update bottom nav active states
+                document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
+                const activeBottomNav = document.querySelector(`.bottom-nav-item[data-view="${viewId}"]`);
+                if (activeBottomNav) activeBottomNav.classList.add('active');
+            }
+
+            // v17.0: Bottom sheet open/close
+            function openBottomSheet() {
+                const backdrop = document.getElementById('bottomSheetBackdrop');
+                const sheet = document.getElementById('bottomSheet');
+                if (backdrop) { backdrop.classList.add('visible'); }
+                if (sheet) { sheet.classList.add('open'); }
+                document.body.style.overflow = 'hidden';
+            }
+            function closeBottomSheet() {
+                const backdrop = document.getElementById('bottomSheetBackdrop');
+                const sheet = document.getElementById('bottomSheet');
+                if (backdrop) { backdrop.classList.remove('visible'); }
+                if (sheet) { sheet.classList.remove('open'); }
+                document.body.style.overflow = '';
             }
 
             function updateChartsView() {
