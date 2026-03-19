@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retirement Architect // V16.4: UX Polish</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Retirement Architect // V16.5: Mobile Fix Cycle</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
@@ -4732,6 +4732,7 @@
 
         .wizard-footer {
             padding: 16px 24px;
+            padding-bottom: max(16px, env(safe-area-inset-bottom));
             border-top: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
@@ -4921,6 +4922,47 @@
             gap: 0;
             margin-bottom: 0;
             position: relative;
+        }
+
+        /* Scrollable wizard progress on mobile */
+        .wizard-progress-scroll {
+            position: relative;
+            overflow: hidden;
+        }
+        .wizard-progress-scroll .wizard-progress {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            scrollbar-width: none;
+        }
+        .wizard-progress-scroll .wizard-progress::-webkit-scrollbar {
+            display: none;
+        }
+        .wizard-progress-scroll::before,
+        .wizard-progress-scroll::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 32px;
+            z-index: 2;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .wizard-progress-scroll::before {
+            left: 0;
+            background: linear-gradient(to right, #f1f5f9 30%, transparent);
+        }
+        .wizard-progress-scroll::after {
+            right: 0;
+            background: linear-gradient(to left, #f1f5f9 30%, transparent);
+        }
+        .wizard-progress-scroll.fade-left::before {
+            opacity: 1;
+        }
+        .wizard-progress-scroll.fade-right::after {
+            opacity: 1;
         }
 
         .wizard-progress-step {
@@ -6303,6 +6345,55 @@
             .levers-grid, .opportunities-grid {
                 grid-template-columns: 1fr !important;
             }
+
+            /* ===== v16.5: Mobile Fix Cycle ===== */
+
+            /* Fix 1: Fixed bottom nav bar */
+            .mobile-nav-bar {
+                position: fixed !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                top: auto !important;
+                z-index: 1000 !important;
+                border-bottom: none !important;
+                border-top: 1px solid #e2e8f0 !important;
+                padding-bottom: env(safe-area-inset-bottom) !important;
+                background: white !important;
+                box-shadow: 0 -2px 8px rgba(0,0,0,0.08) !important;
+            }
+
+            /* Fix 1 + Refinement D: Main content bottom padding for fixed nav */
+            .main-content {
+                padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px) !important;
+            }
+
+            /* Fix 2: Scrollable wizard step bar on mobile */
+            .wizard-progress-step {
+                flex: 0 0 auto !important;
+                min-width: 52px;
+            }
+
+            /* Fix 4 + Refinement A: FAB above bottom nav */
+            .mobile-fab {
+                bottom: calc(56px + env(safe-area-inset-bottom) + 16px) !important;
+            }
+
+            /* Fix 5: Wizard mobile grid collapse */
+            .wizard-grid, .wizard-grid-3 {
+                grid-template-columns: 1fr !important;
+            }
+            .wizard-body {
+                padding: 16px !important;
+            }
+            .wizard-header {
+                padding: 12px 16px !important;
+            }
+
+            /* Fix 6: Done bar safe area */
+            .mobile-done-bar {
+                padding-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+            }
         }
 
         /* ===== v16.2: Clickable Levers ===== */
@@ -6545,7 +6636,7 @@
                 left: 16px;
                 right: 16px;
                 transform: none;
-                bottom: 80px;
+                bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
             }
             @keyframes toastSlideUp {
                 from { transform: translateY(20px); opacity: 0; }
@@ -6567,7 +6658,7 @@
         <div class="brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span>RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V16.4</span>
+            <span class="version-badge">V16.5</span>
         </div>
 
         <div class="nav-links">
@@ -6601,7 +6692,7 @@
     </nav>
 
     <!-- MOBILE NAV BAR (hidden on desktop) -->
-    <div class="mobile-nav-bar" style="display: none; background: white; border-bottom: 1px solid #e2e8f0; padding: 0 8px; overflow-x: auto; flex-shrink: 0;">
+    <div class="mobile-nav-bar" style="display: none; background: white; padding: 0 8px; flex-shrink: 0;">
         <button class="nav-link active" onclick="switchMainView('dashboard')" style="padding: 8px 12px; font-size: 0.75rem; white-space: nowrap;">
             <i class="ph ph-house"></i> Dashboard
         </button>
@@ -8198,7 +8289,7 @@
         <div id="pdfReport">
             <div class="pdf-header">
                 <h1>Retirement Architect Report</h1>
-                <p>Professional Audit & Tax Convergence Analysis (V16.4)</p>
+                <p>Professional Audit & Tax Convergence Analysis (V16.5)</p>
             </div>
 
             <div class="pdf-grid">
@@ -8298,7 +8389,7 @@
             </div>
 
             <div style="margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ccc; padding-top: 10px;">
-                Generated by Retirement Architect V16.4 on <span id="pdfDate"></span>.
+                Generated by Retirement Architect V16.5 on <span id="pdfDate"></span>.
             </div>
         </div>
 
@@ -13289,7 +13380,7 @@
                 }
 
                 const aiData = {
-                    version: 'V16.4',
+                    version: 'V16.5',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -13544,9 +13635,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V16.4 migration: UX polish (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V16.4') {
-                    localStorage.setItem('retirementCalcVersion', 'V16.4');
+                // V16.5 migration: Mobile fix cycle (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V16.5') {
+                    localStorage.setItem('retirementCalcVersion', 'V16.5');
                 }
 
                 // Restore input panel collapse state
@@ -14158,6 +14249,13 @@
 
                 // Show wizard
                 document.getElementById('setupWizard').style.display = 'flex';
+
+                // Attach scroll listener for fade hints (v16.5)
+                const progBar = document.getElementById('wizProgressBar');
+                if (progBar && !progBar._fadeListenerAttached) {
+                    progBar.addEventListener('scroll', updateWizProgressFades, { passive: true });
+                    progBar._fadeListenerAttached = true;
+                }
             }
 
             function closeWizard() {
@@ -14187,6 +14285,25 @@
 
                     container.appendChild(step);
                 }
+
+                // Auto-scroll to active step &amp; update fade hints (v16.5)
+                requestAnimationFrame(() => {
+                    const currentDot = container.querySelector('.wizard-progress-step.current');
+                    if (currentDot) {
+                        currentDot.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                    }
+                    updateWizProgressFades();
+                });
+            }
+
+            function updateWizProgressFades() {
+                const scrollEl = document.getElementById('wizProgressBar');
+                const wrapper = document.getElementById('wizProgressScroll');
+                if (!scrollEl || !wrapper) return;
+                const canScrollLeft = scrollEl.scrollLeft > 2;
+                const canScrollRight = scrollEl.scrollWidth - scrollEl.clientWidth - scrollEl.scrollLeft > 2;
+                wrapper.classList.toggle('fade-left', canScrollLeft);
+                wrapper.classList.toggle('fade-right', canScrollRight);
             }
 
             function setWizardMode(mode) {
@@ -14715,7 +14832,9 @@
                     </div>
                 </div>
 
-                <div class="wizard-progress" id="wizProgressBar"></div>
+                <div class="wizard-progress-scroll" id="wizProgressScroll">
+                    <div class="wizard-progress" id="wizProgressBar"></div>
+                </div>
 
                 <div class="wizard-body">
                     <!-- STEP 0: Welcome & Checklist -->

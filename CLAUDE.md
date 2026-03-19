@@ -4,7 +4,7 @@
 
 Single-file HTML retirement planning calculator with Monte Carlo simulations. All HTML, CSS, and JS in one file (~15,330 lines).
 
-**Current Version:** 16.4 (UX Polish)
+**Current Version:** 16.5 (Mobile Fix Cycle)
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -336,6 +336,15 @@ Wizard feature sections use a naming convention: `wiz{Section}Toggle` (bar), `wi
 ### Lever Apply &amp; Snapshot Coordination
 `applyLever()` pushes a snapshot before modifying inputs, then sets `window._skipNextSnapshot = true` so `initiateSimulation()` doesn't push a second snapshot. Without this flag, Revert pops the wrong state (post-lever instead of pre-lever). The `_leverApplyCallback` hook runs after simulation completes to show the before/after toast.
 
+### iOS Safe-Area Requires viewport-fit=cover
+`env(safe-area-inset-bottom)` returns 0 unless the viewport meta tag includes `viewport-fit=cover`. This is a prerequisite for any safe-area-aware CSS. Added in v16.5.
+
+### Fixed Bottom Nav Cascading Positioning
+When a fixed bottom nav bar is added, ALL other fixed-bottom elements (FAB, toast, done bar) must account for the nav bar height + safe-area inset. Use `calc(56px + env(safe-area-inset-bottom) + margin)` pattern. Main content also needs matching `padding-bottom` to prevent content from hiding behind the nav bar.
+
+### Horizontal Scroll Containers Need Visual Hints on Mobile
+Mobile browsers hide scrollbars on overflow containers. Users may not realize content extends beyond the viewport. Use CSS `mask-image` or `::before`/`::after` gradient overlays toggled by scroll position classes (`fade-left`, `fade-right`) to signal scrollable content.
+
 ### Scenario localStorage Persistence
 Scenarios are stored under `retirementArchitect_scenarios` (separate from auto-save). Max 5 enforced at save time. Each scenario stores full `getAllInputValues()` plus computed results (`successRate`, `sustainableSpending`, `medianLegacy`, `lifetimeTax`, wall ages). `loadPersistedScenarios()` runs on `DOMContentLoaded`.
 
@@ -366,6 +375,7 @@ Tour tooltips use `getBoundingClientRect()` on the target element to calculate a
 | v16.2 | Clickable improvement levers with Apply buttons (`applyLever()`), before/after success rate toast, `_skipNextSnapshot` flag for revert integration. Named scenario save &amp; compare (`savedScenarios[]`, `retirementArchitect_scenarios` localStorage key, max 5), comparison table with baseline deltas. 6-step onboarding tour (`tourSteps[]`, tooltip positioning via `getBoundingClientRect()`, `retirementArchitect_tourDismissed` localStorage key). |
 | v16.3 | Outcome Distribution histogram on Charts tab &mdash; shows depleted vs. survived paths by age. Zero engine changes, uses existing `depletionAge` data. |
 | v16.4 | UX polish: gauge card reduced from 280px to 220px, budget bar gap label clarified to "/yr shortfall" with tooltip, What-If empty state replaced with workflow guidance steps, lever cards show which inputs they change, scenario comparison table uses `table-layout: fixed` to eliminate horizontal scroll for 2&ndash;3 scenarios. |
+| v16.5 | Mobile fix cycle: fixed bottom nav bar (replaces scroll-away top nav, z-index 1000), `viewport-fit=cover` + `env(safe-area-inset-bottom)` on nav/FAB/done bar/wizard footer/toast for iPhone notch/home indicator, scrollable wizard progress bar with fade-hint gradients and auto-scroll to active step, wizard mobile CSS (grids collapse to 1-column, reduced padding), FAB repositioned above bottom nav, toast repositioned above bottom nav. Zero engine changes. |
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4
 
