@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retirement Architect // V16.3: Outcome Distribution</title>
+    <title>Retirement Architect // V16.4: UX Polish</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
@@ -947,7 +947,7 @@
         /* Hero Row: Gauge + Paycheck side by side */
         .dashboard-hero-row {
             display: grid;
-            grid-template-columns: 280px 1fr 280px;
+            grid-template-columns: 220px 1fr 280px;
             gap: 24px;
             margin-bottom: 24px;
         }
@@ -956,7 +956,7 @@
         .hero-gauge-card {
             background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
             border-radius: 20px;
-            padding: 32px 24px;
+            padding: 24px 16px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
             border: 1px solid rgba(226, 232, 240, 0.6);
             display: flex;
@@ -967,10 +967,10 @@
         }
 
         .hero-gauge-wrapper {
-            width: 160px;
-            height: 160px;
+            width: 140px;
+            height: 140px;
             position: relative;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
 
         .hero-gauge-value {
@@ -978,7 +978,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 2.75rem;
+            font-size: 2.5rem;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #0f172a;
@@ -6384,12 +6384,12 @@
         }
         .scenario-comparison-table {
             margin-top: 16px;
-            overflow-x: auto;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
         }
         .scenario-comparison-table table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             font-size: 0.85rem;
         }
@@ -6400,12 +6400,14 @@
             font-weight: 600;
             color: #1e293b;
             border-bottom: 2px solid #e2e8f0;
-            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .scenario-comparison-table td {
             padding: 8px 12px;
             border-bottom: 1px solid #f1f5f9;
             color: #334155;
+            word-wrap: break-word;
         }
         .scenario-comparison-table tr:last-child td {
             border-bottom: none;
@@ -6413,7 +6415,6 @@
         .metric-label {
             font-weight: 500;
             color: #64748b;
-            white-space: nowrap;
         }
         .comparison-value {
             font-weight: 500;
@@ -6538,6 +6539,7 @@
             }
             .scenario-comparison-table {
                 font-size: 0.78rem;
+                overflow-x: auto;
             }
             .lever-toast {
                 left: 16px;
@@ -6565,7 +6567,7 @@
         <div class="brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span>RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V16.3</span>
+            <span class="version-badge">V16.4</span>
         </div>
 
         <div class="nav-links">
@@ -8091,9 +8093,14 @@
 
                         <div id="scenariosEmptyState" class="scenarios-empty-state">
                             <i class="ph ph-stack"></i>
-                            <h3>No Saved Snapshots</h3>
-                            <p>Run a simulation from the Dashboard, then click "Snapshot Current Plan" to save scenarios
-                                for comparison.</p>
+                            <h3>Compare Different Strategies</h3>
+                            <p style="margin-bottom:16px;">Save snapshots of your plan to compare side by side. Here&rsquo;s how:</p>
+                            <div style="text-align:left; display:inline-block; font-size:0.9rem; color:#475569; line-height:1.8;">
+                                <div><strong>1.</strong> Run a simulation from the Dashboard</div>
+                                <div><strong>2.</strong> Adjust inputs (retirement age, spending, etc.)</div>
+                                <div><strong>3.</strong> Click <strong>&ldquo;Snapshot Current Plan&rdquo;</strong> above to save</div>
+                                <div><strong>4.</strong> Repeat &mdash; a comparison table appears with 2+ scenarios</div>
+                            </div>
                         </div>
 
                         <div id="scenariosContent" style="display: none;">
@@ -8191,7 +8198,7 @@
         <div id="pdfReport">
             <div class="pdf-header">
                 <h1>Retirement Architect Report</h1>
-                <p>Professional Audit & Tax Convergence Analysis (V16.3)</p>
+                <p>Professional Audit & Tax Convergence Analysis (V16.4)</p>
             </div>
 
             <div class="pdf-grid">
@@ -8291,7 +8298,7 @@
             </div>
 
             <div style="margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ccc; padding-top: 10px;">
-                Generated by Retirement Architect V16.3 on <span id="pdfDate"></span>.
+                Generated by Retirement Architect V16.4 on <span id="pdfDate"></span>.
             </div>
         </div>
 
@@ -12375,7 +12382,7 @@
                     // Build shortfall/surplus indicator
                     let gapIndicator = '';
                     if (hasShortfall && shortfallAmount > 500) {
-                        gapIndicator = `<span class="budget-shortfall-text">&minus;${formatK(shortfallAmount)} gap</span>`;
+                        gapIndicator = `<span class="budget-shortfall-text" title="Annual shortfall: your spending need exceeds available income by this amount per year">&minus;${formatK(shortfallAmount)}/yr shortfall</span>`;
                     } else if (!hasShortfall && surplusAmount > 500) {
                         gapIndicator = `<span class="budget-surplus-text">+${formatK(surplusAmount)} surplus</span>`;
                     }
@@ -12677,6 +12684,15 @@
                     if (improveTitle) improveTitle.textContent = 'Ways to Improve Your Plan';
                     if (improveSubtitle) improveSubtitle.textContent = 'Personalized simulations based on your specific situation';
 
+                    // Input ID to human-readable label mapping (v16.4)
+                    const inputLabelMap = {
+                        retireAge: 'Retirement Age',
+                        lifestyleSpending: 'Annual Spending',
+                        userClaimAge: 'SS Claim Age',
+                        userSavingsRate: 'Savings Rate',
+                        stockAllocation: 'Stock Allocation'
+                    };
+
                     if (levers.length > 0) {
                         let html = '';
                         levers.forEach((lever, leverIndex) => {
@@ -12696,6 +12712,7 @@
                                 impactLabel = 'Medium';
                             }
 
+                            const changedInputs = (lever.applyChanges || []).map(c => inputLabelMap[c.inputId] || c.inputId).join(', ');
                             html += `
                         <div class="improve-item" id="leverCard${leverIndex}">
                             <div class="improve-item-badge ${impactClass}">${impactLabel}</div>
@@ -12704,6 +12721,7 @@
                                 <div class="improve-item-desc">
                                     Extends portfolio from age ${lever.wallBefore} to ${lever.wallAfter} (+${lever.improvement} years)
                                 </div>
+                                <div style="font-size:0.75rem; color:#94a3b8; margin-top:2px;">Changes: ${changedInputs}</div>
                             </div>
                             <button class="lever-apply-btn" onclick="applyLever(${leverIndex})" title="Apply this change to your plan">
                                 <i class="ph ph-play"></i> Apply
@@ -13271,7 +13289,7 @@
                 }
 
                 const aiData = {
-                    version: 'V16.3',
+                    version: 'V16.4',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -13526,9 +13544,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V16.3 migration: Outcome Distribution chart (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V16.3') {
-                    localStorage.setItem('retirementCalcVersion', 'V16.3');
+                // V16.4 migration: UX polish (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V16.4') {
+                    localStorage.setItem('retirementCalcVersion', 'V16.4');
                 }
 
                 // Restore input panel collapse state

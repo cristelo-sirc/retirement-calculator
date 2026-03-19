@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Single-file HTML retirement planning calculator with Monte Carlo simulations. All HTML, CSS, and JS in one file (~15,210 lines).
+Single-file HTML retirement planning calculator with Monte Carlo simulations. All HTML, CSS, and JS in one file (~15,330 lines).
 
-**Current Version:** 16.2 (Clickable Levers, Scenario Compare, Onboarding Tour)
+**Current Version:** 16.4 (UX Polish)
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -186,8 +186,8 @@ updateReportsView()          // Always refresh Reports data post-simulation
 
 ### Hero Row Layout
 ```
-.dashboard-hero-row (grid: 280px 1fr 280px, gap: 24px)
-+-- .hero-gauge-card (280px, success rate gauge)
+.dashboard-hero-row (grid: 220px 1fr 280px, gap: 24px)
++-- .hero-gauge-card (220px, success rate gauge)
 +-- .hero-lifespan-card (flexible middle)
 |   +-- Progress bar with milestone dots
 |   +-- 3 metric pills: Runway, Legacy (Today's $ toggle), Lifetime Tax
@@ -364,6 +364,8 @@ Tour tooltips use `getBoundingClientRect()` on the target element to calculate a
 | v16.0 | Mobile responsive layout (`@media max-width: 768px`): icon rail hidden, sidebar becomes full-screen overlay via FAB button, hero row stacks vertically, charts single-column, sticky table first column, mobile nav bar. ARIA: gauge `role="meter"`, lifespan `role="progressbar"`, dynamic `aria-label` on metric pills and budget bar segments. |
 | v16.1 | Bug fixes from live testing: sticky Done bar for mobile input panel close, Escape key dismisses mobile overlay, lifespan label proximity threshold increased (5&rarr;8) with `<=` comparison, compute button visual loading state (gray + spinner). |
 | v16.2 | Clickable improvement levers with Apply buttons (`applyLever()`), before/after success rate toast, `_skipNextSnapshot` flag for revert integration. Named scenario save &amp; compare (`savedScenarios[]`, `retirementArchitect_scenarios` localStorage key, max 5), comparison table with baseline deltas. 6-step onboarding tour (`tourSteps[]`, tooltip positioning via `getBoundingClientRect()`, `retirementArchitect_tourDismissed` localStorage key). |
+| v16.3 | Outcome Distribution histogram on Charts tab &mdash; shows depleted vs. survived paths by age. Zero engine changes, uses existing `depletionAge` data. |
+| v16.4 | UX polish: gauge card reduced from 280px to 220px, budget bar gap label clarified to "/yr shortfall" with tooltip, What-If empty state replaced with workflow guidance steps, lever cards show which inputs they change, scenario comparison table uses `table-layout: fixed` to eliminate horizontal scroll for 2&ndash;3 scenarios. |
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4
 

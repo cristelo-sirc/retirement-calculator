@@ -2,7 +2,7 @@
 
 **Based on:** V16.0 live testing + feature gap analysis
 **Date:** 2026-03-18
-**Status:** Phase 1 COMPLETE (v16.1) &amp; Phase 2 COMPLETE (v16.2) &mdash; Phase 3 awaiting approval
+**Status:** Phase 1 COMPLETE (v16.1), Phase 2 COMPLETE (v16.2), Phase 2.5 COMPLETE (v16.3), Phase 2.6 COMPLETE (v16.4) &mdash; Phase 3 awaiting approval
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 
@@ -282,17 +282,38 @@ Target: Simulation engine enhancements. Higher risk &mdash; touches core math. R
 
 ---
 
-## Additional UX Issues Noted During Live Testing
+## Phase 2.5: Outcome Distribution Chart (v16.3)
 
-These are lower priority but worth tracking for future polish:
+Target: New visualization on Charts tab. Zero simulation engine changes.
 
-| Issue | Severity | Notes |
-|-------|----------|-------|
-| Gauge takes disproportionate space for a single number | Low | Consider making it smaller or combining with another metric |
-| Budget bar "gap" label at plan end could confuse users | Low | Clarify if gap is annual or cumulative; add tooltip |
-| SS displayed as "$5k/yr" on Inputs card vs "$417/mo" input format | Low | Consider matching input format to reduce confusion |
-| What-If empty state lacks workflow guidance | Low | Add contextual help text explaining the snapshot workflow |
-| Improvement levers don't indicate which inputs they'd change | Low | Add "(changes Retirement Age)" detail text |
+**STATUS: COMPLETE &mdash; Shipped as v16.3 on 2026-03-19**
+
+### Outcome Distribution Histogram &checkmark;
+
+- New "When Plans Fail" histogram on Charts tab showing how simulated paths end
+- Green bar for paths surviving to plan end, red gradient for depletion ages
+- Uses existing `depletionAge` data from `lastSimulationResults.paths`
+- Tooltips show path count and percentage at each age
+- Responsive on mobile
+
+---
+
+## Phase 2.6: UX Polish (v16.4)
+
+Target: Address lower-priority UX issues noted during live testing. Display-only changes, no engine impact.
+
+**STATUS: COMPLETE &mdash; Shipped as v16.4 on 2026-03-19**
+
+### Items Addressed &checkmark;
+
+| Issue | Fix |
+|-------|-----|
+| Gauge takes disproportionate space | Reduced hero row grid from 280px to 220px; gauge wrapper 160px&rarr;140px, padding tightened |
+| Budget bar "gap" label confusing | Changed to "&minus;$Xk/yr shortfall" with title tooltip explaining it&rsquo;s annual |
+| SS display format mismatch | Verified: input label says "Annual SS Benefit" and Inputs card shows "/yr" &mdash; already consistent, no change needed |
+| What-If empty state lacks guidance | Replaced with 4-step workflow instructions: run simulation &rarr; adjust inputs &rarr; snapshot &rarr; compare |
+| Levers don&rsquo;t show which inputs change | Added "Changes: Retirement Age" (etc.) detail line below each lever description |
+| Scenario comparison table horizontal scroll | Removed `overflow-x: auto` on desktop, added `table-layout: fixed`, removed `white-space: nowrap` from headers/labels. Mobile retains `overflow-x: auto` as fallback. |
 
 ---
 
@@ -302,8 +323,9 @@ These are lower priority but worth tracking for future polish:
 |---------|-------|-------|------|----------------|
 | **v16.1** | Phase 1 | Bug fixes: mobile close, label collision, loading state | Low | None | **SHIPPED** |
 | **v16.2** | Phase 2 | Clickable levers, scenario compare, onboarding tour | Medium | None | **SHIPPED** |
-| **v16.3** | Phase 3a | Roth optimizer, sequence-of-returns viz | Medium-High | Minor (pathLog field addition) |
-| **v17.0** | Phase 3b | Survivor modeling | High | Major (simulatePath core changes) |
+| **v16.3** | Phase 2.5 | Outcome Distribution histogram | Low | None | **SHIPPED** |
+| **v16.4** | Phase 2.6 | UX polish (gauge, gap label, empty state, levers, comparison table) | Low | None | **SHIPPED** |
+| **v17.0** | Phase 3 | Survivor modeling | High | Major (simulatePath core changes) |
 
 ---
 
@@ -328,3 +350,5 @@ Per CLAUDE.md and project working style:
 | 2026-03-18 | Initial plan drafted from live UX review and feature gap analysis |
 | 2026-03-18 | Phase 1 (v16.1) implemented, deployed, and live-tested at 1680px + 375px viewports. All 3 fixes validated. |
 | 2026-03-18 | Phase 2 (v16.2) implemented and deployed. Clickable improvement levers with Apply buttons, before/after toast, and revert integration. Scenario save &amp; compare with named scenarios, localStorage persistence, max 5 limit, comparison table with delta indicators. Onboarding tour with 6-step tooltip walkthrough, localStorage dismissal, re-trigger link. Live-tested at desktop + mobile viewports. |
+| 2026-03-19 | Phase 2.5 (v16.3) implemented and deployed. Outcome Distribution histogram on Charts tab showing depleted vs. survived paths by age. Zero engine changes. Live-tested at desktop + mobile. |
+| 2026-03-19 | Phase 2.6 (v16.4) implemented and deployed. UX polish: gauge sizing reduced (280px&rarr;220px), gap label clarified ("/yr shortfall" + tooltip), What-If empty state with workflow guidance, lever detail text showing changed inputs, scenario comparison table horizontal scroll fixed via `table-layout: fixed`. Live-tested at desktop + mobile. |
