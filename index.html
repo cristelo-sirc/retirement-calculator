@@ -6698,6 +6698,20 @@
 
 <body class="a2-lighter">
 
+    <!-- APP HEADER (mobile-first) -->
+    <header class="app-header-mobile" id="appHeaderMobile">
+        <div class="app-header-brand">
+            <i class="ph ph-strategy brand-icon"></i>
+            <span class="app-header-title">RETIREMENT ARCHITECT</span>
+            <span class="version-badge">V16.5</span>
+        </div>
+        <button class="edit-inputs-btn" id="editInputsBtn" onclick="openBottomSheet()">
+            <i class="ph ph-pencil-simple"></i>
+            Edit Inputs
+        </button>
+    </header>
+
+    <!-- DESKTOP TOP NAVIGATION (hidden on mobile, shown via media query) -->
     <!-- TOP NAVIGATION -->
     <nav class="top-nav">
         <div class="brand">
@@ -6736,34 +6750,10 @@
         </div>
     </nav>
 
-    <!-- MOBILE NAV BAR (hidden on desktop) -->
-    <div class="mobile-nav-bar" style="display: none; background: white; padding: 0 8px; flex-shrink: 0;">
-        <button class="nav-link active" onclick="switchMainView('dashboard')" style="padding: 8px 12px; font-size: 0.75rem; white-space: nowrap;">
-            <i class="ph ph-house"></i> Dashboard
-        </button>
-        <button class="nav-link" onclick="switchMainView('charts')" style="padding: 8px 12px; font-size: 0.75rem; white-space: nowrap;">
-            <i class="ph ph-chart-line"></i> Charts
-        </button>
-        <button class="nav-link" onclick="switchMainView('scenarios')" style="padding: 8px 12px; font-size: 0.75rem; white-space: nowrap;">
-            <i class="ph ph-flask"></i> What-If
-        </button>
-        <button class="nav-link" onclick="switchMainView('reports')" style="padding: 8px 12px; font-size: 0.75rem; white-space: nowrap;">
-            <i class="ph ph-export"></i> Reports
-        </button>
-    </div>
-
-    <!-- MOBILE OVERLAY BACKDROP (hidden on desktop) -->
-    <div class="mobile-overlay-backdrop" id="mobileOverlayBackdrop" onclick="closeMobilePanel()" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.3s;"></div>
-
-    <!-- MOBILE FAB: Edit Inputs (hidden on desktop) -->
-    <button class="mobile-fab" id="mobileFab" onclick="openMobilePanel()" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 28px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); z-index: 200; align-items: center; justify-content: center; cursor: pointer; font-size: 1.4rem; transition: transform 0.2s, box-shadow 0.2s;" aria-label="Edit Inputs">
-        <i class="ph ph-pencil-simple"></i>
-    </button>
-
     <!-- MAIN LAYOUT -->
     <div class="main-layout">
 
-        <!-- ICON SIDEBAR -->
+        <!-- ICON SIDEBAR (desktop only) -->
         <aside class="icon-sidebar">
             <button class="icon-nav-btn active" onclick="switchSection('profile')" data-section="profile">
                 <i class="ph ph-user"></i>
@@ -6789,7 +6779,7 @@
             <i class="ph ph-caret-left" id="inputPanelToggleIcon"></i>
         </button>
 
-        <!-- INPUT PANEL -->
+        <!-- INPUT PANEL (desktop sidebar / mobile bottom sheet content) -->
         <div class="input-panel" id="inputPanel">
             <div class="panel-header" id="panelHeader">
                 <button class="mobile-panel-close" id="mobilePanelClose" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: white; font-size: 1.2rem; cursor: pointer; align-items: center; justify-content: center; z-index: 10;" aria-label="Close input panel">
@@ -6798,6 +6788,7 @@
                 <h2><i class="ph ph-user"></i> Profile & Timeline</h2>
                 <p>Basic information about you and your timeline</p>
             </div>
+
 
             <div class="input-scroll-area">
                 <div id="profile" class="tab-content active">
@@ -7550,6 +7541,8 @@
                 </div>
             </div>
 
+            </div>
+
             <div class="sidebar-footer">
                 <div id="validationErrors" style="display:none; background:#fee2e2; border:1px solid #fca5a5; border-radius:8px; padding:10px 14px; margin-bottom:10px; font-size:0.85rem; color:#991b1b; line-height:1.5;"></div>
                 <button class="run-btn" id="runSimulationBtn" onclick="initiateSimulation()">
@@ -7594,9 +7587,10 @@
                 <span style="color: white; font-weight: 600; font-size: 0.95rem;"><i class="ph ph-check-circle" style="margin-right: 6px;"></i>Done</span>
             </div>
         </div><!-- END input-panel -->
+        </div><!-- END input-panel -->
 
         <main class="main-content">
-            <!-- DASHBOARD VIEW (Default) -->
+            <!-- DASHBOARD VIEW -->
             <div id="dashboardView" class="main-view active">
                 <div id="initialMessage" class="empty-state">
                     <i class="ph ph-calculator empty-icon"></i>
@@ -7826,6 +7820,8 @@
                     </div>
                 </div>
             </div>
+
+            <!-- SCENARIOS VIEW -->
 
             <!-- SCENARIOS VIEW -->
             <div id="scenariosView" class="main-view">
@@ -8247,6 +8243,8 @@
                     </div>
                 </div>
             </div>
+
+            <!-- REPORTS VIEW -->
 
             <!-- REPORTS VIEW -->
             <div id="reportsView" class="main-view">
@@ -8701,9 +8699,63 @@
             </div>
         </div>
 
-        <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-        <script src="engine.js"></script>
+        </main>
+
+    <!-- BOTTOM SHEET (mobile input editing) -->
+    <div class="bottom-sheet-backdrop" id="bottomSheetBackdrop" onclick="closeBottomSheet()"></div>
+    <div class="bottom-sheet" id="bottomSheet">
+        <div class="bottom-sheet-handle"></div>
+        <div class="bottom-sheet-header">
+            <span class="bottom-sheet-title">Edit Inputs</span>
+            <button class="bottom-sheet-close" onclick="closeBottomSheet()">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+        <div class="bottom-sheet-body" id="bottomSheetBody">
+            <!-- On mobile, input panel content is cloned/moved here by JS -->
+        </div>
+        <div class="bottom-sheet-footer">
+            <button class="bottom-sheet-cancel" onclick="closeBottomSheet()">Cancel</button>
+            <button class="bottom-sheet-compute" onclick="initiateSimulation(); closeBottomSheet();">
+                <i class="ph ph-rocket-launch"></i> Compute Plan
+            </button>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV (mobile, fixed) -->
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-item active" onclick="switchMainView('dashboard')" data-view="dashboard">
+            <i class="ph ph-house"></i>
+            <span>Dashboard</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchMainView('charts')" data-view="charts">
+            <i class="ph ph-chart-line"></i>
+            <span>Charts</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchMainView('reports')" data-view="reports">
+            <i class="ph ph-export"></i>
+            <span>Reports</span>
+        </button>
+        <button class="bottom-nav-item" onclick="switchMainView('scenarios')" data-view="scenarios">
+            <i class="ph ph-flask"></i>
+            <span>Settings</span>
+        </button>
+    </nav>
+
+    </div><!-- END main-layout -->
+
+    <div class="mobile-overlay-backdrop" id="mobileOverlayBackdrop" onclick="closeMobilePanel()" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 400; opacity: 0; pointer-events: none; transition: opacity 0.3s;"></div>
+
+
+    <!-- MOBILE FAB: Edit Inputs (hidden on desktop) -->
+    <button class="mobile-fab" id="mobileFab" onclick="openMobilePanel()" style="display: none; position: fixed; bottom: 24px; right: 24px; width: 56px; height: 56px; border-radius: 28px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4); z-index: 200; align-items: center; justify-content: center; cursor: pointer; font-size: 1.4rem; transition: transform 0.2s, box-shadow 0.2s;" aria-label="Edit Inputs">
+        <i class="ph ph-pencil-simple"></i>
+    </button>
+
+    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
+
+    <script src="engine.js"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">
@@ -9325,7 +9377,6 @@
             </div>
         </div>
 
-    </div><!-- END main-layout -->
 
 </body>
 
