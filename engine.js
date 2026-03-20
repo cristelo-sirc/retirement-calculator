@@ -4366,6 +4366,37 @@
                 }, 6000);
             }
 
+            // --- Auto-save toast &amp; indicator (v17.1) ---
+            function showAutoSaveToast(message) {
+                const existing = document.getElementById('autoSaveToast');
+                if (existing) existing.remove();
+
+                const toast = document.createElement('div');
+                toast.id = 'autoSaveToast';
+                toast.className = 'lever-toast neutral';
+                toast.innerHTML = `
+                    <i class="ph ph-cloud-check"></i>
+                    <span>${message}</span>
+                    <button onclick="this.parentElement.remove()" class="toast-close"><i class="ph ph-x"></i></button>
+                `;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.classList.add('fade-out');
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 4000);
+            }
+
+            function updateAutoSaveIndicator() {
+                const indicator = document.getElementById('autoSaveIndicator');
+                if (!indicator) return;
+                indicator.textContent = 'Saved';
+                indicator.classList.add('flash');
+                setTimeout(() => indicator.classList.remove('flash'), 1500);
+            }
+
             // ==========================================================================
             // ONBOARDING TOUR (v16.2)
             // ==========================================================================
@@ -4801,7 +4832,7 @@
                 }
 
                 const aiData = {
-                    version: 'V17.0',
+                    version: 'V17.1',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -5002,15 +5033,30 @@
                 function openTooltip(icon) {
                     tooltip.textContent = icon.getAttribute('data-tooltip');
                     const rect = icon.getBoundingClientRect();
-                    // Position to the right of the icon
-                    let left = rect.right + 10;
-                    let top = rect.top - 5;
-                    // Keep tooltip within viewport
-                    const tooltipWidth = 250;
-                    if (left + tooltipWidth > window.innerWidth - 12) {
-                        left = rect.left - tooltipWidth - 10;
+                    const vw = window.innerWidth;
+                    const tooltipWidth = Math.min(250, vw - 24);
+                    let left, top;
+
+                    if (vw < 400) {
+                        // Mobile: center tooltip below the icon
+                        left = Math.max(12, (vw - tooltipWidth) / 2);
+                        top = rect.bottom + 8;
+                    } else {
+                        // Desktop: position to the right of the icon
+                        left = rect.right + 10;
+                        top = rect.top - 5;
+                        // If overflows right, try left side
+                        if (left + tooltipWidth > vw - 12) {
+                            left = rect.left - tooltipWidth - 10;
+                        }
                     }
+
+                    // Clamp: never go off-screen left or right
+                    if (left < 8) left = 8;
+                    if (left + tooltipWidth > vw - 8) left = vw - tooltipWidth - 8;
                     if (top < 8) top = 8;
+
+                    tooltip.style.maxWidth = tooltipWidth + 'px';
                     tooltip.style.left = left + 'px';
                     tooltip.style.top = top + 'px';
                     tooltip.classList.add('tooltip-active');
@@ -5056,9 +5102,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V17.0 migration: Mobile-first shell rewrite (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V17.0') {
-                    localStorage.setItem('retirementCalcVersion', 'V17.0');
+                // V17.1 migration: Mobile UX fixes (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.1') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.1');
                 }
 
                 // Restore input panel collapse state
@@ -5266,10 +5312,13 @@
                         inputs: getAllInputValues()
                     };
                     localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(data));
+                    updateAutoSaveIndicator();
                 } catch (e) {
                     console.log('Auto-save failed:', e);
                 }
             }
+
+            let _autoSaveRestored = false;
 
             function checkAutoSave() {
                 try {
@@ -5285,6 +5334,7 @@
                             const timeAgo = formatTimeAgo(timestamp);
                             if (confirm(`Resume where you left off?\n\nYou have unsaved work from ${timeAgo}.\n\nClick OK to restore, or Cancel to start fresh.`)) {
                                 setAllInputValues(data.inputs);
+                                _autoSaveRestored = true;
                             } else {
                                 localStorage.removeItem(AUTO_SAVE_KEY);
                             }
@@ -5636,6 +5686,12 @@
 
                 if (!hasData) {
                     showSetupWizard();
+                } else if (_autoSaveRestored) {
+                    // Auto-run simulation after restoring saved session
+                    setTimeout(() => {
+                        initiateSimulation();
+                        showAutoSaveToast('Session restored &mdash; running simulation&hellip;');
+                    }, 300);
                 }
 
                 // Load persisted scenarios (v16.2)
