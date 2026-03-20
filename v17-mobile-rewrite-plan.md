@@ -30,7 +30,7 @@ Do not mark a phase complete until its testing checkpoint passes.
 - [x] Phase 6 &mdash; JS Wiring
 - [x] **Testing Checkpoint C** &mdash; Full functional pass (after Phase 6)
 - [x] Phase 7 &mdash; Live Testing & Sign-Off
-- [ ] Version increment to v17.0 and CLAUDE.md update
+- [x] Version increment to v17.0 and CLAUDE.md update
 
 ---
 
@@ -255,7 +255,7 @@ Sign-off criteria: all features functional at both mobile and desktop, no horizo
 - Archive v16.5 as reference copy
 
 **Completion Note:**
-> *(Update after version increment is complete &mdash; date, confirm all references updated)*
+> **2026-03-19** &mdash; All 7 version references updated from V16.5 to V17.0: title tag, mobile header badge, desktop top-nav badge, PDF report header, PDF footer, data export object (`version` field in `aiData`), localStorage migration check. Cache-buster updated to `?v=17.0`. Archived v16.5 as `Retirement_Calculator_v16_5.html`. CLAUDE.md updated: project overview (two-file architecture), new sections (File Structure, Mobile-First Layout, Bottom Sheet DOM Transfer, Mobile Chart Type Selector), version history entry for v17.0, revised mobile status note, updated Key Function Locations header. Deployed and live-tested at 375px (mobile) and 1680px (desktop) &mdash; V17.0 badge visible in both headers, simulation runs, dashboard populates, bottom sheet opens/closes with input preservation.
 
 ---
 
