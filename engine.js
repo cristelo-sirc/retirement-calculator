@@ -231,10 +231,21 @@
                 if (activeBottomNav) activeBottomNav.classList.add('active');
             }
 
-            // v17.0: Bottom sheet open/close
+            // v17.0: Bottom sheet open/close with DOM node transfer
             function openBottomSheet() {
                 const backdrop = document.getElementById('bottomSheetBackdrop');
                 const sheet = document.getElementById('bottomSheet');
+                const sheetBody = document.getElementById('bottomSheetBody');
+                const scrollArea = document.querySelector('.input-scroll-area');
+                const sidebarFooter = document.querySelector('.sidebar-footer');
+
+                // Move input scroll area into bottom sheet (preserves all listeners/IDs)
+                if (sheetBody && scrollArea && window.innerWidth < 769) {
+                    sheetBody.appendChild(scrollArea);
+                    // Also move sidebar footer (Compute, Solver, Revert buttons + validation)
+                    if (sidebarFooter) { sheetBody.appendChild(sidebarFooter); }
+                }
+
                 if (backdrop) { backdrop.classList.add('visible'); }
                 if (sheet) { sheet.classList.add('open'); }
                 document.body.style.overflow = 'hidden';
@@ -242,9 +253,55 @@
             function closeBottomSheet() {
                 const backdrop = document.getElementById('bottomSheetBackdrop');
                 const sheet = document.getElementById('bottomSheet');
+                const panel = document.getElementById('inputPanel');
+                const scrollArea = document.querySelector('.input-scroll-area');
+                const sidebarFooter = document.querySelector('.sidebar-footer');
+
+                // Move input scroll area back into sidebar panel
+                if (panel && scrollArea && scrollArea.parentElement && scrollArea.parentElement.id === 'bottomSheetBody') {
+                    panel.appendChild(scrollArea);
+                    if (sidebarFooter) { panel.appendChild(sidebarFooter); }
+                }
+
                 if (backdrop) { backdrop.classList.remove('visible'); }
                 if (sheet) { sheet.classList.remove('open'); }
                 document.body.style.overflow = '';
+            }
+
+            // v17.0: Ensure inputs return to sidebar if resized to desktop while sheet is open
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 769) {
+                    const panel = document.getElementById('inputPanel');
+                    const scrollArea = document.querySelector('.input-scroll-area');
+                    const sidebarFooter = document.querySelector('.sidebar-footer');
+                    if (panel && scrollArea && scrollArea.parentElement && scrollArea.parentElement.id === 'bottomSheetBody') {
+                        panel.appendChild(scrollArea);
+                        if (sidebarFooter) { panel.appendChild(sidebarFooter); }
+                    }
+                    // Also close bottom sheet if open
+                    const backdrop = document.getElementById('bottomSheetBackdrop');
+                    const sheet = document.getElementById('bottomSheet');
+                    if (backdrop) { backdrop.classList.remove('visible'); }
+                    if (sheet) { sheet.classList.remove('open'); }
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // v17.0: Mobile chart type selector
+            let activeChartType = 'balance';
+            function selectChartType(type) {
+                activeChartType = type;
+                // Update button active states
+                document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.getAttribute('data-chart') === type);
+                });
+                // Show/hide chart cards (mobile only)
+                if (window.innerWidth < 769) {
+                    document.querySelectorAll('[data-chart-card]').forEach(card => {
+                        const isMatch = card.getAttribute('data-chart-card') === type;
+                        card.classList.toggle('mobile-hidden', !isMatch);
+                    });
+                }
             }
 
             function updateChartsView() {
@@ -256,6 +313,10 @@
                 if (hasResults) {
                     // Render charts in the Charts view (re-use existing chart rendering logic)
                     renderChartsViewCharts();
+                    // Apply mobile chart type filter
+                    if (window.innerWidth < 769) {
+                        selectChartType(activeChartType);
+                    }
                 }
             }
 

@@ -6618,8 +6618,20 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding: 0 20px 12px;
+            padding: 0;
             min-height: 0;
+        }
+        /* When input scroll area is inside bottom sheet, override its padding */
+        .bottom-sheet-body .input-scroll-area {
+            padding: 12px 16px;
+            overflow-y: visible;
+        }
+        /* Hide sidebar footer inside bottom sheet (Compute is in sheet footer) */
+        .bottom-sheet-body .sidebar-footer {
+            padding: 8px 16px 12px;
+        }
+        .bottom-sheet-body .sidebar-footer .export-actions {
+            display: none;
         }
         .bottom-sheet-footer {
             display: flex;
@@ -6722,9 +6734,54 @@
             width: auto;
         }
 
-        /* Charts grid: single column */
+        /* Chart type selector grid (mobile only) */
+        .chart-type-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .chart-type-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 12px 8px;
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            transition: all 0.15s ease;
+        }
+        .chart-type-btn i {
+            font-size: 1.3rem;
+            color: #64748b;
+        }
+        .chart-type-btn span {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .chart-type-btn.active {
+            background: #eff6ff;
+            border-color: var(--accent-primary);
+        }
+        .chart-type-btn.active i,
+        .chart-type-btn.active span {
+            color: var(--accent-primary);
+        }
+        .chart-type-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Charts grid: single column, mobile chart visibility */
         .charts-grid-full {
             grid-template-columns: 1fr;
+        }
+        .chart-card-full.mobile-hidden,
+        .table-card.mobile-hidden {
+            display: none;
         }
 
         /* Year-by-Year table: sticky first column */
@@ -6867,6 +6924,13 @@
             }
             .edit-inputs-btn {
                 display: none !important;
+            }
+            .chart-type-grid {
+                display: none !important;
+            }
+            .chart-card-full.mobile-hidden,
+            .table-card.mobile-hidden {
+                display: block !important;
             }
 
             /* --- Restore desktop layout --- */
@@ -8092,8 +8156,35 @@
                     </div>
 
                     <div id="chartsContent" style="display: none;">
+                        <!-- Mobile chart type selector (hidden on desktop) -->
+                        <div class="chart-type-grid" id="chartTypeGrid">
+                            <button class="chart-type-btn active" data-chart="balance" onclick="selectChartType('balance')">
+                                <i class="ph ph-chart-line"></i>
+                                <span>Portfolio</span>
+                            </button>
+                            <button class="chart-type-btn" data-chart="income" onclick="selectChartType('income')">
+                                <i class="ph ph-stack"></i>
+                                <span>Income</span>
+                            </button>
+                            <button class="chart-type-btn" data-chart="spending" onclick="selectChartType('spending')">
+                                <i class="ph ph-arrows-left-right"></i>
+                                <span>vs Spending</span>
+                            </button>
+                            <button class="chart-type-btn" data-chart="tax" onclick="selectChartType('tax')">
+                                <i class="ph ph-receipt"></i>
+                                <span>Taxes</span>
+                            </button>
+                            <button class="chart-type-btn" data-chart="outcome" onclick="selectChartType('outcome')">
+                                <i class="ph ph-chart-bar"></i>
+                                <span>Outcomes</span>
+                            </button>
+                            <button class="chart-type-btn" data-chart="table" onclick="selectChartType('table')">
+                                <i class="ph ph-table"></i>
+                                <span>Table</span>
+                            </button>
+                        </div>
                         <div class="charts-grid-full">
-                            <div class="chart-card-full">
+                            <div class="chart-card-full" data-chart-card="balance">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                                     <h4 style="margin:0;"><i class="ph ph-chart-line"></i> Portfolio Balance Over Time</h4>
                                     <button id="zoomResetBtn" onclick="if(chartsViewInstances.balance){chartsViewInstances.balance.resetZoom();} this.style.display='none';" style="display:none; padding:4px 10px; font-size:0.75rem; border:1px solid #cbd5e1; background:#f8fafc; border-radius:4px; cursor:pointer; color:#64748b;" title="Reset zoom">
@@ -8103,29 +8194,29 @@
                                 <canvas id="chartsBalanceChart"></canvas>
                             </div>
 
-                            <div class="chart-card-full">
+                            <div class="chart-card-full" data-chart-card="income">
                                 <h4><i class="ph ph-stack"></i> Income Sources by Year</h4>
                                 <canvas id="chartsIncomeChart"></canvas>
                             </div>
 
-                            <div class="chart-card-full">
+                            <div class="chart-card-full" data-chart-card="spending">
                                 <h4><i class="ph ph-arrows-left-right"></i> Income vs Spending</h4>
                                 <canvas id="chartsSpendingChart"></canvas>
                             </div>
 
-                            <div class="chart-card-full">
+                            <div class="chart-card-full" data-chart-card="tax">
                                 <h4><i class="ph ph-receipt"></i> Tax Liability by Year</h4>
                                 <canvas id="chartsTaxChart"></canvas>
                             </div>
 
-                            <div class="chart-card-full">
+                            <div class="chart-card-full" data-chart-card="outcome">
                                 <h4><i class="ph ph-chart-bar"></i> Outcome Distribution &mdash; When Plans Fail</h4>
                                 <p style="margin:-8px 0 12px; font-size:0.82rem; color:#64748b;">How simulated paths end: survived to plan end vs. depleted early. Shows the ages at which portfolios ran out of money.</p>
                                 <canvas id="chartsOutcomeChart"></canvas>
                             </div>
                         </div>
 
-                        <div class="table-card"
+                        <div class="table-card" data-chart-card="table"
                             style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
                             <h4
                                 style="margin-bottom: 16px; color: #1e293b; display: flex; align-items: center; gap: 8px;">
@@ -9087,7 +9178,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=17p4"></script>
+    <script src="engine.js?v=17p6"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">
