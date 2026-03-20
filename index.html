@@ -6826,6 +6826,208 @@
 
         /* --- end v17.0 Phase 4 --- */
 
+        /* ============================================================
+           v17.0 PHASE 5: DESKTOP ENHANCEMENT
+           Restores full desktop layout via min-width media query.
+           Desktop users see no change from v16.5.
+           ============================================================ */
+        @media (min-width: 769px) {
+
+            /* --- Show desktop elements --- */
+            .top-nav {
+                display: flex !important;
+            }
+            .icon-sidebar {
+                display: flex !important;
+            }
+            .input-panel {
+                display: flex !important;
+                flex-direction: column;
+            }
+            .input-panel.collapsed {
+                width: 48px !important;
+                overflow: hidden;
+            }
+            .input-panel-toggle {
+                display: flex !important;
+            }
+
+            /* --- Hide mobile-only elements --- */
+            .app-header-mobile {
+                display: none !important;
+            }
+            .bottom-nav {
+                display: none !important;
+            }
+            .bottom-sheet-backdrop {
+                display: none !important;
+            }
+            .bottom-sheet {
+                display: none !important;
+            }
+            .edit-inputs-btn {
+                display: none !important;
+            }
+
+            /* --- Restore desktop layout --- */
+            .main-layout {
+                flex-direction: row;
+            }
+            .main-content {
+                padding: 32px;
+                padding-bottom: 32px;
+                background: var(--main-bg);
+            }
+
+            /* Hero row: 3-column grid */
+            .dashboard-hero-row {
+                display: grid;
+                grid-template-columns: 220px 1fr 280px;
+                gap: 24px;
+                flex-direction: unset;
+            }
+            .hero-gauge-card {
+                padding: 24px;
+            }
+            .hero-gauge-wrapper {
+                width: 160px;
+                height: 160px;
+            }
+            .hero-lifespan-card {
+                padding: 20px;
+            }
+            .hero-lifespan-metrics {
+                flex-direction: row;
+                gap: 10px;
+            }
+            .hero-metric-pill {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+            .hero-inputs-card {
+                padding: 16px;
+            }
+
+            /* Wall insights: row */
+            .wall-insights {
+                flex-direction: row;
+                gap: 16px;
+            }
+
+            /* Compact budget: row */
+            .compact-budget-card {
+                flex-direction: row;
+                align-items: center;
+                padding: 20px 28px;
+                gap: 24px;
+            }
+            .compact-budget-comparison {
+                flex-direction: row;
+                gap: 16px;
+            }
+
+            /* Budget bars: row */
+            .budget-milestone-row {
+                flex-direction: row;
+                align-items: center;
+                gap: 12px;
+            }
+            .budget-milestone-label {
+                width: 80px;
+            }
+
+            /* Charts grid: 2-column */
+            .charts-grid-full {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            /* Year-by-Year table: constrained height */
+            .table-card {
+                max-height: 500px;
+            }
+            .data-table td:first-child,
+            .data-table th:first-child {
+                position: static;
+                z-index: auto;
+            }
+
+            /* Levers/opportunities: multi-column */
+            .levers-grid, .opportunities-grid {
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+            }
+
+            /* Lever items: row */
+            .improve-item {
+                flex-wrap: nowrap;
+            }
+            .lever-apply-btn {
+                width: auto;
+                margin-top: 0;
+            }
+
+            /* Scenario cards: multi-column */
+            .scenario-cards-row {
+                grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            }
+
+            /* Toast: centered */
+            .lever-toast {
+                left: 50%;
+                right: auto;
+                transform: translateX(-50%);
+                bottom: 24px;
+            }
+
+            /* Tour tooltip: fixed width */
+            .tour-tooltip {
+                position: absolute !important;
+                max-width: 340px;
+                width: 340px;
+            }
+
+            /* Wizard: centered modal */
+            .wizard-overlay {
+                -webkit-backdrop-filter: blur(4px) !important;
+                backdrop-filter: blur(4px) !important;
+                align-items: center !important;
+                padding: 40px !important;
+            }
+            .wizard-card {
+                max-height: 85vh !important;
+                height: auto !important;
+                border-radius: 16px !important;
+                width: auto !important;
+                max-width: 800px !important;
+                min-height: auto !important;
+            }
+            .wizard-body {
+                padding: 24px 32px !important;
+                min-height: auto !important;
+            }
+            .wizard-header {
+                padding: 16px 24px !important;
+            }
+            .wizard-grid {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            .wizard-grid-3 {
+                grid-template-columns: 1fr 1fr 1fr !important;
+            }
+            .wizard-progress-step {
+                flex: 1 !important;
+                min-width: auto;
+            }
+            .wizard-progress-scroll {
+                overflow: visible !important;
+            }
+            .wizard-progress-scroll .wizard-progress {
+                overflow-x: visible !important;
+                padding-left: 0;
+                padding-right: 0;
+            }
+        }
+        /* --- end v17.0 Phase 5 --- */
+
     </style>
 </head>
 
