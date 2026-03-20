@@ -4801,7 +4801,7 @@
                 }
 
                 const aiData = {
-                    version: 'V16.5',
+                    version: 'V17.0',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -5056,9 +5056,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V16.5 migration: Mobile fix cycle (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V16.5') {
-                    localStorage.setItem('retirementCalcVersion', 'V16.5');
+                // V17.0 migration: Mobile-first shell rewrite (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.0') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.0');
                 }
 
                 // Restore input panel collapse state

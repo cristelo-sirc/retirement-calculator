@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Single-file HTML retirement planning calculator with Monte Carlo simulations. All HTML, CSS, and JS in one file (~15,330 lines).
+Two-file HTML retirement planning calculator with Monte Carlo simulations. `index.html` (UI shell, ~9,200 lines) + `engine.js` (simulation engine + render functions, ~6,200 lines).
 
-**Current Version:** 16.5 (Mobile Fix Cycle)
+**Current Version:** 17.0 (Mobile-First Shell Rewrite)
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -54,6 +54,16 @@ Audit thoroughness should align with scope of changes and professional standards
 
 ## Architecture &amp; Data Flow
 
+### File Structure (v17.0)
+- `index.html` &mdash; HTML structure, CSS (mobile-first base + desktop `@media (min-width: 769px)` enhancement), bottom sheet/nav wiring
+- `engine.js` &mdash; All simulation logic, render functions, auto-save, tour, scenarios, levers. Loaded via `<script src="engine.js?v=17.0">` before `</body>`
+- Reverting to single-file: copy engine.js contents back into index.html at the script tag location
+
+### Mobile-First Layout (v17.0)
+Base CSS targets 375px mobile. Key mobile elements: `app-header-mobile` (dark navy header with Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Settings), `bottom-sheet` (slide-up input editor). Desktop layout restored via `@media (min-width: 769px)` &mdash; shows top-nav, icon sidebar, input panel, hides mobile elements.
+
+`openBottomSheet()` transfers `.input-scroll-area` and `.sidebar-footer` DOM nodes into `#bottomSheetBody`; `closeBottomSheet()` returns them. All 69 input elements, event listeners, and auto-save hooks preserved across transfers.
+
 ### Simulation Pipeline
 ```
 simulatePath(params) &rarr; pathLog[] &rarr; medianPathData[] &rarr; Dashboard (budget bars, charts)
@@ -90,7 +100,9 @@ Five-iteration convergence loop:
 5. Calculate taxable SS, IRMAA, federal/cap gains/NIIT/state tax
 6. Check convergence (diff < $1 or max 5 passes)
 
-### Key Function Locations (v16.2, ~15,210 lines)
+### Key Function Locations (v17.0 &mdash; engine.js ~6,200 lines, index.html ~9,200 lines)
+
+Note: Line numbers below refer to `engine.js` unless prefixed with `index.html:`. Functions in engine.js shifted by ~-8700 lines compared to the old single-file references.
 
 | Function | ~Line | Purpose |
 |----------|-------|---------|
@@ -345,6 +357,24 @@ When a fixed bottom nav bar is added, ALL other fixed-bottom elements (FAB, toas
 ### Horizontal Scroll Containers Need Visual Hints on Mobile
 Mobile browsers hide scrollbars on overflow containers. Users may not realize content extends beyond the viewport. Use CSS `mask-image` or `::before`/`::after` gradient overlays toggled by scroll position classes (`fade-left`, `fade-right`) to signal scrollable content.
 
+### iOS Safari backdrop-filter Creates Containing Block
+`backdrop-filter` (and `-webkit-backdrop-filter`) creates a new containing block, making `position: fixed` children behave like `position: absolute`. On mobile wizard overlays, this prevents the wizard card from sizing to the full viewport. Fix: disable `backdrop-filter` on mobile and use a solid/semi-transparent background instead.
+
+### iOS Safari vh Units Include Hidden Chrome
+`100vh` (and `90vh`, etc.) includes the area behind Safari's URL bar and bottom toolbar, which are not visible. Elements sized with `vh` will overflow the visible area. Prefer `position: fixed; inset: 0` for full-viewport overlays on iOS, or use `dvh` units with `vh` fallback (cascade order matters &mdash; `vh` first, `dvh` second so `dvh` wins when supported).
+
+### iOS Touch Scrolling: overflow-x scroll vs auto
+On iOS Safari, `overflow-x: auto` sometimes fails to enable touch-based horizontal scrolling. Use `overflow-x: scroll` with `-webkit-overflow-scrolling: touch` for reliable behavior.
+
+### Mobile-First Achieved (v17.0)
+v17.0 rewrote the HTML/CSS mobile-first, replacing the v16.x desktop-first responsive approach. Base CSS targets 375px; desktop is a media query enhancement. Minor top-of-screen content overlap behind the iOS status bar remains a known issue (cosmetic only).
+
+### Bottom Sheet DOM Node Transfer (v17.0)
+`openBottomSheet()` moves `.input-scroll-area` and `.sidebar-footer` DOM nodes (not clones) from `#inputPanel` into `#bottomSheetBody`. This preserves all event listeners, form state, and auto-save hooks. `closeBottomSheet()` returns them. A `window.resize` handler auto-returns nodes to sidebar if viewport grows past 769px (orientation change safety). Guard: `window.innerWidth < 769` prevents transfer on desktop.
+
+### Mobile Chart Type Selector (v17.0)
+On mobile, Charts tab shows a 3&times;2 button grid (`selectChartType()`) that toggles visibility of individual chart cards via `mobile-hidden` class. Desktop CSS overrides make all cards always visible and hides the selector. The `activeChartType` variable tracks current selection.
+
 ### Scenario localStorage Persistence
 Scenarios are stored under `retirementArchitect_scenarios` (separate from auto-save). Max 5 enforced at save time. Each scenario stores full `getAllInputValues()` plus computed results (`successRate`, `sustainableSpending`, `medianLegacy`, `lifetimeTax`, wall ages). `loadPersistedScenarios()` runs on `DOMContentLoaded`.
 
@@ -375,9 +405,10 @@ Tour tooltips use `getBoundingClientRect()` on the target element to calculate a
 | v16.2 | Clickable improvement levers with Apply buttons (`applyLever()`), before/after success rate toast, `_skipNextSnapshot` flag for revert integration. Named scenario save &amp; compare (`savedScenarios[]`, `retirementArchitect_scenarios` localStorage key, max 5), comparison table with baseline deltas. 6-step onboarding tour (`tourSteps[]`, tooltip positioning via `getBoundingClientRect()`, `retirementArchitect_tourDismissed` localStorage key). |
 | v16.3 | Outcome Distribution histogram on Charts tab &mdash; shows depleted vs. survived paths by age. Zero engine changes, uses existing `depletionAge` data. |
 | v16.4 | UX polish: gauge card reduced from 280px to 220px, budget bar gap label clarified to "/yr shortfall" with tooltip, What-If empty state replaced with workflow guidance steps, lever cards show which inputs they change, scenario comparison table uses `table-layout: fixed` to eliminate horizontal scroll for 2&ndash;3 scenarios. |
-| v16.5 | Mobile fix cycle: fixed bottom nav bar (replaces scroll-away top nav, z-index 1000), `viewport-fit=cover` + `env(safe-area-inset-bottom)` on nav/FAB/done bar/wizard footer/toast for iPhone notch/home indicator, scrollable wizard progress bar with fade-hint gradients and auto-scroll to active step, wizard mobile CSS (grids collapse to 1-column, reduced padding), FAB repositioned above bottom nav, toast repositioned above bottom nav. Zero engine changes. |
+| v16.5 | Mobile fix cycle: fixed bottom nav bar (replaces scroll-away top nav, z-index 1000), `viewport-fit=cover` + `env(safe-area-inset-bottom)` on nav/FAB/done bar/wizard footer/toast for iPhone notch/home indicator, scrollable wizard progress bar with fade-hint gradients and auto-scroll to active step, wizard mobile CSS (grids collapse to 1-column, reduced padding), FAB repositioned above bottom nav, toast repositioned above bottom nav. Hotfixes: wizard full-screen sheet (iOS `backdrop-filter` containing-block bug), progress bar `overflow-x: scroll` for iOS touch, sticky top nav with safe-area padding. **Known issue:** minor top-of-screen content overlap on iOS Safari &mdash; acceptable until dedicated mobile version. Zero engine changes. |
+| v17.0 | Mobile-first shell rewrite. File split: `engine.js` (6,200 lines) extracted from `index.html` (9,200 lines). HTML restructured mobile-first with base CSS targeting 375px. New elements: `app-header-mobile` (dark navy header + Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Settings), `bottom-sheet` (slide-up input editor with DOM node transfer of 69 inputs). Desktop layout restored via `@media (min-width: 769px)` &mdash; top-nav, icon sidebar, input panel, hero grid all preserved. Chart type 3&times;2 button grid on mobile (no horizontal scroll). v16.0&ndash;16.5 `@media (max-width: 768px)` blocks removed (styles moved to base). Zero engine changes. |
 
-**Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4
+**Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4, v16.5
 
 ---
 
