@@ -3482,22 +3482,29 @@
 
                 // Proximity-triggered label alternation: default below,
                 // flip to above when consecutive milestones are within 8 years (v16.1: was 5, missed 77/83 gap)
-                // v17.2 fix: milestones in the first 15% of the bar must stay below to avoid
-                // colliding with the "Your Money's Lifespan" heading above the bar.
+                // v17.2 fix: instead of flipping early milestones above (where they collide with the
+                // "Your Money's Lifespan" heading), hide the "Now" label when it's too close to the
+                // next milestone. The blue person icon is self-explanatory.
                 const PROXIMITY_THRESHOLD = 8;
-                const HEADING_SAFE_PERCENT = 15; // % of bar where label-above is banned
                 sortedMilestones.forEach((m, i) => {
                     m.labelAbove = false; // default: label below bar
+                    m.hideLabel = false;
                 });
                 for (let i = 1; i < sortedMilestones.length; i++) {
                     const gap = sortedMilestones[i].age - sortedMilestones[i - 1].age;
                     if (gap <= PROXIMITY_THRESHOLD) {
-                        const percent = ageToPercent(sortedMilestones[i].age);
-                        // Only flip above if far enough from the heading
-                        if (percent > HEADING_SAFE_PERCENT && !sortedMilestones[i - 1].labelAbove) {
-                            sortedMilestones[i].labelAbove = true;
+                        const prevPercent = ageToPercent(sortedMilestones[i - 1].age);
+                        const thisPercent = ageToPercent(sortedMilestones[i].age);
+                        if (prevPercent < 5) {
+                            // Previous is the "Now" dot at far left &mdash; hide its label instead of flipping
+                            sortedMilestones[i - 1].hideLabel = true;
+                        } else if (thisPercent > 90) {
+                            // This is the "End" dot at far right &mdash; hide its label, keep previous
+                            sortedMilestones[i].hideLabel = true;
+                        } else {
+                            // Normal case: alternate above/below
+                            sortedMilestones[i].labelAbove = !sortedMilestones[i - 1].labelAbove;
                         }
-                        // Otherwise keep below (may overlap slightly, but won't hit the heading)
                     }
                 }
 
@@ -3519,15 +3526,19 @@
 
                     const milestoneClass = 'lifespan-milestone' + (m.labelAbove ? ' label-above' : '');
 
+                    const labelHTML = m.hideLabel
+                        ? '' // v17.2: hide label entirely when too close to neighbor near edges
+                        : `<div class="milestone-label">
+                                <div class="milestone-age">${m.age}</div>
+                                <div class="${textClass}">${m.label}</div>
+                           </div>`;
+
                     milestonesHTML += `
                         <div class="${milestoneClass}" style="left: ${percent}%;">
                             <div class="${dotClass}">
                                 <i class="ph ${m.icon}"></i>
                             </div>
-                            <div class="milestone-label">
-                                <div class="milestone-age">${m.age}</div>
-                                <div class="${textClass}">${m.label}</div>
-                            </div>
+                            ${labelHTML}
                         </div>
                     `;
                 });
