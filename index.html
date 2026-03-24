@@ -4,12 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Retirement Architect // V17.1: Mobile UX Fixes</title>
+    <title>Retirement Architect // V17.2: Mobile UX Fixes</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         :root {
@@ -2343,6 +2345,51 @@
         }
 
         /* Solver Modal */
+        /* QR Code Modal */
+        .qr-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .qr-modal-overlay.active {
+            display: flex;
+        }
+        .qr-modal {
+            background: white;
+            border-radius: 16px;
+            padding: 32px 24px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .qr-modal h3 {
+            margin: 0 0 4px; font-size: 1.2rem; color: #0f172a; font-weight: 700;
+        }
+        .qr-modal p {
+            margin: 0 0 20px; font-size: 0.85rem; color: #64748b;
+        }
+        .qr-modal-close {
+            position: absolute; top: 12px; right: 16px;
+            background: none; border: none; font-size: 1.5rem;
+            cursor: pointer; color: #94a3b8; line-height: 1;
+        }
+        .qr-modal-close:hover { color: #0f172a; }
+        #qrCodeContainer {
+            display: flex; justify-content: center; margin: 0 auto 16px;
+        }
+        #qrCodeContainer canvas, #qrCodeContainer img {
+            border-radius: 8px;
+        }
+        .qr-instructions {
+            font-size: 0.8rem; color: #94a3b8; margin-top: 12px; line-height: 1.4;
+        }
+
         .solver-modal-overlay {
             display: none;
             position: fixed;
@@ -6930,8 +6977,10 @@
                 flex-direction: column;
             }
             .input-panel.collapsed {
-                width: 48px !important;
+                width: 0 !important;
+                padding: 0 !important;
                 overflow: hidden;
+                border-right: none;
             }
             .input-panel-toggle {
                 display: flex !important;
@@ -7136,7 +7185,7 @@
         <div class="app-header-brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span class="app-header-title">RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V17.1</span>
+            <span class="version-badge">V17.2</span>
         </div>
         <div class="app-header-actions">
             <span class="auto-save-indicator" id="autoSaveIndicator"><i class="ph ph-cloud-check"></i> Saved</span>
@@ -7153,7 +7202,7 @@
         <div class="brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span>RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V17.1</span>
+            <span class="version-badge">V17.2</span>
         </div>
 
         <div class="nav-links">
@@ -7171,7 +7220,7 @@
             </button>
             <button class="nav-link" onclick="switchMainView('reports')">
                 <i class="ph ph-export"></i>
-                Reports / Export
+                Reports / QR Code
             </button>
         </div>
 
@@ -8710,8 +8759,8 @@
             <div id="reportsView" class="main-view">
                 <div class="reports-view-content">
                     <div class="reports-view-header">
-                        <h2><i class="ph ph-file-text"></i> Reports & Export</h2>
-                        <p>Download your retirement analysis in various formats</p>
+                        <h2><i class="ph ph-file-text"></i> Reports &amp; Export</h2>
+                        <p>Download your retirement analysis or generate a QR code to save/share your inputs</p>
                     </div>
 
                     <div id="reportsEmptyState" class="reports-empty-state" style="display: none;">
@@ -8757,6 +8806,17 @@
                                     <i class="ph ph-download"></i> Download JSON
                                 </button>
                             </div>
+
+                            <div class="report-card">
+                                <div class="report-card-icon" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                                    <i class="ph ph-qr-code"></i>
+                                </div>
+                                <h4>QR Code</h4>
+                                <p>Generate a scannable QR code that saves all your inputs. Screenshot it, print it, or scan it later to reload your exact scenario.</p>
+                                <button class="report-download-btn" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);" onclick="showQRCode()">
+                                    <i class="ph ph-qr-code"></i> Generate QR Code
+                                </button>
+                            </div>
                         </div>
 
                         <div class="reports-summary-card" id="reportsSummaryCard">
@@ -8792,7 +8852,7 @@
         <div id="pdfReport">
             <div class="pdf-header">
                 <h1>Retirement Architect Report</h1>
-                <p>Professional Audit &amp; Tax Convergence Analysis (V17.1)</p>
+                <p>Professional Audit &amp; Tax Convergence Analysis (V17.2)</p>
             </div>
 
             <div class="pdf-grid">
@@ -8891,8 +8951,27 @@
                 </table>
             </div>
 
+            <div id="pdfQrSection" style="margin-top: 24px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 8px; text-align: center; page-break-inside: avoid;">
+                <div style="font-weight: bold; font-size: 11px; color: #1e293b; margin-bottom: 4px;">Scan to Reload This Scenario</div>
+                <div style="font-size: 9px; color: #64748b; margin-bottom: 12px;">Open your phone camera and scan this QR code to load these exact inputs into Retirement Architect.</div>
+                <div id="pdfQrContainer" style="display: inline-block;"></div>
+            </div>
+
             <div style="margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ccc; padding-top: 10px;">
-                Generated by Retirement Architect V17.1 on <span id="pdfDate"></span>.
+                Generated by Retirement Architect V17.2 on <span id="pdfDate"></span>.
+            </div>
+        </div>
+
+        <!-- QR Code Modal -->
+        <div id="qrModal" class="qr-modal-overlay" onclick="if(event.target===this)closeQRModal()"
+            <div class="qr-modal">
+                <button class="qr-modal-close" onclick="closeQRModal()">&times;</button>
+                <h3><i class="ph ph-qr-code"></i> Your Scenario QR Code</h3>
+                <p>Scan with your phone camera to reload these exact inputs</p>
+                <div id="qrCodeContainer"></div>
+                <div class="qr-instructions">
+                    Screenshot or print this code. Scanning it opens Retirement Architect with all your current inputs pre-loaded.
+                </div>
             </div>
         </div>
 
@@ -9215,7 +9294,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=17.1"></script>
+    <script src="engine.js?v=17.2"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">

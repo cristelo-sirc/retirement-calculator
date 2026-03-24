@@ -269,7 +269,9 @@
             }
 
             // v17.0: Ensure inputs return to sidebar if resized to desktop while sheet is open
+            // v17.2: Also resize gauge chart on orientation change / resize
             window.addEventListener('resize', function() {
+                if (gaugeChartInstance) { gaugeChartInstance.resize(); }
                 if (window.innerWidth >= 769) {
                     const panel = document.getElementById('inputPanel');
                     const scrollArea = document.querySelector('.input-scroll-area');
@@ -4832,7 +4834,7 @@
                 }
 
                 const aiData = {
-                    version: 'V17.1',
+                    version: 'V17.2',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -4888,6 +4890,88 @@
                 const a = document.createElement('a'); a.href = window.URL.createObjectURL(blob); a.download = "audit_ai_export_v9_9.json"; a.click();
 
                 alert("AI JSON Export Complete! File saved as audit_ai_export_v9_9.json");
+            }
+
+            // --- QR Code Generation ---
+            function generateQRData() {
+                const inputs = getAllInputValues();
+                const json = JSON.stringify(inputs);
+                const compressed = LZString.compressToEncodedURIComponent(json);
+                const baseUrl = window.location.origin + window.location.pathname;
+                return baseUrl + '?d=' + compressed;
+            }
+
+            function showQRCode() {
+                const container = document.getElementById('qrCodeContainer');
+                container.innerHTML = '';
+                const url = generateQRData();
+
+                // Check URL length feasibility for QR (max ~4,296 alphanumeric chars)
+                if (url.length > 4000) {
+                    container.innerHTML = '<div style="color: #ef4444; font-size: 0.9rem; padding: 20px;">Data too large for QR code. Try reducing the number of active features.</div>';
+                    document.getElementById('qrModal').classList.add('active');
+                    return;
+                }
+
+                new QRCode(container, {
+                    text: url,
+                    width: 280,
+                    height: 280,
+                    colorDark: '#0f172a',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+
+                document.getElementById('qrModal').classList.add('active');
+            }
+
+            function closeQRModal() {
+                document.getElementById('qrModal').classList.remove('active');
+            }
+
+            function generateQRForPDF(containerId) {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                container.innerHTML = '';
+                const url = generateQRData();
+                if (url.length > 4000) {
+                    container.innerHTML = '<div style="font-size: 9px; color: #94a3b8;">QR code omitted &mdash; data exceeds QR capacity.</div>';
+                    return;
+                }
+                new QRCode(container, {
+                    text: url,
+                    width: 180,
+                    height: 180,
+                    colorDark: '#0f172a',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.L
+                });
+            }
+
+            // --- QR Code URL Import ---
+            function importFromQRUrl() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const data = urlParams.get('d');
+                if (!data) return false;
+
+                try {
+                    const json = LZString.decompressFromEncodedURIComponent(data);
+                    if (!json) return false;
+                    const inputs = JSON.parse(json);
+                    setAllInputValues(inputs);
+
+                    // Clear the URL parameter so refresh doesn't re-import
+                    window.history.replaceState({}, '', window.location.pathname);
+
+                    // Trigger dependent UI updates
+                    updateFilingStatus();
+                    toggleHousingSettings();
+
+                    return true;
+                } catch (e) {
+                    console.warn('QR import failed:', e);
+                    return false;
+                }
             }
 
             // --- PDF Report Export ---
@@ -4994,6 +5078,9 @@
                     tbody.appendChild(row);
                 });
 
+                // --- 5b. Generate QR code for PDF ---
+                generateQRForPDF('pdfQrContainer');
+
                 // --- 6. Generate PDF ---
                 const pdfReport = document.getElementById('pdfReport');
                 document.querySelector('.sidebar').style.display = 'none';
@@ -5003,7 +5090,7 @@
                 setTimeout(() => {
                     html2pdf().set({
                         margin: 0.4,
-                        filename: 'Retirement_Audit_V14.pdf',
+                        filename: 'Retirement_Audit_V17.pdf',
                         image: { type: 'jpeg', quality: 0.95 },
                         html2canvas: { scale: 2, useCORS: true },
                         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
@@ -5020,6 +5107,21 @@
 
             // Init
             document.addEventListener('DOMContentLoaded', () => {
+                // v17.2: Check for QR code URL import before anything else
+                const qrImported = importFromQRUrl();
+                if (qrImported) {
+                    // Brief delay to let inputs settle, then show a toast
+                    setTimeout(() => {
+                        const toast = document.getElementById('leverToast');
+                        if (toast) {
+                            toast.innerHTML = '<i class="ph ph-qr-code"></i> Scenario loaded from QR code!';
+                            toast.style.background = '#6366f1';
+                            toast.classList.add('show');
+                            setTimeout(() => toast.classList.remove('show'), 3000);
+                        }
+                    }, 500);
+                }
+
                 updateFilingStatus();
                 toggleHousingSettings();
 
@@ -5102,9 +5204,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V17.1 migration: Mobile UX fixes (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V17.1') {
-                    localStorage.setItem('retirementCalcVersion', 'V17.1');
+                // V17.2 migration: Mobile UX fixes (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.2') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.2');
                 }
 
                 // Restore input panel collapse state
@@ -6237,6 +6339,13 @@
                 const wizEl = document.getElementById('setupWizard');
                 if (wizEl && wizEl.style.display !== 'none') {
                     closeWizard();
+                    return;
+                }
+
+                // QR modal (v17.2)
+                const qrEl = document.getElementById('qrModal');
+                if (qrEl && qrEl.classList.contains('active')) {
+                    closeQRModal();
                     return;
                 }
 
