@@ -4940,8 +4940,8 @@
                 }
                 new QRCode(container, {
                     text: url,
-                    width: 180,
-                    height: 180,
+                    width: 120,
+                    height: 120,
                     colorDark: '#0f172a',
                     colorLight: '#ffffff',
                     correctLevel: QRCode.CorrectLevel.L
@@ -5020,43 +5020,47 @@
                 recBox.innerHTML = `<div>${recHeader}</div><ul style="margin-top: 5px;">${observations.map(o => `<li>${o}</li>`).join('')}</ul>`;
 
                 // --- 4. Populate Charts (all 4) ---
-                // Temporarily expand all chart sections to capture them
+                // v17.2 fix: Charts live in the Charts tab (chartsBalanceChart, chartsIncomeChart,
+                // chartsSpendingChart, chartsTaxChart). They may not be rendered yet if the user
+                // never visited the Charts tab. Force-render them, then capture.
+
+                // Ensure Charts tab content is visible for rendering
+                const chartsView = document.getElementById('chartsView');
+                const chartsContent = document.getElementById('chartsContent');
+                const chartsWasHidden = chartsView && chartsView.style.display === 'none';
+                if (chartsView) chartsView.style.display = 'block';
+                if (chartsContent) chartsContent.style.display = 'block';
+
+                // Expand any collapsed chart sections
                 const collapsedSections = [];
                 document.querySelectorAll('.chart-section.collapsed').forEach(section => {
                     collapsedSections.push(section.id);
                     section.classList.remove('collapsed');
                 });
 
-                // Force chart update and resize
-                if (balanceChartInstance) { balanceChartInstance.update(); balanceChartInstance.resize(); }
-                if (incomeSourcesChartInstance) { incomeSourcesChartInstance.update(); incomeSourcesChartInstance.resize(); }
-                if (incomeVsSpendChartInstance) { incomeVsSpendChartInstance.update(); incomeVsSpendChartInstance.resize(); }
-                if (taxChartInstance) { taxChartInstance.update(); taxChartInstance.resize(); }
+                // Force render charts (creates them if they don't exist)
+                renderChartsViewCharts();
 
-                // Wait for CSS transitions (300ms) + extra time for chart render
+                // Wait for charts to render, then capture
                 setTimeout(() => {
-                    // Second update/resize after sections are fully expanded
-                    if (balanceChartInstance) balanceChartInstance.resize();
-                    if (incomeSourcesChartInstance) incomeSourcesChartInstance.resize();
-                    if (incomeVsSpendChartInstance) incomeVsSpendChartInstance.resize();
-                    if (taxChartInstance) taxChartInstance.resize();
+                    // Capture from the correct v17.0 canvas IDs
+                    try { document.getElementById('pdfBalanceChart').src = document.getElementById('chartsBalanceChart').toDataURL('image/png'); } catch (e) { console.log('Balance chart capture failed', e); }
+                    try { document.getElementById('pdfIncomeSourcesChart').src = document.getElementById('chartsIncomeChart').toDataURL('image/png'); } catch (e) { console.log('Income sources chart capture failed', e); }
+                    try { document.getElementById('pdfIncomeVsSpendChart').src = document.getElementById('chartsSpendingChart').toDataURL('image/png'); } catch (e) { console.log('Income vs spend chart capture failed', e); }
+                    try { document.getElementById('pdfTaxChart').src = document.getElementById('chartsTaxChart').toDataURL('image/png'); } catch (e) { console.log('Tax chart capture failed', e); }
 
-                    // Brief delay then capture
-                    setTimeout(() => {
-                        try { document.getElementById('pdfBalanceChart').src = document.getElementById('balanceChart').toDataURL('image/png'); } catch (e) { console.log('Balance chart capture failed', e); }
-                        try { document.getElementById('pdfIncomeSourcesChart').src = document.getElementById('incomeSourcesChart').toDataURL('image/png'); } catch (e) { console.log('Income sources chart capture failed', e); }
-                        try { document.getElementById('pdfIncomeVsSpendChart').src = document.getElementById('incomeVsSpendChart').toDataURL('image/png'); } catch (e) { console.log('Income vs spend chart capture failed', e); }
-                        try { document.getElementById('pdfTaxChart').src = document.getElementById('taxChart').toDataURL('image/png'); } catch (e) { console.log('Tax chart capture failed', e); }
+                    // Restore collapsed state
+                    collapsedSections.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.classList.add('collapsed');
+                    });
 
-                        // Restore collapsed state
-                        collapsedSections.forEach(id => {
-                            document.getElementById(id).classList.add('collapsed');
-                        });
+                    // Restore Charts tab visibility
+                    if (chartsWasHidden && chartsView) chartsView.style.display = 'none';
 
-                        // Continue with PDF generation
-                        generatePDFContinue();
-                    }, 200);
-                }, 400);
+                    // Continue with PDF generation
+                    generatePDFContinue();
+                }, 600);
             }
 
             function generatePDFContinue() {
