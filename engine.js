@@ -516,7 +516,24 @@
                             responsive: true,
                             maintainAspectRatio: true,
                             plugins: {
-                                legend: { display: true, position: 'top' },
+                                title: {
+                                    display: true,
+                                    text: 'Portfolio Balance Projection',
+                                    font: { size: 14, weight: '600' },
+                                    color: '#334155',
+                                    padding: { bottom: 12 }
+                                },
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        boxWidth: 8,
+                                        font: { size: 11 },
+                                        padding: 12
+                                    }
+                                },
                                 tooltip: {
                                     mode: 'index',
                                     intersect: false,
@@ -545,7 +562,10 @@
                                         }
                                     }
                                 },
-                                x: { title: { display: true, text: 'Age' } }
+                                x: {
+                                    title: { display: true, text: 'Age' },
+                                    ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, maxTicksLimit: 10 }
+                                }
                             }
                         },
                         plugins: [{
@@ -609,7 +629,24 @@
                             responsive: true,
                             maintainAspectRatio: true,
                             plugins: {
-                                legend: { display: true, position: 'top', labels: { usePointStyle: true, boxWidth: 8, padding: 10, font: { size: 11 } } },
+                                title: {
+                                    display: true,
+                                    text: 'Retirement Income Sources',
+                                    font: { size: 14, weight: '600' },
+                                    color: '#334155',
+                                    padding: { bottom: 12 }
+                                },
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        boxWidth: 8,
+                                        font: { size: 11 },
+                                        padding: 12
+                                    }
+                                },
                                 tooltip: {
                                     mode: 'index',
                                     intersect: false,
@@ -621,7 +658,7 @@
                             },
                             scales: {
                                 y: { stacked: true, beginAtZero: true, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } },
-                                x: { stacked: true, title: { display: true, text: 'Age' } }
+                                x: { stacked: true, title: { display: true, text: 'Age' }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, maxTicksLimit: 10 } }
                             }
                         }
                     });
@@ -659,7 +696,24 @@
                             responsive: true,
                             maintainAspectRatio: true,
                             plugins: {
-                                legend: { display: true, position: 'top' },
+                                title: {
+                                    display: true,
+                                    text: 'Income vs. Spending Need',
+                                    font: { size: 14, weight: '600' },
+                                    color: '#334155',
+                                    padding: { bottom: 12 }
+                                },
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        boxWidth: 8,
+                                        font: { size: 11 },
+                                        padding: 12
+                                    }
+                                },
                                 tooltip: {
                                     mode: 'index',
                                     intersect: false,
@@ -671,7 +725,7 @@
                             },
                             scales: {
                                 y: { beginAtZero: true, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } },
-                                x: { title: { display: true, text: 'Age' } }
+                                x: { title: { display: true, text: 'Age' }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, maxTicksLimit: 10 } }
                             }
                         }
                     });
@@ -691,7 +745,24 @@
                             responsive: true,
                             maintainAspectRatio: true,
                             plugins: {
-                                legend: { display: false },
+                                title: {
+                                    display: true,
+                                    text: 'Estimated Annual Tax Liability',
+                                    font: { size: 14, weight: '600' },
+                                    color: '#334155',
+                                    padding: { bottom: 12 }
+                                },
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        pointStyle: 'circle',
+                                        boxWidth: 8,
+                                        font: { size: 11 },
+                                        padding: 12
+                                    }
+                                },
                                 tooltip: {
                                     mode: 'index',
                                     intersect: false,
@@ -703,7 +774,7 @@
                             },
                             scales: {
                                 y: { beginAtZero: true, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } },
-                                x: { title: { display: true, text: 'Age' } }
+                                x: { title: { display: true, text: 'Age' }, ticks: { maxRotation: 0, minRotation: 0, autoSkip: true, maxTicksLimit: 10 } }
                             }
                         }
                     });
@@ -5044,6 +5115,10 @@
                     section.classList.remove('collapsed');
                 });
 
+                // Boost DPR for crisp PDF chart captures (especially on mobile)
+                const originalDPR = Chart.defaults.devicePixelRatio;
+                Chart.defaults.devicePixelRatio = 3;
+
                 // Force render charts (creates them if they don't exist)
                 renderChartsViewCharts();
 
@@ -5054,6 +5129,9 @@
                     try { document.getElementById('pdfIncomeSourcesChart').src = document.getElementById('chartsIncomeChart').toDataURL('image/png'); } catch (e) { console.log('Income sources chart capture failed', e); }
                     try { document.getElementById('pdfIncomeVsSpendChart').src = document.getElementById('chartsSpendingChart').toDataURL('image/png'); } catch (e) { console.log('Income vs spend chart capture failed', e); }
                     try { document.getElementById('pdfTaxChart').src = document.getElementById('chartsTaxChart').toDataURL('image/png'); } catch (e) { console.log('Tax chart capture failed', e); }
+
+                    // Restore original DPR
+                    Chart.defaults.devicePixelRatio = originalDPR;
 
                     // Restore collapsed state
                     collapsedSections.forEach(id => {
