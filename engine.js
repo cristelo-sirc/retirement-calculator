@@ -3482,29 +3482,17 @@
 
                 // Proximity-triggered label alternation: default below,
                 // flip to above when consecutive milestones are within 8 years (v16.1: was 5, missed 77/83 gap)
-                // v17.2 fix: instead of flipping early milestones above (where they collide with the
-                // "Your Money's Lifespan" heading), hide the "Now" label when it's too close to the
-                // next milestone. The blue person icon is self-explanatory.
+                // Proximity-triggered label alternation: when milestones are close,
+                // alternate labels above/below bar to prevent horizontal collision.
+                // Extra top padding on .hero-lifespan-progress gives above-labels clearance from heading.
                 const PROXIMITY_THRESHOLD = 8;
                 sortedMilestones.forEach((m, i) => {
                     m.labelAbove = false; // default: label below bar
-                    m.hideLabel = false;
                 });
                 for (let i = 1; i < sortedMilestones.length; i++) {
                     const gap = sortedMilestones[i].age - sortedMilestones[i - 1].age;
                     if (gap <= PROXIMITY_THRESHOLD) {
-                        const prevPercent = ageToPercent(sortedMilestones[i - 1].age);
-                        const thisPercent = ageToPercent(sortedMilestones[i].age);
-                        if (prevPercent < 5) {
-                            // Previous is the "Now" dot at far left &mdash; hide its label instead of flipping
-                            sortedMilestones[i - 1].hideLabel = true;
-                        } else if (thisPercent > 90) {
-                            // This is the "End" dot at far right &mdash; hide its label, keep previous
-                            sortedMilestones[i].hideLabel = true;
-                        } else {
-                            // Normal case: alternate above/below
-                            sortedMilestones[i].labelAbove = !sortedMilestones[i - 1].labelAbove;
-                        }
+                        sortedMilestones[i].labelAbove = !sortedMilestones[i - 1].labelAbove;
                     }
                 }
 
@@ -3526,9 +3514,7 @@
 
                     const milestoneClass = 'lifespan-milestone' + (m.labelAbove ? ' label-above' : '');
 
-                    const labelHTML = m.hideLabel
-                        ? '' // v17.2: hide label entirely when too close to neighbor near edges
-                        : `<div class="milestone-label">
+                    const labelHTML = `<div class="milestone-label">
                                 <div class="milestone-age">${m.age}</div>
                                 <div class="${textClass}">${m.label}</div>
                            </div>`;
