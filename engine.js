@@ -5083,8 +5083,15 @@
 
                 // --- 6. Generate PDF ---
                 const pdfReport = document.getElementById('pdfReport');
-                document.querySelector('.sidebar').style.display = 'none';
-                document.querySelector('.main-content').style.display = 'none';
+                // v17.2 fix: .sidebar was removed in v17.0; hide icon-sidebar + input-panel + toggle instead
+                const iconSidebar = document.querySelector('.icon-sidebar');
+                const inputPanel = document.querySelector('.input-panel');
+                const panelToggle = document.querySelector('.input-panel-toggle');
+                const mainContent = document.querySelector('.main-content');
+                if (iconSidebar) iconSidebar.style.display = 'none';
+                if (inputPanel) inputPanel.style.display = 'none';
+                if (panelToggle) panelToggle.style.display = 'none';
+                if (mainContent) mainContent.style.display = 'none';
                 pdfReport.style.display = 'block';
 
                 setTimeout(() => {
@@ -5098,8 +5105,11 @@
                     })
                         .from(pdfReport).save().then(() => {
                             pdfReport.style.display = 'none';
-                            document.querySelector('.sidebar').style.display = 'flex';
-                            document.querySelector('.main-content').style.display = 'block';
+                            // v17.2 fix: restore v17.0 sidebar elements
+                            if (iconSidebar) iconSidebar.style.display = 'flex';
+                            if (inputPanel) inputPanel.style.display = 'flex';
+                            if (panelToggle) panelToggle.style.display = 'flex';
+                            if (mainContent) mainContent.style.display = 'block';
                             if (btn) { btn.innerHTML = '<i class="ph ph-download"></i> Download PDF'; btn.disabled = false; }
                         });
                 }, 100);
