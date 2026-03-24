@@ -5020,15 +5020,17 @@
                 recBox.innerHTML = `<div>${recHeader}</div><ul style="margin-top: 5px;">${observations.map(o => `<li>${o}</li>`).join('')}</ul>`;
 
                 // --- 4. Populate Charts (all 4) ---
-                // v17.2 fix: Charts live in the Charts tab (chartsBalanceChart, chartsIncomeChart,
-                // chartsSpendingChart, chartsTaxChart). They may not be rendered yet if the user
-                // never visited the Charts tab. Force-render them, then capture.
+                // v17.2 fix: Chart.js requires visible, properly-sized canvases. The Charts tab
+                // may be hidden (display:none via .main-view CSS). We must temporarily activate
+                // the Charts view, render the charts, capture them, then restore the original view.
 
-                // Ensure Charts tab content is visible for rendering
+                // Remember which view was active so we can restore it
+                const activeView = document.querySelector('.main-view.active');
                 const chartsView = document.getElementById('chartsView');
                 const chartsContent = document.getElementById('chartsContent');
-                const chartsWasHidden = chartsView && chartsView.style.display === 'none';
-                if (chartsView) chartsView.style.display = 'block';
+
+                // Temporarily switch to Charts view (makes canvases visible with real dimensions)
+                if (chartsView) chartsView.classList.add('active');
                 if (chartsContent) chartsContent.style.display = 'block';
 
                 // Expand any collapsed chart sections
@@ -5041,7 +5043,7 @@
                 // Force render charts (creates them if they don't exist)
                 renderChartsViewCharts();
 
-                // Wait for charts to render, then capture
+                // Wait for Chart.js to finish rendering into now-visible canvases
                 setTimeout(() => {
                     // Capture from the correct v17.0 canvas IDs
                     try { document.getElementById('pdfBalanceChart').src = document.getElementById('chartsBalanceChart').toDataURL('image/png'); } catch (e) { console.log('Balance chart capture failed', e); }
@@ -5055,12 +5057,13 @@
                         if (el) el.classList.add('collapsed');
                     });
 
-                    // Restore Charts tab visibility
-                    if (chartsWasHidden && chartsView) chartsView.style.display = 'none';
+                    // Restore original view: remove Charts active, re-activate original
+                    if (chartsView && activeView !== chartsView) chartsView.classList.remove('active');
+                    if (activeView && !activeView.classList.contains('active')) activeView.classList.add('active');
 
                     // Continue with PDF generation
                     generatePDFContinue();
-                }, 600);
+                }, 800);
             }
 
             function generatePDFContinue() {
@@ -5082,9 +5085,6 @@
                     tbody.appendChild(row);
                 });
 
-                // --- 5b. Generate QR code for PDF ---
-                generateQRForPDF('pdfQrContainer');
-
                 // --- 6. Generate PDF ---
                 const pdfReport = document.getElementById('pdfReport');
                 // v17.2 fix: .sidebar was removed in v17.0; hide icon-sidebar + input-panel + toggle instead
@@ -5097,6 +5097,9 @@
                 if (panelToggle) panelToggle.style.display = 'none';
                 if (mainContent) mainContent.style.display = 'none';
                 pdfReport.style.display = 'block';
+
+                // --- 6b. Generate QR code for PDF (must be after pdfReport is visible) ---
+                generateQRForPDF('pdfQrContainer');
 
                 setTimeout(() => {
                     html2pdf().set({
