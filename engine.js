@@ -3482,15 +3482,22 @@
 
                 // Proximity-triggered label alternation: default below,
                 // flip to above when consecutive milestones are within 8 years (v16.1: was 5, missed 77/83 gap)
+                // v17.2 fix: milestones in the first 15% of the bar must stay below to avoid
+                // colliding with the "Your Money's Lifespan" heading above the bar.
                 const PROXIMITY_THRESHOLD = 8;
+                const HEADING_SAFE_PERCENT = 15; // % of bar where label-above is banned
                 sortedMilestones.forEach((m, i) => {
                     m.labelAbove = false; // default: label below bar
                 });
                 for (let i = 1; i < sortedMilestones.length; i++) {
                     const gap = sortedMilestones[i].age - sortedMilestones[i - 1].age;
                     if (gap <= PROXIMITY_THRESHOLD) {
-                        // Flip this milestone to opposite of the previous one
-                        sortedMilestones[i].labelAbove = !sortedMilestones[i - 1].labelAbove;
+                        const percent = ageToPercent(sortedMilestones[i].age);
+                        // Only flip above if far enough from the heading
+                        if (percent > HEADING_SAFE_PERCENT && !sortedMilestones[i - 1].labelAbove) {
+                            sortedMilestones[i].labelAbove = true;
+                        }
+                        // Otherwise keep below (may overlap slightly, but won't hit the heading)
                     }
                 }
 
