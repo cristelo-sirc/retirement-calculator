@@ -4,7 +4,7 @@
 
 Two-file HTML retirement planning calculator with Monte Carlo simulations. `index.html` (UI shell, ~9,200 lines) + `engine.js` (simulation engine + render functions, ~6,200 lines).
 
-**Current Version:** 17.3 (Native Dialog Replacement + iOS Fix)
+**Current Version:** 17.4
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -19,6 +19,7 @@ Two-file HTML retirement planning calculator with Monte Carlo simulations. `inde
 - **Accuracy is non-negotiable** &mdash; any potential inaccuracy must be disclosed with safer alternatives
 - **Verify changes work before delivering**
 - **Maintain standard versioning** with clear increments and change logs; no silent changes
+- **Version references show number only** (e.g., "V17.4") &mdash; no descriptive names or subtitles after the version number. Applies to title tag, badges, report headers, PDF footers, export objects, and all other user-facing version displays
 - **Claude is responsible for all testing** &mdash; Cris does not test. After every change, Claude must deploy (push to GitHub), then conduct live browser testing against the GitHub Pages URL via Chrome MCP. This includes interacting with UI elements, verifying visual output, and testing at both desktop (1680px) and mobile (375px) viewports. Do not mark a task complete until live browser testing passes.
 - **Keep responses succinct** &mdash; alert at 75% context capacity before compaction needed
 
