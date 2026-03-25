@@ -471,21 +471,72 @@
             // Charts View rendering
             let chartsViewInstances = {};
 
-            function renderChartsViewCharts() {
-                if (!lastSimulationResults || !lastSimulationResults.paths) return;
+            // Shared data extraction for both screen and PDF chart rendering (v17.2 Phase 2)
+            function prepareChartData() {
+                if (!lastSimulationResults || !lastSimulationResults.paths) return null;
 
                 const paths = lastSimulationResults.paths;
                 const currentAge = lastSimulationResults.params.currentAge;
                 const retireAge = lastSimulationResults.params.retireAge;
                 const startAge = params.retireAge;
                 const endAge = params.endAge;
-                const retireOffset = startAge - currentAge; // Index offset for retirement start
+                const retireOffset = startAge - currentAge;
+
                 const ages = [];
                 for (let a = startAge; a <= endAge; a++) ages.push(a);
 
-                // Full age range for Portfolio Balance chart (includes pre-retirement)
                 const allAges = [];
                 for (let a = currentAge; a <= endAge; a++) allAges.push(a);
+
+                const medianPath = paths[Math.floor(paths.length / 2)];
+
+                // Portfolio Balance percentiles
+                const balancePercentiles = calculatePercentiles(paths, 'balances', allAges.length, 0);
+                const retireLineIndex = retireAge - currentAge;
+
+                // Income source data (retirement years only)
+                const ssData = medianPath.ssIncome ? medianPath.ssIncome.slice(retireOffset) : [];
+                const pensionData = medianPath.pensionIncome ? medianPath.pensionIncome.slice(retireOffset) : [];
+                const partTimeData = medianPath.partTimeIncome ? medianPath.partTimeIncome.slice(retireOffset) : [];
+                const rmdData = medianPath.rmd ? medianPath.rmd.slice(retireOffset) : [];
+                const taxableData = medianPath.wdTaxable ? medianPath.wdTaxable.slice(retireOffset) : [];
+                const preTaxData = medianPath.wdPreTax ? medianPath.wdPreTax.slice(retireOffset) : [];
+                const rothData = medianPath.wdRoth ? medianPath.wdRoth.slice(retireOffset) : [];
+
+                // Spending and total income
+                const spendingData = medianPath.spending ? medianPath.spending.slice(retireOffset) : [];
+                const incomeData = [];
+                for (let i = 0; i < ages.length && i < spendingData.length; i++) {
+                    const dataIdx = retireOffset + i;
+                    const ss = medianPath.ssIncome?.[dataIdx] || 0;
+                    const pension = medianPath.pensionIncome?.[dataIdx] || 0;
+                    const pt = medianPath.partTimeIncome?.[dataIdx] || 0;
+                    const rmdVal = medianPath.rmd?.[dataIdx] || 0;
+                    const wdTax = medianPath.wdTaxable?.[dataIdx] || 0;
+                    const wdPre = medianPath.wdPreTax?.[dataIdx] || 0;
+                    const wdRo = medianPath.wdRoth?.[dataIdx] || 0;
+                    incomeData.push(ss + pension + pt + rmdVal + wdTax + wdPre + wdRo);
+                }
+
+                // Tax data
+                const taxData = medianPath.taxes ? medianPath.taxes.slice(retireOffset) : [];
+
+                return {
+                    paths, currentAge, retireAge, startAge, endAge, retireOffset,
+                    ages, allAges, medianPath, balancePercentiles, retireLineIndex,
+                    ssData, pensionData, partTimeData, rmdData, taxableData, preTaxData, rothData,
+                    spendingData, incomeData, taxData
+                };
+            }
+
+            function renderChartsViewCharts() {
+                const chartData = prepareChartData();
+                if (!chartData) return;
+
+                const { paths, currentAge, retireAge, startAge, endAge, retireOffset,
+                    ages, allAges, medianPath, balancePercentiles, retireLineIndex,
+                    ssData, pensionData, partTimeData, rmdData, taxableData, preTaxData, rothData,
+                    spendingData, incomeData, taxData } = chartData;
 
                 // Destroy existing charts
                 Object.values(chartsViewInstances).forEach(chart => {
@@ -493,13 +544,9 @@
                 });
                 chartsViewInstances = {};
 
-                const medianPath = paths[Math.floor(paths.length / 2)];
-
                 // 1. Portfolio Balance Chart (full range: currentAge to endAge)
                 const balanceCtx = document.getElementById('chartsBalanceChart');
                 if (balanceCtx) {
-                    const balancePercentiles = calculatePercentiles(paths, 'balances', allAges.length, 0);
-                    const retireLineIndex = retireAge - currentAge;
                     chartsViewInstances.balance = new Chart(balanceCtx, {
                         type: 'line',
                         data: {
@@ -598,15 +645,6 @@
                 // 2. Income Sources Chart (stacked bar) - detailed breakdown matching dashboard bars
                 const incomeCtx = document.getElementById('chartsIncomeChart');
                 if (incomeCtx) {
-                    // Extract income data from median path - use offset for retirement years
-                    const ssData = medianPath.ssIncome ? medianPath.ssIncome.slice(retireOffset) : [];
-                    const pensionData = medianPath.pensionIncome ? medianPath.pensionIncome.slice(retireOffset) : [];
-                    const partTimeData = medianPath.partTimeIncome ? medianPath.partTimeIncome.slice(retireOffset) : [];
-                    const rmdData = medianPath.rmd ? medianPath.rmd.slice(retireOffset) : [];
-                    const taxableData = medianPath.wdTaxable ? medianPath.wdTaxable.slice(retireOffset) : [];
-                    const preTaxData = medianPath.wdPreTax ? medianPath.wdPreTax.slice(retireOffset) : [];
-                    const rothData = medianPath.wdRoth ? medianPath.wdRoth.slice(retireOffset) : [];
-
                     const dataLen = ssData.length;
                     const datasets = [
                         { label: 'Social Security', data: ssData, backgroundColor: '#3b82f6', stack: 'stack1' }
@@ -667,22 +705,6 @@
                 // 3. Income vs Spending Chart
                 const spendingCtx = document.getElementById('chartsSpendingChart');
                 if (spendingCtx) {
-                    const spendingData = medianPath.spending ? medianPath.spending.slice(retireOffset) : [];
-                    const incomeData = [];
-
-                    // Total income = sum of all income sources
-                    for (let i = 0; i < ages.length && i < spendingData.length; i++) {
-                        const dataIdx = retireOffset + i;
-                        const ss = medianPath.ssIncome?.[dataIdx] || 0;
-                        const pension = medianPath.pensionIncome?.[dataIdx] || 0;
-                        const pt = medianPath.partTimeIncome?.[dataIdx] || 0;
-                        const rmdVal = medianPath.rmd?.[dataIdx] || 0;
-                        const wdTax = medianPath.wdTaxable?.[dataIdx] || 0;
-                        const wdPre = medianPath.wdPreTax?.[dataIdx] || 0;
-                        const wdRo = medianPath.wdRoth?.[dataIdx] || 0;
-                        incomeData.push(ss + pension + pt + rmdVal + wdTax + wdPre + wdRo);
-                    }
-
                     chartsViewInstances.spending = new Chart(spendingCtx, {
                         type: 'line',
                         data: {
@@ -734,7 +756,6 @@
                 // 4. Tax Chart
                 const taxCtx = document.getElementById('chartsTaxChart');
                 if (taxCtx) {
-                    const taxData = medianPath.taxes ? medianPath.taxes.slice(retireOffset) : [];
                     chartsViewInstances.tax = new Chart(taxCtx, {
                         type: 'bar',
                         data: {
@@ -884,6 +905,178 @@
                     result.p90.push(values[Math.floor(n * 0.90)] || 0);
                 }
                 return result;
+            }
+
+            // Offscreen PDF chart renderer (v17.2 Phase 2)
+            // Renders charts at fixed 700x350 on a hidden canvas, independent of viewport size.
+            // Returns { balance, income, spending, tax } data URLs.
+            function renderPDFCharts() {
+                const chartData = prepareChartData();
+                if (!chartData) return null;
+
+                const { paths, currentAge, retireAge, startAge, endAge, retireOffset,
+                    ages, allAges, medianPath, balancePercentiles, retireLineIndex,
+                    ssData, pensionData, partTimeData, rmdData, taxableData, preTaxData, rothData,
+                    spendingData, incomeData, taxData } = chartData;
+
+                const canvas = document.getElementById('pdfRenderCanvas');
+                if (!canvas) return null;
+
+                const originalDPR = Chart.defaults.devicePixelRatio;
+                Chart.defaults.devicePixelRatio = 3;
+
+                const results = {};
+
+                // Print-optimized colors (slightly muted for ink rendering)
+                const printColors = {
+                    ss: '#4a8af5', pension: '#1ab88a', partTime: '#e8960f', rmd: '#9a50e0',
+                    taxable: '#0aa8c2', preTax: '#7d54e0', roth: '#d94290'
+                };
+
+                // Shared PDF chart options
+                const pdfGridColor = 'rgba(0, 0, 0, 0.06)';
+                const pdfFontColor = '#334155';
+                const pdfTitleFont = { size: 14, weight: '600' };
+                const pdfLegend = {
+                    display: true, position: 'top',
+                    labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, font: { size: 11 }, padding: 12 }
+                };
+                const pdfXTicks = { maxRotation: 0, minRotation: 0, autoSkip: true, maxTicksLimit: 10 };
+                const pdfYGrid = { color: pdfGridColor, drawBorder: false };
+                const pdfXGrid = { display: false };
+
+                function renderOne(config) {
+                    const chart = new Chart(canvas, config);
+                    const url = canvas.toDataURL('image/png');
+                    chart.destroy();
+                    return url;
+                }
+
+                // 1. Portfolio Balance
+                results.balance = renderOne({
+                    type: 'line',
+                    data: {
+                        labels: allAges,
+                        datasets: [
+                            { label: '90th', data: balancePercentiles.p90, borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
+                            { label: '75th', data: balancePercentiles.p75, borderColor: 'rgba(16, 185, 129, 0.4)', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
+                            { label: 'Median', data: balancePercentiles.p50, borderColor: '#3b82f6', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0 },
+                            { label: '25th', data: balancePercentiles.p25, borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
+                            { label: '10th', data: balancePercentiles.p10, borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0 }
+                        ]
+                    },
+                    options: {
+                        responsive: false, animation: false,
+                        plugins: {
+                            title: { display: true, text: 'Portfolio Balance Projection', font: pdfTitleFont, color: pdfFontColor, padding: { bottom: 12 } },
+                            legend: pdfLegend, tooltip: { enabled: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: pdfYGrid, ticks: { callback: function(v) { if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M'; return '$' + Math.round(v / 1000) + 'k'; } } },
+                            x: { title: { display: true, text: 'Age' }, grid: pdfXGrid, ticks: pdfXTicks }
+                        }
+                    },
+                    plugins: [{
+                        id: 'retirementLinePDF',
+                        afterDraw: function(chart) {
+                            var xScale = chart.scales.x;
+                            var yScale = chart.scales.y;
+                            var x = xScale.getPixelForValue(retireLineIndex);
+                            if (x === undefined) return;
+                            var ctx = chart.ctx;
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.setLineDash([6, 4]);
+                            ctx.strokeStyle = 'rgba(100, 116, 139, 0.6)';
+                            ctx.lineWidth = 2;
+                            ctx.moveTo(x, yScale.top);
+                            ctx.lineTo(x, yScale.bottom);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                            ctx.fillStyle = '#64748b';
+                            ctx.font = '11px Inter, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('Retirement', x, yScale.top - 8);
+                            ctx.restore();
+                        }
+                    }]
+                });
+
+                // 2. Income Sources (stacked bar)
+                const dataLen = ssData.length;
+                const incomeDatasets = [
+                    { label: 'Social Security', data: ssData, backgroundColor: printColors.ss, stack: 'stack1' }
+                ];
+                if (pensionData.some(v => v > 0)) incomeDatasets.push({ label: 'Pension', data: pensionData, backgroundColor: printColors.pension, stack: 'stack1' });
+                if (partTimeData.some(v => v > 0)) incomeDatasets.push({ label: 'Part-Time', data: partTimeData, backgroundColor: printColors.partTime, stack: 'stack1' });
+                if (rmdData.some(v => v > 0)) incomeDatasets.push({ label: 'RMD', data: rmdData, backgroundColor: printColors.rmd, stack: 'stack1' });
+                if (taxableData.some(v => v > 0)) incomeDatasets.push({ label: 'Taxable', data: taxableData, backgroundColor: printColors.taxable, stack: 'stack1' });
+                if (preTaxData.some(v => v > 0)) incomeDatasets.push({ label: '401k/IRA', data: preTaxData, backgroundColor: printColors.preTax, stack: 'stack1' });
+                if (rothData.some(v => v > 0)) incomeDatasets.push({ label: 'Roth', data: rothData, backgroundColor: printColors.roth, stack: 'stack1' });
+
+                results.income = renderOne({
+                    type: 'bar',
+                    data: { labels: ages.slice(0, dataLen), datasets: incomeDatasets },
+                    options: {
+                        responsive: false, animation: false,
+                        plugins: {
+                            title: { display: true, text: 'Retirement Income Sources', font: pdfTitleFont, color: pdfFontColor, padding: { bottom: 12 } },
+                            legend: pdfLegend, tooltip: { enabled: false }
+                        },
+                        scales: {
+                            y: { stacked: true, beginAtZero: true, grid: pdfYGrid, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } },
+                            x: { stacked: true, title: { display: true, text: 'Age' }, grid: pdfXGrid, ticks: pdfXTicks }
+                        }
+                    }
+                });
+
+                // 3. Income vs Spending
+                results.spending = renderOne({
+                    type: 'line',
+                    data: {
+                        labels: ages.slice(0, spendingData.length),
+                        datasets: [
+                            { label: 'Spending Need', data: spendingData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, borderWidth: 2, pointRadius: 0 },
+                            { label: 'Total Income', data: incomeData, borderColor: '#10b981', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, borderDash: [5, 5] }
+                        ]
+                    },
+                    options: {
+                        responsive: false, animation: false,
+                        plugins: {
+                            title: { display: true, text: 'Income vs. Spending Need', font: pdfTitleFont, color: pdfFontColor, padding: { bottom: 12 } },
+                            legend: pdfLegend, tooltip: { enabled: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: pdfYGrid, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } },
+                            x: { title: { display: true, text: 'Age' }, grid: pdfXGrid, ticks: pdfXTicks }
+                        }
+                    }
+                });
+
+                // 4. Tax Liability
+                results.tax = renderOne({
+                    type: 'bar',
+                    data: {
+                        labels: ages.slice(0, taxData.length),
+                        datasets: [{ label: 'Annual Tax', data: taxData, backgroundColor: '#ef4444' }]
+                    },
+                    options: {
+                        responsive: false, animation: false,
+                        plugins: {
+                            title: { display: true, text: 'Estimated Annual Tax Liability', font: pdfTitleFont, color: pdfFontColor, padding: { bottom: 12 } },
+                            legend: pdfLegend, tooltip: { enabled: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, grid: pdfYGrid, ticks: { callback: v => '$' + (v / 1000).toFixed(0) + 'K' } },
+                            x: { title: { display: true, text: 'Age' }, grid: pdfXGrid, ticks: pdfXTicks }
+                        }
+                    }
+                });
+
+                // Restore original DPR
+                Chart.defaults.devicePixelRatio = originalDPR;
+
+                return results;
             }
 
             function populateChartsTable() {
@@ -5094,62 +5287,18 @@
                 else { recBox.className = "pdf-rec-box danger"; recHeader = '<strong>HIGH RISK:</strong> Immediate action required to improve longevity.'; }
                 recBox.innerHTML = `<div>${recHeader}</div><ul style="margin-top: 5px;">${observations.map(o => `<li>${o}</li>`).join('')}</ul>`;
 
-                // --- 4. Populate Charts (all 4) ---
-                // v17.2 fix: Chart.js requires visible, properly-sized canvases. The Charts tab
-                // may be hidden (display:none via .main-view CSS). We must temporarily activate
-                // the Charts view, render the charts, capture them, then restore the original view.
+                // --- 4. Populate Charts via offscreen renderer (v17.2 Phase 2) ---
+                // Renders all 4 charts on a hidden 700x350 canvas at 3x DPR.
+                // No view switching, no setTimeout, no viewport dependency.
+                const chartImages = renderPDFCharts();
+                if (chartImages) {
+                    try { document.getElementById('pdfBalanceChart').src = chartImages.balance; } catch (e) { console.log('Balance chart capture failed', e); }
+                    try { document.getElementById('pdfIncomeSourcesChart').src = chartImages.income; } catch (e) { console.log('Income sources chart capture failed', e); }
+                    try { document.getElementById('pdfIncomeVsSpendChart').src = chartImages.spending; } catch (e) { console.log('Income vs spend chart capture failed', e); }
+                    try { document.getElementById('pdfTaxChart').src = chartImages.tax; } catch (e) { console.log('Tax chart capture failed', e); }
+                }
 
-                // Remember which view was active so we can restore it
-                const activeView = document.querySelector('.main-view.active');
-                const chartsView = document.getElementById('chartsView');
-                const chartsContent = document.getElementById('chartsContent');
-
-                // Temporarily switch to Charts view (makes canvases visible with real dimensions)
-                if (chartsView) chartsView.classList.add('active');
-                if (chartsContent) chartsContent.style.display = 'block';
-
-                // Expand any collapsed chart sections
-                const collapsedSections = [];
-                document.querySelectorAll('.chart-section.collapsed').forEach(section => {
-                    collapsedSections.push(section.id);
-                    section.classList.remove('collapsed');
-                });
-
-                // Boost DPR for crisp PDF chart captures (especially on mobile)
-                const originalDPR = Chart.defaults.devicePixelRatio;
-                Chart.defaults.devicePixelRatio = 3;
-
-                // Force render charts (creates them if they don't exist)
-                renderChartsViewCharts();
-
-                // Wait for Chart.js to finish rendering into now-visible canvases
-                setTimeout(() => {
-                    // Capture from the correct v17.0 canvas IDs
-                    try { document.getElementById('pdfBalanceChart').src = document.getElementById('chartsBalanceChart').toDataURL('image/png'); } catch (e) { console.log('Balance chart capture failed', e); }
-                    try { document.getElementById('pdfIncomeSourcesChart').src = document.getElementById('chartsIncomeChart').toDataURL('image/png'); } catch (e) { console.log('Income sources chart capture failed', e); }
-                    try { document.getElementById('pdfIncomeVsSpendChart').src = document.getElementById('chartsSpendingChart').toDataURL('image/png'); } catch (e) { console.log('Income vs spend chart capture failed', e); }
-                    try { document.getElementById('pdfTaxChart').src = document.getElementById('chartsTaxChart').toDataURL('image/png'); } catch (e) { console.log('Tax chart capture failed', e); }
-
-                    // Restore original DPR
-                    Chart.defaults.devicePixelRatio = originalDPR;
-
-                    // Restore collapsed state
-                    collapsedSections.forEach(id => {
-                        const el = document.getElementById(id);
-                        if (el) el.classList.add('collapsed');
-                    });
-
-                    // Restore original view: remove Charts active, re-activate original
-                    if (chartsView && activeView !== chartsView) chartsView.classList.remove('active');
-                    if (activeView && !activeView.classList.contains('active')) activeView.classList.add('active');
-
-                    // Continue with PDF generation
-                    generatePDFContinue();
-                }, 800);
-            }
-
-            function generatePDFContinue() {
-                const btn = document.getElementById('reportPdfBtn');
+                // Continue directly (no setTimeout needed &mdash; no separate generatePDFContinue)
 
                 // --- 5. Populate Ledger ---
                 const tbody = document.getElementById('pdfLedgerBody'); tbody.innerHTML = '';
