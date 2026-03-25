@@ -5102,7 +5102,7 @@
                 }
 
                 const aiData = {
-                    version: 'V17.3',
+                    version: 'V17.4',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -5183,11 +5183,11 @@
 
                 new QRCode(container, {
                     text: url,
-                    width: 280,
-                    height: 280,
-                    colorDark: '#0f172a',
+                    width: 360,
+                    height: 360,
+                    colorDark: '#000000',
                     colorLight: '#ffffff',
-                    correctLevel: QRCode.CorrectLevel.L
+                    correctLevel: QRCode.CorrectLevel.M
                 });
 
                 document.getElementById('qrModal').classList.add('active');
@@ -5452,9 +5452,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V17.3 migration: Native dialog replacement (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V17.3') {
-                    localStorage.setItem('retirementCalcVersion', 'V17.3');
+                // V17.4 migration: QR code scannability improvements (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.4') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.4');
                 }
 
                 // Restore input panel collapse state
