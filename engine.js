@@ -5102,7 +5102,7 @@
                 }
 
                 const aiData = {
-                    version: 'V17.2',
+                    version: 'V17.3',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -5452,9 +5452,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V17.2 migration: Mobile UX fixes (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V17.2') {
-                    localStorage.setItem('retirementCalcVersion', 'V17.2');
+                // V17.3 migration: Native dialog replacement (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.3') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.3');
                 }
 
                 // Restore input panel collapse state
@@ -5682,12 +5682,16 @@
                         // Only prompt if saved within last 7 days and has meaningful data
                         if (hoursSince < 168 && data.inputs && hasRealData(data.inputs)) {
                             const timeAgo = formatTimeAgo(timestamp);
-                            if (confirm(`Resume where you left off?\n\nYou have unsaved work from ${timeAgo}.\n\nClick OK to restore, or Cancel to start fresh.`)) {
-                                setAllInputValues(data.inputs);
-                                _autoSaveRestored = true;
-                            } else {
-                                localStorage.removeItem(AUTO_SAVE_KEY);
-                            }
+                            showRestoreSessionModal(timeAgo).then(restore => {
+                                if (restore) {
+                                    setAllInputValues(data.inputs);
+                                    _autoSaveRestored = true;
+                                } else {
+                                    localStorage.removeItem(AUTO_SAVE_KEY);
+                                }
+                                startAutoSave();
+                            });
+                            return; // startAutoSave called in .then()
                         }
                     }
                 } catch (e) {
@@ -5696,6 +5700,30 @@
 
                 // Start auto-saving regardless
                 startAutoSave();
+            }
+
+            // v17.3: In-app restore session modal (replaces native confirm)
+            function showRestoreSessionModal(timeAgo) {
+                return new Promise(resolve => {
+                    const overlay = document.getElementById('restoreSessionModal');
+                    const msg = document.getElementById('restoreSessionMsg');
+                    const restoreBtn = document.getElementById('restoreSessionRestore');
+                    const freshBtn = document.getElementById('restoreSessionFresh');
+
+                    msg.textContent = `You have unsaved work from ${timeAgo}. Would you like to pick up where you left off?`;
+                    overlay.classList.add('active');
+
+                    function cleanup() {
+                        overlay.classList.remove('active');
+                        restoreBtn.removeEventListener('click', onRestore);
+                        freshBtn.removeEventListener('click', onFresh);
+                    }
+                    function onRestore() { cleanup(); resolve(true); }
+                    function onFresh() { cleanup(); resolve(false); }
+
+                    restoreBtn.addEventListener('click', onRestore);
+                    freshBtn.addEventListener('click', onFresh);
+                });
             }
 
             function hasRealData(inputs) {
@@ -5932,8 +5960,44 @@
                 }
 
                 const defaultName = `Retire @ ${document.getElementById('retireAge').value}, Spend $${Math.round(document.getElementById('lifestyleSpending').value / 1000)}k`;
-                const name = prompt("Name this scenario:", defaultName);
-                if (!name) return;
+                showScenarioNameModal(defaultName).then(name => {
+                    if (!name) return;
+                    captureSnapshotWithName(name);
+                });
+            }
+
+            // v17.3: In-app scenario naming modal (replaces native prompt)
+            function showScenarioNameModal(defaultName) {
+                return new Promise(resolve => {
+                    const overlay = document.getElementById('scenarioNameModal');
+                    const input = document.getElementById('scenarioNameInput');
+                    const saveBtn = document.getElementById('scenarioNameSave');
+                    const cancelBtn = document.getElementById('scenarioNameCancel');
+
+                    input.value = defaultName;
+                    overlay.classList.add('active');
+                    setTimeout(() => { input.focus(); input.select(); }, 100);
+
+                    function cleanup() {
+                        overlay.classList.remove('active');
+                        saveBtn.removeEventListener('click', onSave);
+                        cancelBtn.removeEventListener('click', onCancel);
+                        input.removeEventListener('keydown', onKey);
+                    }
+                    function onSave() { const val = input.value.trim(); cleanup(); resolve(val || null); }
+                    function onCancel() { cleanup(); resolve(null); }
+                    function onKey(e) {
+                        if (e.key === 'Enter') onSave();
+                        if (e.key === 'Escape') onCancel();
+                    }
+
+                    saveBtn.addEventListener('click', onSave);
+                    cancelBtn.addEventListener('click', onCancel);
+                    input.addEventListener('keydown', onKey);
+                });
+            }
+
+            function captureSnapshotWithName(name) {
 
                 // Calculate wall ages and coverage percent
                 const walls = calculateWallAges();

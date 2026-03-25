@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Retirement Architect // V17.2: Mobile UX Fixes</title>
+    <title>Retirement Architect // V17.3: Native Dialog Replacement</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
@@ -52,6 +52,7 @@
             background-color: var(--main-bg);
             color: #334155;
             height: 100vh;
+            height: 100dvh; /* v17.3: iOS Safari fix &mdash; dvh excludes URL bar/status bar chrome */
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -2388,6 +2389,97 @@
         }
         .qr-instructions {
             font-size: 0.8rem; color: #94a3b8; margin-top: 12px; line-height: 1.4;
+        }
+
+        /* ===== v17.3: App Modals (Restore Session &amp; Scenario Naming) ===== */
+        .app-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+        .app-modal-overlay.active {
+            display: flex;
+        }
+        .app-modal {
+            background: #0f172a;
+            border-radius: 16px;
+            padding: 32px 28px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            position: relative;
+            color: #e2e8f0;
+        }
+        .app-modal-icon {
+            font-size: 2rem;
+            margin-bottom: 12px;
+            color: var(--accent-primary, #3b82f6);
+        }
+        .app-modal h3 {
+            margin: 0 0 8px;
+            font-size: 1.15rem;
+            color: #fff;
+            font-weight: 700;
+        }
+        .app-modal p {
+            margin: 0 0 24px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        .app-modal-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        .app-modal-input:focus {
+            border-color: var(--accent-primary, #3b82f6);
+        }
+        .app-modal-actions {
+            display: flex;
+            gap: 12px;
+        }
+        .app-modal-btn {
+            flex: 1;
+            padding: 11px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .app-modal-btn:active {
+            transform: scale(0.97);
+        }
+        .app-modal-btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: #fff;
+        }
+        .app-modal-btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        }
+        .app-modal-btn-secondary {
+            background: #1e293b;
+            color: #94a3b8;
+            border: 1px solid #334155;
+        }
+        .app-modal-btn-secondary:hover {
+            background: #334155;
+            color: #e2e8f0;
         }
 
         .solver-modal-overlay {
@@ -7186,7 +7278,7 @@
         <div class="app-header-brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span class="app-header-title">RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V17.2</span>
+            <span class="version-badge">V17.3</span>
         </div>
         <div class="app-header-actions">
             <span class="auto-save-indicator" id="autoSaveIndicator"><i class="ph ph-cloud-check"></i> Saved</span>
@@ -7203,7 +7295,7 @@
         <div class="brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span>RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V17.2</span>
+            <span class="version-badge">V17.3</span>
         </div>
 
         <div class="nav-links">
@@ -8853,7 +8945,7 @@
         <div id="pdfReport">
             <div class="pdf-header">
                 <h1>Retirement Architect Report</h1>
-                <p>Professional Audit &amp; Tax Convergence Analysis (V17.2)</p>
+                <p>Professional Audit &amp; Tax Convergence Analysis (V17.3)</p>
             </div>
 
             <div class="pdf-grid">
@@ -8944,7 +9036,7 @@
             </div>
 
             <div style="margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ccc; padding-top: 10px;">
-                Generated by Retirement Architect V17.2 on <span id="pdfDate"></span>.
+                Generated by Retirement Architect V17.3 on <span id="pdfDate"></span>.
             </div>
         </div>
 
@@ -9285,7 +9377,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=17.2"></script>
+    <script src="engine.js?v=17.3"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">
@@ -9907,6 +9999,33 @@
             </div>
         </div>
 
+
+    <!-- v17.3: RESTORE SESSION MODAL -->
+    <div id="restoreSessionModal" class="app-modal-overlay">
+        <div class="app-modal">
+            <div class="app-modal-icon"><i class="ph ph-clock-counter-clockwise"></i></div>
+            <h3>Resume Your Session?</h3>
+            <p id="restoreSessionMsg">You have unsaved work. Would you like to pick up where you left off?</p>
+            <div class="app-modal-actions">
+                <button class="app-modal-btn app-modal-btn-secondary" id="restoreSessionFresh">Start Fresh</button>
+                <button class="app-modal-btn app-modal-btn-primary" id="restoreSessionRestore">Restore My Session</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- v17.3: SCENARIO NAMING MODAL -->
+    <div id="scenarioNameModal" class="app-modal-overlay">
+        <div class="app-modal">
+            <div class="app-modal-icon"><i class="ph ph-bookmark-simple"></i></div>
+            <h3>Name This Scenario</h3>
+            <p>Give this scenario a descriptive name for easy comparison later.</p>
+            <input type="text" class="app-modal-input" id="scenarioNameInput" placeholder="e.g., Retire @ 62, Spend $80k" maxlength="60">
+            <div class="app-modal-actions">
+                <button class="app-modal-btn app-modal-btn-secondary" id="scenarioNameCancel">Cancel</button>
+                <button class="app-modal-btn app-modal-btn-primary" id="scenarioNameSave">Save</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 

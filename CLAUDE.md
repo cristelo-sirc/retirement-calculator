@@ -4,7 +4,7 @@
 
 Two-file HTML retirement planning calculator with Monte Carlo simulations. `index.html` (UI shell, ~9,200 lines) + `engine.js` (simulation engine + render functions, ~6,200 lines).
 
-**Current Version:** 17.0 (Mobile-First Shell Rewrite)
+**Current Version:** 17.3 (Native Dialog Replacement + iOS Fix)
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -20,6 +20,7 @@ Two-file HTML retirement planning calculator with Monte Carlo simulations. `inde
 - **Verify changes work before delivering**
 - **Maintain standard versioning** with clear increments and change logs; no silent changes
 - **Claude is responsible for all testing** &mdash; Cris does not test. After every change, Claude must deploy (push to GitHub), then conduct live browser testing against the GitHub Pages URL via Chrome MCP. This includes interacting with UI elements, verifying visual output, and testing at both desktop (1680px) and mobile (375px) viewports. Do not mark a task complete until live browser testing passes.
+- **Keep responses succinct** &mdash; alert at 75% context capacity before compaction needed
 
 ## Core Principles
 
@@ -147,7 +148,9 @@ Note: Line numbers below refer to `engine.js` unless prefixed with `index.html:`
 | `renderWallInsights()` | 11868 | Poor/Average markets insight boxes |
 | `exportData()` | 11934 | JSON data export |
 | `exportForAI()` | 11947 | AI-formatted data export |
-| `generatePDF()` | 12042 | PDF report generation |
+| `prepareChartData()` | ~8100 | Shared chart data extraction from simulation results |
+| `renderPDFCharts()` | ~12000 | Offscreen PDF-optimized chart renderer (700&times;350px, DPR 3) |
+| `generatePDF()` | 12042 | PDF report generation (synchronous, no setTimeout) |
 | `getAllInputValues()` | 12468 | Generic input capture for auto-save |
 | `applyLever()` | ~12670 | Applies lever changes to inputs, snapshots, re-runs simulation |
 | `showLeverToast()` | ~12700 | Before/after success rate toast notification |
@@ -367,7 +370,7 @@ Mobile browsers hide scrollbars on overflow containers. Users may not realize co
 On iOS Safari, `overflow-x: auto` sometimes fails to enable touch-based horizontal scrolling. Use `overflow-x: scroll` with `-webkit-overflow-scrolling: touch` for reliable behavior.
 
 ### Mobile-First Achieved (v17.0)
-v17.0 rewrote the HTML/CSS mobile-first, replacing the v16.x desktop-first responsive approach. Base CSS targets 375px; desktop is a media query enhancement. Minor top-of-screen content overlap behind the iOS status bar remains a known issue (cosmetic only).
+v17.0 rewrote the HTML/CSS mobile-first, replacing the v16.x desktop-first responsive approach. Base CSS targets 375px; desktop is a media query enhancement. iOS status bar overlap resolved in v17.3 via `100dvh` body height.
 
 ### Bottom Sheet DOM Node Transfer (v17.0)
 `openBottomSheet()` moves `.input-scroll-area` and `.sidebar-footer` DOM nodes (not clones) from `#inputPanel` into `#bottomSheetBody`. This preserves all event listeners, form state, and auto-save hooks. `closeBottomSheet()` returns them. A `window.resize` handler auto-returns nodes to sidebar if viewport grows past 769px (orientation change safety). Guard: `window.innerWidth < 769` prevents transfer on desktop.
@@ -381,8 +384,32 @@ Scenarios are stored under `retirementArchitect_scenarios` (separate from auto-s
 ### Tour Tooltip Positioning
 Tour tooltips use `getBoundingClientRect()` on the target element to calculate absolute position. On mobile, tooltips are forced to `position: fixed` with full-width layout. The tour only triggers on first simulation for users without `retirementArchitect_tourDismissed` in localStorage and without existing auto-save data.
 
-### Native prompt() Blocks Chrome MCP
-`captureSnapshot()` uses `prompt()` for scenario naming, which blocks the entire page. Chrome MCP cannot interact with native dialogs. Future improvement: replace with inline modal dialog for naming.
+### Offscreen Chart Rendering for PDF (v17.2)
+PDF charts use a dedicated offscreen pipeline (`renderPDFCharts()`) that renders to a hidden 700&times;350px canvas (`#pdfRenderStage`), completely decoupled from the viewport. Key requirements:
+- `responsive: false` is critical &mdash; without it, Chart.js tries to fit to the 0&times;0 offscreen parent
+- `animation: false` makes rendering synchronous &mdash; `toDataURL()` is safe immediately after construction, eliminating the old 800ms setTimeout gamble
+- `devicePixelRatio: 3` produces crisp text on mobile (375px canvas &rarr; 1125px captured PNG)
+- DPR must be scoped within `renderPDFCharts()`, not set globally in `generatePDF()`, to prevent user interaction triggering screen charts at elevated DPR during any async window
+- Tooltips disabled (`enabled: false`) since they serve no purpose in static images
+- Chart.js plugins (e.g., retirement line) need unique IDs (`retirementLinePDF`) to avoid conflicts with screen chart plugin registrations
+
+### Shared Chart Data Extraction (v17.2)
+`prepareChartData()` extracts simulation data (ages, percentiles, income arrays, spending, tax) from `lastSimulationResults` into a shared object consumed by both `renderChartsViewCharts()` (screen) and `renderPDFCharts()` (PDF). This eliminated duplicate data extraction across 4 chart sections. When adding new chart data fields, update `prepareChartData()` once rather than both render functions.
+
+### PDF Chart Layout Thresholds
+Two-charts-per-page uses 280px image height. At 280px + 16px padding + 15px margin-bottom per chart + section title, two charts fit within a single html2pdf page. Going above ~320px risks page overflow. `page-break-inside: avoid` on `.pdf-charts-page` and html2pdf's `pagebreak.avoid` array both reference the same class &mdash; both mechanisms reinforce each other.
+
+### Merging Async Functions Exposes Scope Conflicts
+When `generatePDFContinue()` was merged back into `generatePDF()` (no longer needed after synchronous offscreen rendering), a duplicate `const btn` declaration surfaced that was previously hidden in separate function scopes. Always check for variable name collisions when collapsing split functions.
+
+### Outcome Distribution Histogram Not in PDF
+The 5th chart (Outcome Distribution histogram) is intentionally excluded from PDF capture. If added in the future, it needs entries in both `prepareChartData()` and `renderPDFCharts()`.
+
+### PDF Print Color Palette
+`renderPDFCharts()` uses slightly muted colors optimized for ink rendering (e.g., SS #4a8af5 vs screen #3b82f6). Screen charts are unchanged. The `#fafbfc` background on `.pdf-chart-box-full` is invisible on screen (`#pdfReport` is `display: none`) but provides subtle contrast in the PDF against white pages.
+
+### Native prompt() Blocks Chrome MCP &mdash; RESOLVED in v17.3
+~~`captureSnapshot()` uses `prompt()` for scenario naming, which blocks the entire page. Chrome MCP cannot interact with native dialogs.~~ Fixed in v17.3: replaced with in-app `showScenarioNameModal()`. Auto-save restore `confirm()` also replaced with `showRestoreSessionModal()`.
 
 ---
 
@@ -405,13 +432,21 @@ Tour tooltips use `getBoundingClientRect()` on the target element to calculate a
 | v16.2 | Clickable improvement levers with Apply buttons (`applyLever()`), before/after success rate toast, `_skipNextSnapshot` flag for revert integration. Named scenario save &amp; compare (`savedScenarios[]`, `retirementArchitect_scenarios` localStorage key, max 5), comparison table with baseline deltas. 6-step onboarding tour (`tourSteps[]`, tooltip positioning via `getBoundingClientRect()`, `retirementArchitect_tourDismissed` localStorage key). |
 | v16.3 | Outcome Distribution histogram on Charts tab &mdash; shows depleted vs. survived paths by age. Zero engine changes, uses existing `depletionAge` data. |
 | v16.4 | UX polish: gauge card reduced from 280px to 220px, budget bar gap label clarified to "/yr shortfall" with tooltip, What-If empty state replaced with workflow guidance steps, lever cards show which inputs they change, scenario comparison table uses `table-layout: fixed` to eliminate horizontal scroll for 2&ndash;3 scenarios. |
-| v16.5 | Mobile fix cycle: fixed bottom nav bar (replaces scroll-away top nav, z-index 1000), `viewport-fit=cover` + `env(safe-area-inset-bottom)` on nav/FAB/done bar/wizard footer/toast for iPhone notch/home indicator, scrollable wizard progress bar with fade-hint gradients and auto-scroll to active step, wizard mobile CSS (grids collapse to 1-column, reduced padding), FAB repositioned above bottom nav, toast repositioned above bottom nav. Hotfixes: wizard full-screen sheet (iOS `backdrop-filter` containing-block bug), progress bar `overflow-x: scroll` for iOS touch, sticky top nav with safe-area padding. **Known issue:** minor top-of-screen content overlap on iOS Safari &mdash; acceptable until dedicated mobile version. Zero engine changes. |
+| v16.5 | Mobile fix cycle: fixed bottom nav bar (replaces scroll-away top nav, z-index 1000), `viewport-fit=cover` + `env(safe-area-inset-bottom)` on nav/FAB/done bar/wizard footer/toast for iPhone notch/home indicator, scrollable wizard progress bar with fade-hint gradients and auto-scroll to active step, wizard mobile CSS (grids collapse to 1-column, reduced padding), FAB repositioned above bottom nav, toast repositioned above bottom nav. Hotfixes: wizard full-screen sheet (iOS `backdrop-filter` containing-block bug), progress bar `overflow-x: scroll` for iOS touch, sticky top nav with safe-area padding. **Known issue (resolved v17.3):** minor top-of-screen content overlap on iOS Safari &mdash; fixed via `100dvh` body height. Zero engine changes. |
 | v17.0 | Mobile-first shell rewrite. File split: `engine.js` (6,200 lines) extracted from `index.html` (9,200 lines). HTML restructured mobile-first with base CSS targeting 375px. New elements: `app-header-mobile` (dark navy header + Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Settings), `bottom-sheet` (slide-up input editor with DOM node transfer of 69 inputs). Desktop layout restored via `@media (min-width: 769px)` &mdash; top-nav, icon sidebar, input panel, hero grid all preserved. Chart type 3&times;2 button grid on mobile (no horizontal scroll). v16.0&ndash;16.5 `@media (max-width: 768px)` blocks removed (styles moved to base). Zero engine changes. |
+
+| v17.1 | PDF chart polish Phase 1: chart titles on all 4 PDF-captured charts, compact legends (pointStyle circle, boxWidth 8), horizontal axis labels (maxRotation 0, maxTicksLimit 10), devicePixelRatio 3 for mobile sharpness. Tax chart now identifiable without context. engine.js only, zero engine changes. |
+| v17.2 | PDF offscreen render pipeline. `prepareChartData()` extracts shared chart data; `renderPDFCharts()` renders to hidden 700&times;350px canvas with `responsive: false`, `animation: false` (synchronous, no setTimeout). `generatePDFContinue()` eliminated. Print color palette for ink optimization. Two-charts-per-page layout (280px height), PDF reduced from 6 to 4 pages. Section titles: "Portfolio &amp; Income Projections" and "Spending &amp; Tax Analysis". |
+| v17.3 | Native browser dialog replacement. Auto-save restore `confirm()` replaced with styled in-app modal (`showRestoreSessionModal()`, promise-based). Scenario naming `prompt()` replaced with in-app modal (`showScenarioNameModal()`, Enter/Escape key support). Both modals use dark card design matching app aesthetic. iOS Safari top overlap fix: `body` height changed from `100vh` to `100dvh` (with `vh` fallback) so viewport excludes Safari URL bar/status bar chrome. `app-header-mobile` already had `env(safe-area-inset-top)` padding from v17.0. Zero engine changes. |
+
+### Native prompt() No Longer Blocks Chrome MCP
+`captureSnapshot()` previously used `prompt()` for scenario naming, which blocked the entire page and prevented Chrome MCP interaction. The v17.3 in-app modal (`showScenarioNameModal()`) is non-blocking and testable via Chrome MCP.
+
+### Promise-Based Modal Pattern (v17.3)
+Both `showRestoreSessionModal()` and `showScenarioNameModal()` return Promises that resolve when the user clicks a button. The restore modal resolves `true`/`false`; the naming modal resolves with the name string or `null`. Event listeners are added per-show and cleaned up on resolution to prevent stacking. For `checkAutoSave()`, the async flow means `startAutoSave()` is called in the `.then()` callback rather than at the end of the function.
+
+### dvh Units Fix iOS Safari Viewport (v17.3)
+`100vh` on iOS Safari includes the area behind the URL bar and bottom toolbar. `100dvh` (dynamic viewport height) excludes browser chrome. CSS cascade order matters: `height: 100vh` first (fallback), then `height: 100dvh` (wins when supported). This resolves the known cosmetic overlap issue from v17.0.
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4, v16.5
 
----
-
-## Token Management
-- Keep responses succinct
-- Alert at 75% context capacity before compaction needed
