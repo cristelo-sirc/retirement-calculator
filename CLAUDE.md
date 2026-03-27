@@ -4,7 +4,7 @@
 
 Two-file HTML retirement planning calculator with Monte Carlo simulations. `index.html` (UI shell, ~9,200 lines) + `engine.js` (simulation engine + render functions, ~6,200 lines).
 
-**Current Version:** 17.4
+**Current Version:** 17.5
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -19,7 +19,7 @@ Two-file HTML retirement planning calculator with Monte Carlo simulations. `inde
 - **Accuracy is non-negotiable** &mdash; any potential inaccuracy must be disclosed with safer alternatives
 - **Verify changes work before delivering**
 - **Maintain standard versioning** with clear increments and change logs; no silent changes
-- **Version references show number only** (e.g., "V17.4") &mdash; no descriptive names or subtitles after the version number. Applies to title tag, badges, report headers, PDF footers, export objects, and all other user-facing version displays
+- **Version references show number only** (e.g., "V17.5") &mdash; no descriptive names or subtitles after the version number. Applies to title tag, Scenarios footer, report headers, PDF footers, export objects, and all other user-facing version displays. Version badge removed from headers in v17.5.
 - **Claude is responsible for all testing** &mdash; Cris does not test. After every change, Claude must deploy (push to GitHub), then conduct live browser testing against the GitHub Pages URL via Chrome MCP. This includes interacting with UI elements, verifying visual output, and testing at both desktop (1680px) and mobile (375px) viewports. Do not mark a task complete until live browser testing passes.
 - **Keep responses succinct** &mdash; alert at 75% context capacity before compaction needed
 
@@ -50,7 +50,7 @@ Audit thoroughness should align with scope of changes and professional standards
 3. Push to GitHub so GitHub Pages deploys the updated file
 4. Live browser test via Chrome MCP against the deployed URL &mdash; desktop and mobile
 5. Comprehensive audit (pre/post) confirming outcomes, not just implementation
-6. Version increment with systematic updates to ALL version references (title, badge, report header, PDF footer, data export object, localStorage migration)
+6. Version increment with systematic updates to ALL version references (title, Scenarios footer, report header, PDF footer, data export object, localStorage migration)
 
 ---
 
@@ -62,7 +62,7 @@ Audit thoroughness should align with scope of changes and professional standards
 - Reverting to single-file: copy engine.js contents back into index.html at the script tag location
 
 ### Mobile-First Layout (v17.0)
-Base CSS targets 375px mobile. Key mobile elements: `app-header-mobile` (dark navy header with Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Settings), `bottom-sheet` (slide-up input editor). Desktop layout restored via `@media (min-width: 769px)` &mdash; shows top-nav, icon sidebar, input panel, hides mobile elements.
+Base CSS targets 375px mobile. Key mobile elements: `app-header-mobile` (dark navy header with Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Scenarios), `bottom-sheet` (slide-up input editor). Desktop layout restored via `@media (min-width: 769px)` &mdash; shows top-nav, icon sidebar, input panel, hides mobile elements.
 
 `openBottomSheet()` transfers `.input-scroll-area` and `.sidebar-footer` DOM nodes into `#bottomSheetBody`; `closeBottomSheet()` returns them. All 69 input elements, event listeners, and auto-save hooks preserved across transfers.
 
@@ -434,11 +434,12 @@ The 5th chart (Outcome Distribution histogram) is intentionally excluded from PD
 | v16.3 | Outcome Distribution histogram on Charts tab &mdash; shows depleted vs. survived paths by age. Zero engine changes, uses existing `depletionAge` data. |
 | v16.4 | UX polish: gauge card reduced from 280px to 220px, budget bar gap label clarified to "/yr shortfall" with tooltip, What-If empty state replaced with workflow guidance steps, lever cards show which inputs they change, scenario comparison table uses `table-layout: fixed` to eliminate horizontal scroll for 2&ndash;3 scenarios. |
 | v16.5 | Mobile fix cycle: fixed bottom nav bar (replaces scroll-away top nav, z-index 1000), `viewport-fit=cover` + `env(safe-area-inset-bottom)` on nav/FAB/done bar/wizard footer/toast for iPhone notch/home indicator, scrollable wizard progress bar with fade-hint gradients and auto-scroll to active step, wizard mobile CSS (grids collapse to 1-column, reduced padding), FAB repositioned above bottom nav, toast repositioned above bottom nav. Hotfixes: wizard full-screen sheet (iOS `backdrop-filter` containing-block bug), progress bar `overflow-x: scroll` for iOS touch, sticky top nav with safe-area padding. **Known issue (resolved v17.3):** minor top-of-screen content overlap on iOS Safari &mdash; fixed via `100dvh` body height. Zero engine changes. |
-| v17.0 | Mobile-first shell rewrite. File split: `engine.js` (6,200 lines) extracted from `index.html` (9,200 lines). HTML restructured mobile-first with base CSS targeting 375px. New elements: `app-header-mobile` (dark navy header + Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Settings), `bottom-sheet` (slide-up input editor with DOM node transfer of 69 inputs). Desktop layout restored via `@media (min-width: 769px)` &mdash; top-nav, icon sidebar, input panel, hero grid all preserved. Chart type 3&times;2 button grid on mobile (no horizontal scroll). v16.0&ndash;16.5 `@media (max-width: 768px)` blocks removed (styles moved to base). Zero engine changes. |
+| v17.0 | Mobile-first shell rewrite. File split: `engine.js` (6,200 lines) extracted from `index.html` (9,200 lines). HTML restructured mobile-first with base CSS targeting 375px. New elements: `app-header-mobile` (dark navy header + Edit Inputs button), `bottom-nav` (fixed 4-item nav: Dashboard/Charts/Reports/Scenarios), `bottom-sheet` (slide-up input editor with DOM node transfer of 69 inputs). Desktop layout restored via `@media (min-width: 769px)` &mdash; top-nav, icon sidebar, input panel, hero grid all preserved. Chart type 3&times;2 button grid on mobile (no horizontal scroll). v16.0&ndash;16.5 `@media (max-width: 768px)` blocks removed (styles moved to base). Zero engine changes. |
 
 | v17.1 | PDF chart polish Phase 1: chart titles on all 4 PDF-captured charts, compact legends (pointStyle circle, boxWidth 8), horizontal axis labels (maxRotation 0, maxTicksLimit 10), devicePixelRatio 3 for mobile sharpness. Tax chart now identifiable without context. engine.js only, zero engine changes. |
 | v17.2 | PDF offscreen render pipeline. `prepareChartData()` extracts shared chart data; `renderPDFCharts()` renders to hidden 700&times;350px canvas with `responsive: false`, `animation: false` (synchronous, no setTimeout). `generatePDFContinue()` eliminated. Print color palette for ink optimization. Two-charts-per-page layout (280px height), PDF reduced from 6 to 4 pages. Section titles: "Portfolio &amp; Income Projections" and "Spending &amp; Tax Analysis". |
 | v17.3 | Native browser dialog replacement. Auto-save restore `confirm()` replaced with styled in-app modal (`showRestoreSessionModal()`, promise-based). Scenario naming `prompt()` replaced with in-app modal (`showScenarioNameModal()`, Enter/Escape key support). Both modals use dark card design matching app aesthetic. iOS Safari top overlap fix: `body` height changed from `100vh` to `100dvh` (with `vh` fallback) so viewport excludes Safari URL bar/status bar chrome. `app-header-mobile` already had `env(safe-area-inset-top)` padding from v17.0. Zero engine changes. |
+| v17.5 | UX remediation (items 1&ndash;9). Mobile empty state copy now viewport-aware ("Edit Inputs" vs "sidebar"). Skip Setup converted from `<span>` to `<button>` (a11y). 76 info icons get `tabindex="0"`, `role="button"`, `aria-label`, keydown handler (a11y). Mobile nav "Settings" renamed to "Scenarios" with `ph-shuffle` icon. Guided Setup button demoted to subtle outline style. All 3 report download buttons disabled pre-simulation for visual consistency. Version badge removed from headers, relocated to Scenarios view footer. "INPUTS" section label added above sidebar icon nav to disambiguate input vs output navigation. Zero engine changes. |
 
 ### Native prompt() No Longer Blocks Chrome MCP
 `captureSnapshot()` previously used `prompt()` for scenario naming, which blocked the entire page and prevented Chrome MCP interaction. The v17.3 in-app modal (`showScenarioNameModal()`) is non-blocking and testable via Chrome MCP.
@@ -448,6 +449,15 @@ Both `showRestoreSessionModal()` and `showScenarioNameModal()` return Promises t
 
 ### dvh Units Fix iOS Safari Viewport (v17.3)
 `100vh` on iOS Safari includes the area behind the URL bar and bottom toolbar. `100dvh` (dynamic viewport height) excludes browser chrome. CSS cascade order matters: `height: 100vh` first (fallback), then `height: 100dvh` (wins when supported). This resolves the known cosmetic overlap issue from v17.0.
+
+### Top Nav Has Light Background (v17.5)
+The desktop `.top-nav` uses a white/light background with dark text (`#1e293b`). Any buttons styled for the nav must use dark text and visible borders against white &mdash; not `rgba(255,255,255,...)` which is invisible. The Guided Setup button was initially invisible after demotion because white text was used against the light nav.
+
+### Version Badge Location (v17.5)
+Version badge removed from both mobile header (`app-header-mobile`) and desktop header (`top-nav .brand`). Relocated to a `<div class="version-footer">` at the bottom of the Scenarios view. Title tag, PDF report header, PDF footer, and data export object still carry the version. When bumping versions, update: title tag, Scenarios footer, PDF report header (`V17.5`), PDF footer, `engine.js` export object `version` field, `engine.js` localStorage migration check.
+
+### Report Buttons All Disabled Pre-Simulation (v17.5)
+All three report download buttons (PDF, CSV, JSON) start `disabled` in HTML and are enabled by `updateReportsView()` after simulation. Previously JSON was always enabled, creating visual inconsistency.
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4, v16.5
 
