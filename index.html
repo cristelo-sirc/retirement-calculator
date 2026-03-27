@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Retirement Architect // V17.4</title>
+    <title>Retirement Architect // V17.5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
@@ -135,9 +135,9 @@
         }
 
         .guided-setup-btn {
-            background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
-            color: white;
-            border: none;
+            background: transparent;
+            color: rgba(255,255,255,0.8);
+            border: 1px solid rgba(255,255,255,0.3);
             padding: 8px 16px;
             border-radius: 8px;
             font-weight: 600;
@@ -151,8 +151,9 @@
         }
 
         .guided-setup-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(139, 92, 246, 0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-color: rgba(255,255,255,0.5);
         }
 
         .nav-icon-btn {
@@ -189,6 +190,17 @@
             flex-direction: column;
             padding: 12px 0;
             flex-shrink: 0;
+        }
+
+        .icon-sidebar-label {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: #94a3b8;
+            letter-spacing: 0.08em;
+            text-align: center;
+            padding: 4px 8px 8px;
+            border-bottom: 1px solid #e2e8f0;
+            margin: 0 8px 4px;
         }
 
         .icon-nav-btn {
@@ -937,6 +949,10 @@
             color: #1e293b;
             margin-bottom: 10px;
         }
+
+        /* Item 1: viewport-aware empty state copy */
+        .empty-state-desktop { display: none; }
+        .empty-state-mobile { display: block; }
 
         .results-dashboard {
             display: none;
@@ -4779,6 +4795,10 @@
             color: #64748b;
             cursor: pointer;
             text-decoration: underline;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
         }
 
         .wizard-skip:hover {
@@ -7060,6 +7080,9 @@
         @media (min-width: 769px) {
 
             /* --- Show desktop elements --- */
+            .empty-state-desktop { display: block; }
+            .empty-state-mobile { display: none; }
+
             .top-nav {
                 display: flex !important;
             }
@@ -7279,7 +7302,6 @@
         <div class="app-header-brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span class="app-header-title">RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V17.4</span>
         </div>
         <div class="app-header-actions">
             <span class="auto-save-indicator" id="autoSaveIndicator"><i class="ph ph-cloud-check"></i> Saved</span>
@@ -7296,7 +7318,6 @@
         <div class="brand">
             <i class="ph ph-strategy brand-icon"></i>
             <span>RETIREMENT ARCHITECT</span>
-            <span class="version-badge">V17.4</span>
         </div>
 
         <div class="nav-links">
@@ -7334,6 +7355,7 @@
 
         <!-- ICON SIDEBAR (desktop only) -->
         <aside class="icon-sidebar">
+            <div class="icon-sidebar-label">INPUTS</div>
             <button class="icon-nav-btn active" onclick="switchSection('profile')" data-section="profile">
                 <i class="ph ph-user"></i>
                 <span>Profile</span>
@@ -7378,7 +7400,7 @@
                     <!-- Current Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Current Age <i class="ph ph-info info-icon"
+                            <label>Current Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Your age today. This is the starting point for all projections."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7390,7 +7412,7 @@
                     <!-- Retirement Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Retirement Age <i class="ph ph-info info-icon"
+                            <label>Retirement Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="When you plan to stop working. Medicare starts at 65, full Social Security at 67. Retiring at 62 means smaller SS benefits."></i></label>
 
                         </div>
@@ -7403,7 +7425,7 @@
                     <!-- Planning Horizon -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Planning Horizon (End Age) <i class="ph ph-info info-icon"
+                            <label>Planning Horizon (End Age) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Plan to this age to reduce longevity risk. 95 is recommended for safety."></i></label>
 
                         </div>
@@ -7419,7 +7441,7 @@
                     <!-- Spouse Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Age (0 if Single) <i class="ph ph-info info-icon"
+                            <label>Spouse Age (0 if Single) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Enter 0 if single. If married, enter your spouse's current age."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7431,7 +7453,7 @@
                     <!-- Spouse Retire Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Retirement Age <i class="ph ph-info info-icon"
+                            <label>Spouse Retirement Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="When your spouse plans to stop working full-time."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7447,7 +7469,7 @@
                     <!-- Your SS Benefit -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your Annual SS Benefit <i class="ph ph-info info-icon"
+                            <label>Your Annual SS Benefit <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Estimated annual benefit at Full Retirement Age in today's dollars. Find this on ssa.gov."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7459,7 +7481,7 @@
                     <!-- Your Claim Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your SS Claiming Age <i class="ph ph-info info-icon"
+                            <label>Your SS Claiming Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="When you'll start benefits. 62=early (reduced ~30%), 67=full, 70=maximum (+24%)."></i></label>
 
                         </div>
@@ -7472,7 +7494,7 @@
                     <!-- Spouse SS Benefit -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Annual SS Benefit <i class="ph ph-info info-icon"
+                            <label>Spouse Annual SS Benefit <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Your spouse's estimated annual benefit at Full Retirement Age."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7484,7 +7506,7 @@
                     <!-- Spouse Claim Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse SS Claiming Age <i class="ph ph-info info-icon"
+                            <label>Spouse SS Claiming Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="When your spouse will start receiving Social Security benefits."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7499,7 +7521,7 @@
                             <input type="checkbox" id="enableSpousalBenefit">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Calculate Spousal Benefits <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Calculate Spousal Benefits <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="The lower-earning spouse receives the greater of their own benefit or 50% of the higher earner's benefit."></i></span>
                     </div>
 
@@ -7510,7 +7532,7 @@
                     <!-- Your Pension -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your Annual Pension <i class="ph ph-info info-icon"
+                            <label>Your Annual Pension <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Annual pension income you'll receive. Enter 0 if none."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7522,7 +7544,7 @@
                     <!-- Your Pension Start Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Pension Start Age (You) <i class="ph ph-info info-icon"
+                            <label>Pension Start Age (You) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Age when your pension payments begin."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7537,14 +7559,14 @@
                             <input type="checkbox" id="enablePensionCOLA">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Your Pension Has COLA <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Your Pension Has COLA <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Enable if your pension adjusts for inflation (cost-of-living adjustment). Most private pensions do NOT have COLA. Some government/military pensions do."></i></span>
                     </div>
 
                     <!-- Spouse Pension -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Annual Pension <i class="ph ph-info info-icon"
+                            <label>Spouse Annual Pension <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Annual pension income your spouse will receive."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7556,7 +7578,7 @@
                     <!-- Spouse Pension Start Age -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Pension Start Age (Spouse) <i class="ph ph-info info-icon"
+                            <label>Pension Start Age (Spouse) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Age when your spouse's pension payments begin."></i></label>
                         </div>
                         <div class="input-wrapper">
@@ -7571,7 +7593,7 @@
                             <input type="checkbox" id="enableSpousePensionCOLA">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Spouse Pension Has COLA <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Spouse Pension Has COLA <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Enable if spouse's pension adjusts for inflation. Most private pensions do NOT have COLA. Some government/military pensions do."></i></span>
                     </div>
 
@@ -7581,7 +7603,7 @@
                             <input type="checkbox" id="enablePartTime" onchange="togglePartTimeSettings()">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Include Part-Time Work <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Include Part-Time Work <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Include income from part-time work during early retirement years."></i></span>
                     </div>
                     <div id="partTimeSettings" class="toggle-settings" style="display:none;">
@@ -7622,7 +7644,7 @@
                     <!-- Your Pre-Tax -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your Pre-Tax (401k/IRA) <i class="ph ph-info info-icon"
+                            <label>Your Pre-Tax (401k/IRA) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Traditional 401k, 403b, IRA balances. Withdrawals are taxed as ordinary income."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7632,7 +7654,7 @@
                     <!-- Your Roth -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your Roth <i class="ph ph-info info-icon"
+                            <label>Your Roth <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Roth 401k and Roth IRA balances. Qualified withdrawals are tax-free."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7642,7 +7664,7 @@
                     <!-- Spouse Pre-Tax -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Pre-Tax <i class="ph ph-info info-icon"
+                            <label>Spouse Pre-Tax <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Spouse's traditional 401k, 403b, IRA balances."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7652,7 +7674,7 @@
                     <!-- Spouse Roth -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Roth <i class="ph ph-info info-icon"
+                            <label>Spouse Roth <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Spouse's Roth 401k and Roth IRA balances."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7662,7 +7684,7 @@
                     <!-- Joint Taxable -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Joint Taxable (Brokerage) <i class="ph ph-info info-icon"
+                            <label>Joint Taxable (Brokerage) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Non-retirement investment accounts. Dividends and capital gains are taxable annually."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7675,7 +7697,7 @@
                             <input type="checkbox" id="enableWindfall" onchange="toggleWindfallSettings()">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">One-Time Windfall <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">One-Time Windfall <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Include a future lump sum like inheritance, property sale, or bonus."></i></span>
                     </div>
                     <div id="windfallSettings" class="toggle-settings" style="display:none;">
@@ -7702,7 +7724,7 @@
                     <!-- Your Salary -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your Annual Salary <i class="ph ph-info info-icon"
+                            <label>Your Annual Salary <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Your current gross annual income before taxes."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7712,7 +7734,7 @@
                     <!-- Your Savings Rate -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Your Savings Rate (%) <i class="ph ph-info info-icon"
+                            <label>Your Savings Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Total annual retirement savings as % of salary, including employer match."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -7722,7 +7744,7 @@
                     <!-- Your Savings Destination -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Savings Destination <i class="ph ph-info info-icon"
+                            <label>Savings Destination <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Where your retirement contributions go: Pre-Tax (traditional), Roth, or split between both."></i></label>
                         </div>
                         <select id="userSavingsDest">
@@ -7737,7 +7759,7 @@
                     <!-- Spouse Salary -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Annual Salary <i class="ph ph-info info-icon"
+                            <label>Spouse Annual Salary <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Spouse's current gross annual income before taxes."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7747,7 +7769,7 @@
                     <!-- Spouse Savings Rate -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Savings Rate (%) <i class="ph ph-info info-icon"
+                            <label>Spouse Savings Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Total annual retirement savings as % of salary, including employer match."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -7757,7 +7779,7 @@
                     <!-- Spouse Savings Destination -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Spouse Savings Destination <i class="ph ph-info info-icon"
+                            <label>Spouse Savings Destination <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Where spouse's retirement contributions go."></i></label>
                         </div>
                         <select id="spouseSavingsDest">
@@ -7777,7 +7799,7 @@
                             <input type="checkbox" id="enableRothConversion" onchange="toggleRothConversionSettings()">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Enable Roth Conversions <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Enable Roth Conversions <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Convert Pre-Tax to Roth during early retirement to reduce future RMDs and taxes. Conversions are taxed as ordinary income."></i></span>
                     </div>
                     <div id="rothConversionSettings" class="toggle-settings" style="display:none;">
@@ -7813,7 +7835,7 @@
                     <!-- Annual Spending -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Annual Net Spend (Today's $) <i class="ph ph-info info-icon"
+                            <label>Annual Net Spend (Today's $) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Your total annual spending in retirement, excluding housing and healthcare (entered separately). Use today's dollars."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7823,7 +7845,7 @@
                     <!-- Inflation Rate -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Inflation Rate (%) <i class="ph ph-info info-icon"
+                            <label>Inflation Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Expected annual increase in cost of living. Historical average is ~3%."></i></label>
 
                         </div>
@@ -7838,7 +7860,7 @@
                                 onchange="toggleSpendingReductionSettings()">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Reduce Spend at Later Age <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Reduce Spend at Later Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Reduce spending at a certain age to reflect lifestyle changes (e.g., less travel in later years)."></i></span>
                     </div>
                     <div id="spendingReductionSettings" class="toggle-settings" style="display:none;">
@@ -7864,13 +7886,13 @@
                             <input type="checkbox" id="enableGuardrails" onchange="toggleGuardrailSettings()">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Spending Guardrails <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Spending Guardrails <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Dynamic spending rules that adjust withdrawals based on portfolio performance to extend money longevity."></i></span>
                     </div>
                     <div id="guardrailSettings" class="toggle-settings" style="display:none;">
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Ceiling Rate (%) <i class="ph ph-info info-icon"
+                                <label>Ceiling Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Upper guardrail. If withdrawal rate exceeds this, spending is reduced by the adjustment percentage."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -7878,7 +7900,7 @@
                         </div>
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Floor Rate (%) <i class="ph ph-info info-icon"
+                                <label>Floor Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Lower guardrail. If withdrawal rate drops below this, spending can increase by the adjustment percentage."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -7886,7 +7908,7 @@
                         </div>
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Adjustment (%) <i class="ph ph-info info-icon"
+                                <label>Adjustment (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="How much to change spending when a guardrail is hit. Example: 10% means $100k spending drops to $90k."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -7900,7 +7922,7 @@
                     <!-- Housing Type -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Housing Type <i class="ph ph-info info-icon"
+                            <label>Housing Type <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Select whether you own or rent your home."></i></label>
                         </div>
                         <select id="housingTypeSelect" onchange="toggleHousingSettings()">
@@ -7916,7 +7938,7 @@
                     <div id="housingOwnSettings">
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Monthly Mortgage (P&I) <i class="ph ph-info info-icon"
+                                <label>Monthly Mortgage (P&I) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Monthly principal and interest payment. Exclude taxes and insurance."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7924,7 +7946,7 @@
                         </div>
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Mortgage Payoff Age <i class="ph ph-info info-icon"
+                                <label>Mortgage Payoff Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Age when your mortgage will be paid off."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-calendar"></i><input type="number" inputmode="numeric"
@@ -7932,7 +7954,7 @@
                         </div>
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Annual Property Tax & Insurance <i class="ph ph-info info-icon"
+                                <label>Annual Property Tax & Insurance <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Combined annual property taxes and homeowners insurance."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7942,7 +7964,7 @@
                     <div id="housingRentSettings" style="display:none;">
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Monthly Rent <i class="ph ph-info info-icon"
+                                <label>Monthly Rent <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Current monthly rent payment."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7957,7 +7979,7 @@
                     <!-- Pre-65 Healthcare -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Annual Pre-65 (Per Person) <i class="ph ph-info info-icon"
+                            <label>Annual Pre-65 (Per Person) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Annual healthcare costs before Medicare eligibility at age 65. Includes premiums and out-of-pocket."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-currency-dollar"></i><input type="text"
@@ -7967,7 +7989,7 @@
                     <!-- Post-65 Healthcare -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Annual 65+ (Per Person) <i class="ph ph-info info-icon"
+                            <label>Annual 65+ (Per Person) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Annual healthcare costs after Medicare (supplements, Part D, out-of-pocket)."></i></label>
 
                         </div>
@@ -7978,7 +8000,7 @@
                     <!-- Healthcare Inflation -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Medical Inflation (%) <i class="ph ph-info info-icon"
+                            <label>Medical Inflation (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Annual healthcare cost increase. Typically higher than general inflation (5-7%)."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -7994,7 +8016,7 @@
                     <!-- Monte Carlo Paths -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Monte Carlo Paths <i class="ph ph-info info-icon"
+                            <label>Monte Carlo Paths <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Number of market simulations to run. Higher = more accurate but slower. 10,000 recommended."></i></label>
 
                         </div>
@@ -8005,7 +8027,7 @@
                     <!-- Stock Allocation -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Stock Allocation (%) <i class="ph ph-info info-icon"
+                            <label>Stock Allocation (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Percentage of portfolio invested in stocks vs bonds. 60-80% typical for accumulation phase."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -8018,13 +8040,13 @@
                             <input type="checkbox" id="enableGlidePath" onchange="toggleGlidePathSettings()">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">Enable Glide Path <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">Enable Glide Path <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="Gradually shift from stocks to bonds as you age to reduce sequence-of-returns risk."></i></span>
                     </div>
                     <div id="glidePathSettings" class="toggle-settings" style="display:none;">
                         <div class="field-group">
                             <div class="field-label-row">
-                                <label>Ending Stock Allocation (%) <i class="ph ph-info info-icon"
+                                <label>Ending Stock Allocation (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Target stock percentage at end of planning horizon."></i></label>
                             </div>
                             <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -8035,7 +8057,7 @@
                     <!-- Stock Return -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Stock Return (Mean %) <i class="ph ph-info info-icon"
+                            <label>Stock Return (Mean %) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Expected average annual stock return. Historical S&P 500 is ~10% nominal, ~7% real."></i></label>
 
                         </div>
@@ -8046,7 +8068,7 @@
                     <!-- Stock Volatility -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Stock Volatility (Std Dev %) <i class="ph ph-info info-icon"
+                            <label>Stock Volatility (Std Dev %) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Expected annual standard deviation of stock returns. Historical S&P 500 is ~15-20%."></i></label>
 
                         </div>
@@ -8057,7 +8079,7 @@
                     <!-- Bond Return -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Bond Return (Mean %) <i class="ph ph-info info-icon"
+                            <label>Bond Return (Mean %) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Expected average annual bond return. Investment-grade bonds typically 3-5%."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric" id="bondReturn"
@@ -8067,7 +8089,7 @@
                     <!-- Bond Volatility -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Bond Volatility (Std Dev %) <i class="ph ph-info info-icon"
+                            <label>Bond Volatility (Std Dev %) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Expected annual standard deviation of bond returns. Typically 4-8% for aggregate bonds."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric" id="bondVol"
@@ -8084,14 +8106,14 @@
                             <input type="checkbox" id="enableTCJASunset">
                             <span class="toggle-slider"></span>
                         </label>
-                        <span class="toggle-switch-label">TCJA Expires 2026 <i class="ph ph-info info-icon"
+                        <span class="toggle-switch-label">TCJA Expires 2026 <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                 data-tooltip="If enabled, tax brackets revert to higher pre-2017 rates after 2025 (12%&rarr;15%, 22%&rarr;25%, etc.)."></i></span>
                     </div>
 
                     <!-- State Tax Rate -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>State Tax Rate (%) <i class="ph ph-info info-icon"
+                            <label>State Tax Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Your state income tax rate. Enter 0 for states with no income tax."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric" id="stateTaxRate"
@@ -8101,7 +8123,7 @@
                     <!-- Tax Bracket Growth -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Tax Bracket Growth (%) <i class="ph ph-info info-icon"
+                            <label>Tax Bracket Growth (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Annual growth rate of tax bracket thresholds (usually matches inflation)."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric" id="bracketGrowth"
@@ -8111,7 +8133,7 @@
                     <!-- Taxable Gain Ratio -->
                     <div class="field-group">
                         <div class="field-label-row">
-                            <label>Taxable Gain Ratio (%) <i class="ph ph-info info-icon"
+                            <label>Taxable Gain Ratio (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Applies to your Joint Taxable (Brokerage) account only &mdash; not 401k, IRA, or Roth. Estimated % of that balance that is capital gains vs. cost basis. Used to calculate capital gains tax on withdrawals."></i></label>
                         </div>
                         <div class="input-wrapper"><i class="ph ph-percent"></i><input type="number" inputmode="numeric"
@@ -8171,7 +8193,9 @@
                 <div id="initialMessage" class="empty-state">
                     <i class="ph ph-calculator empty-icon"></i>
                     <h2>Ready for Analysis</h2>
-                    <p style="max-width: 400px;">Enter your financial details in the sidebar and click "Compute Plan".
+                    <p class="empty-state-desktop" style="max-width: 400px;">Enter your financial details in the sidebar and click &ldquo;Compute Plan&rdquo;.
+                        All monetary values default to $0 for a fresh start.</p>
+                    <p class="empty-state-mobile" style="max-width: 400px;">Tap <strong>Edit Inputs</strong> above to enter your details, then <strong>Compute Plan</strong>.
                         All monetary values default to $0 for a fresh start.</p>
                 </div>
 
@@ -8844,10 +8868,11 @@
                             </div>
                         </div>
                     </div>
+                    <div class="version-footer" style="text-align:center; padding:24px 0 12px; color:#94a3b8; font-size:0.75rem;">
+                        Retirement Architect V17.5
+                    </div>
                 </div>
             </div>
-
-            <!-- REPORTS VIEW -->
 
             <!-- REPORTS VIEW -->
             <div id="reportsView" class="main-view">
@@ -8872,7 +8897,7 @@
                                 <h4>PDF Report</h4>
                                 <p>Comprehensive multi-page report with charts, tables, and analysis. Perfect for
                                     sharing with financial advisors.</p>
-                                <button class="report-download-btn pdf" onclick="generatePDF()" id="reportPdfBtn">
+                                <button class="report-download-btn pdf" onclick="generatePDF()" id="reportPdfBtn" disabled>
                                     <i class="ph ph-download"></i> Download PDF
                                 </button>
                             </div>
@@ -8884,7 +8909,7 @@
                                 <h4>CSV Export</h4>
                                 <p>Raw year-by-year data in spreadsheet format. Import into Excel or Google Sheets for
                                     custom analysis.</p>
-                                <button class="report-download-btn csv" onclick="exportData()" id="reportCsvBtn">
+                                <button class="report-download-btn csv" onclick="exportData()" id="reportCsvBtn" disabled>
                                     <i class="ph ph-download"></i> Download CSV
                                 </button>
                             </div>
@@ -8896,7 +8921,7 @@
                                 <h4>JSON Backup</h4>
                                 <p>Complete scenario data including all inputs. Use to backup your plan or share with
                                     others.</p>
-                                <button class="report-download-btn json" onclick="exportForAI()" id="reportJsonBtn">
+                                <button class="report-download-btn json" onclick="exportForAI()" id="reportJsonBtn" disabled>
                                     <i class="ph ph-download"></i> Download JSON
                                 </button>
                             </div>
@@ -8946,7 +8971,7 @@
         <div id="pdfReport">
             <div class="pdf-header">
                 <h1>Retirement Architect Report</h1>
-                <p>Professional Audit &amp; Tax Convergence Analysis (V17.4)</p>
+                <p>Professional Audit &amp; Tax Convergence Analysis (V17.5)</p>
             </div>
 
             <div class="pdf-grid">
@@ -9037,7 +9062,7 @@
             </div>
 
             <div style="margin-top: 30px; font-size: 10px; color: #999; border-top: 1px solid #ccc; padding-top: 10px;">
-                Generated by Retirement Architect V17.4 on <span id="pdfDate"></span>.
+                Generated by Retirement Architect V17.5 on <span id="pdfDate"></span>.
             </div>
         </div>
 
@@ -9361,8 +9386,8 @@
             <span>Reports</span>
         </button>
         <button class="bottom-nav-item" onclick="switchMainView('scenarios')" data-view="scenarios">
-            <i class="ph ph-flask"></i>
-            <span>Settings</span>
+            <i class="ph ph-shuffle"></i>
+            <span>Scenarios</span>
         </button>
     </nav>
 
@@ -9378,7 +9403,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=17.4"></script>
+    <script src="engine.js?v=17.5"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">
@@ -9388,7 +9413,7 @@
                     <div class="wizard-header-right">
                         <div class="step-indicator">Step <span id="wizStepNum">1</span> of <span
                                 id="wizTotalSteps">11</span></div>
-                        <span class="wizard-skip" onclick="closeWizard()">Skip Setup</span>
+                        <button class="wizard-skip" onclick="closeWizard()" type="button">Skip Setup</button>
                     </div>
                 </div>
 
@@ -9492,7 +9517,7 @@
                                 <input type="number" inputmode="numeric" id="wizRetireAge" value="">
                             </div>
                             <div class="wizard-field">
-                                <label>Planning Horizon (End Age) <i class="ph ph-info info-icon"
+                                <label>Planning Horizon (End Age) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Plan to this age. 95 recommended to reduce longevity risk."></i></label>
                                 <input type="number" inputmode="numeric" id="wizEndAge" value="95">
                             </div>
@@ -9575,7 +9600,7 @@
                                 <input type="text" inputmode="decimal" id="wizSalary" placeholder="$0">
                             </div>
                             <div class="wizard-field">
-                                <label>Your Savings Rate (%, e.g. 401k+match) <i class="ph ph-info info-icon"
+                                <label>Your Savings Rate (%, e.g. 401k+match) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Total annual retirement savings as % of salary, including employer match."></i></label>
                                 <input type="number" inputmode="numeric" id="wizSavingsRate" value="0">
                             </div>
@@ -9597,7 +9622,7 @@
                                     <input type="text" inputmode="decimal" id="wizSpouseSalary" placeholder="$0">
                                 </div>
                                 <div class="wizard-field">
-                                    <label>Spouse Savings Rate (%, e.g. 401k+match) <i class="ph ph-info info-icon"
+                                    <label>Spouse Savings Rate (%, e.g. 401k+match) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                             data-tooltip="Total annual retirement savings as % of salary, including employer match."></i></label>
                                     <input type="number" inputmode="numeric" id="wizSpouseSavingsRate" value="0">
                                 </div>
@@ -9625,7 +9650,7 @@
                                 <input type="text" inputmode="decimal" id="wizUserSS" placeholder="$0">
                             </div>
                             <div class="wizard-field">
-                                <label>Your Claim Age <i class="ph ph-info info-icon"
+                                <label>Your Claim Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Age you'll start Social Security. 62=early (reduced), 67=full retirement age, 70=maximum benefit."></i></label>
                                 <input type="number" inputmode="numeric" id="wizUserSSAge" value="67">
                             </div>
@@ -9634,7 +9659,7 @@
                                 <input type="text" inputmode="decimal" id="wizSpouseSS" placeholder="$0">
                             </div>
                             <div class="wizard-field spouse-only" style="display:none;">
-                                <label>Spouse Claim Age <i class="ph ph-info info-icon"
+                                <label>Spouse Claim Age <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Age spouse will start Social Security. 62=early (reduced), 67=full retirement age, 70=maximum benefit."></i></label>
                                 <input type="number" inputmode="numeric" id="wizSpouseSSAge" value="67">
                             </div>
@@ -9675,7 +9700,7 @@
                         <div class="wizard-field" style="margin-top: 8px;">
                             <label style="display: flex; align-items: center; gap: 8px;">
                                 <input type="checkbox" id="wizEnablePensionCOLA" style="width: 16px; height: 16px;">
-                                Your pension has COLA <i class="ph ph-info info-icon"
+                                Your pension has COLA <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Enable if your pension increases with inflation (common for government/military pensions). Most private pensions do not have COLA."></i>
                             </label>
                         </div>
@@ -9695,7 +9720,7 @@
                             <div class="wizard-field" style="margin-top: 8px;">
                                 <label style="display: flex; align-items: center; gap: 8px;">
                                     <input type="checkbox" id="wizEnableSpousePensionCOLA" style="width: 16px; height: 16px;">
-                                    Spouse pension has COLA <i class="ph ph-info info-icon"
+                                    Spouse pension has COLA <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Enable if spouse's pension increases with inflation. Most private pensions do not have COLA."></i>
                                 </label>
                             </div>
@@ -9786,17 +9811,17 @@
 
                         <div class="wizard-grid">
                             <div class="wizard-field">
-                                <label>Annual Pre-65 Cost (per person) <i class="ph ph-info info-icon"
+                                <label>Annual Pre-65 Cost (per person) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Annual healthcare costs before Medicare eligibility at age 65."></i></label>
                                 <input type="text" inputmode="decimal" id="wizHealthPre65" placeholder="$0">
                             </div>
                             <div class="wizard-field">
-                                <label>Annual 65+ Cost (per person) <i class="ph ph-info info-icon"
+                                <label>Annual 65+ Cost (per person) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Annual healthcare costs after Medicare (supplements, Part D, out-of-pocket)."></i></label>
                                 <input type="text" inputmode="decimal" id="wizHealth65" placeholder="$0">
                             </div>
                             <div class="wizard-field">
-                                <label>Medical Inflation Rate (%) <i class="ph ph-info info-icon"
+                                <label>Medical Inflation Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Annual healthcare cost increase. Typically higher than general inflation."></i></label>
                                 <input type="number" inputmode="numeric" id="wizHealthInflation" value="5.0">
                             </div>
@@ -9811,7 +9836,7 @@
 
                         <div class="wiz-optional-toggle" id="wizReductionToggle" onclick="toggleWizFeature('reduction')">
                             <span class="toggle-text"><i class="ph ph-arrow-down"></i> Reduce Spending at Later Age <i
-                                    class="ph ph-info info-icon"
+                                    class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Reduce spending at a certain age to reflect lifestyle changes (e.g., less travel in later years)."></i></span>
                             <label class="toggle-switch" onclick="event.stopPropagation()">
                                 <input type="checkbox" id="wizEnableReduction" onchange="toggleWizFeature('reduction')">
@@ -9844,17 +9869,17 @@
                         <div class="wiz-optional-content" id="wizGuardrailsSection">
                             <div class="wizard-grid-3">
                                 <div class="wizard-field">
-                                    <label>Ceiling Rate (%) <i class="ph ph-info info-icon"
+                                    <label>Ceiling Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                             data-tooltip="Upper guardrail. If your withdrawal rate exceeds this (e.g., 6%), spending is automatically reduced by the adjustment percentage."></i></label>
                                     <input type="number" inputmode="numeric" id="wizGuardrailCeiling" value="6.0">
                                 </div>
                                 <div class="wizard-field">
-                                    <label>Floor Rate (%) <i class="ph ph-info info-icon"
+                                    <label>Floor Rate (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                             data-tooltip="Lower guardrail. If your withdrawal rate drops below this (e.g., 4%), spending can increase by the adjustment percentage."></i></label>
                                     <input type="number" inputmode="numeric" id="wizGuardrailFloor" value="4.0">
                                 </div>
                                 <div class="wizard-field">
-                                    <label>Adjustment (%) <i class="ph ph-info info-icon"
+                                    <label>Adjustment (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                             data-tooltip="How much to change spending when a guardrail is hit. Example: 10% adjustment means spending changes by 10%."></i></label>
                                     <input type="number" inputmode="numeric" id="wizGuardrailAdjust" value="10">
                                 </div>
@@ -9872,12 +9897,12 @@
 
                         <div class="wizard-grid">
                             <div class="wizard-field">
-                                <label>Stock Allocation (%) <i class="ph ph-info info-icon"
+                                <label>Stock Allocation (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Percentage of portfolio invested in stocks vs bonds."></i></label>
                                 <input type="number" inputmode="numeric" id="wizStockAlloc" value="">
                             </div>
                             <div class="wizard-field">
-                                <label>Monte Carlo Paths <i class="ph ph-info info-icon"
+                                <label>Monte Carlo Paths <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Number of market simulations to run. Higher = more accurate but slower."></i></label>
                                 <input type="number" inputmode="numeric" id="wizNumPaths" value="10000">
                             </div>
@@ -9885,7 +9910,7 @@
 
                         <div class="wiz-optional-toggle" id="wizGlidepathToggle" onclick="toggleWizFeature('glidepath')">
                             <span class="toggle-text"><i class="ph ph-trend-down"></i> Glide Path (Reduce Stocks Over
-                                Time) <i class="ph ph-info info-icon"
+                                Time) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Gradually shift from stocks to bonds as you age to reduce risk."></i></span>
                             <label class="toggle-switch" onclick="event.stopPropagation()">
                                 <input type="checkbox" id="wizEnableGlidepath" onchange="toggleWizFeature('glidepath')">
@@ -9894,7 +9919,7 @@
                         </div>
                         <div class="wiz-optional-content" id="wizGlidepathSection">
                             <div class="wizard-field">
-                                <label>Ending Stock Allocation (%) <i class="ph ph-info info-icon"
+                                <label>Ending Stock Allocation (%) <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                         data-tooltip="Target stock percentage at end of planning horizon when glide path is enabled."></i></label>
                                 <input type="number" inputmode="numeric" id="wizEndStockAlloc" value="">
                             </div>
@@ -9902,7 +9927,7 @@
 
                         <div class="wiz-optional-toggle" id="wizRothconvToggle" onclick="toggleWizFeature('rothconv')">
                             <span class="toggle-text"><i class="ph ph-arrows-left-right"></i> Roth Conversion Strategy
-                                <i class="ph ph-info info-icon"
+                                <i class="ph ph-info info-icon" tabindex="0" role="button" aria-label="More information"
                                     data-tooltip="Convert Pre-Tax to Roth during early retirement to reduce future RMDs and taxes."></i></span>
                             <label class="toggle-switch" onclick="event.stopPropagation()">
                                 <input type="checkbox" id="wizEnableRothconv" onchange="toggleWizFeature('rothconv')">

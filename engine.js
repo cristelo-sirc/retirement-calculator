@@ -465,7 +465,7 @@
 
                 if (pdfBtn) pdfBtn.disabled = !hasResults;
                 if (csvBtn) csvBtn.disabled = !hasResults;
-                // JSON can always be exported (just inputs)
+                if (jsonBtn) jsonBtn.disabled = !hasResults;  // v17.5: all buttons disabled pre-simulation for consistency
             }
 
             // Charts View rendering
@@ -5102,7 +5102,7 @@
                 }
 
                 const aiData = {
-                    version: 'V17.4',
+                    version: 'V17.5',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -5427,6 +5427,18 @@
                             openTooltip(icon);
                         }
                     });
+                    // v17.5: keyboard accessibility for info icons
+                    icon.addEventListener('keydown', e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (activeTooltipIcon === icon) {
+                                closeTooltip();
+                            } else {
+                                openTooltip(icon);
+                            }
+                        }
+                    });
                 });
 
                 // Outside-click dismisses open tooltip
@@ -5453,8 +5465,8 @@
                 initCurrencyFormatting();
 
                 // V17.4 migration: QR code scannability improvements (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V17.4') {
-                    localStorage.setItem('retirementCalcVersion', 'V17.4');
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.5') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.5');
                 }
 
                 // Restore input panel collapse state
