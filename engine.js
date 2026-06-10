@@ -1097,7 +1097,7 @@
                     const dataIndex = retireOffset + i; // Actual index in data arrays
                     const age = startAge + i;
                     const balance = medianPath.balances?.[dataIndex] || 0;
-                    const stockPct = medianPath.stockAllocations?.[dataIndex] || params.stockAllocation;
+                    const stockPct = medianPath.stockAllocations?.[dataIndex] ?? params.stockAllocation;
                     const spending = medianPath.spending?.[dataIndex] || 0;
                     const wdRate = balance > 0 ? ((spending / balance) * 100).toFixed(1) : '0.0';
                     const ss = medianPath.ssIncome?.[dataIndex] || 0;
@@ -1574,6 +1574,18 @@
                 // Stock allocation range
                 const stockAlloc = getNumberValue('stockAllocation');
                 if (stockAlloc < 0 || stockAlloc > 100) errors.push('Stock allocation must be between 0% and 100%.');
+
+                // v17.6: blank-field guard &mdash; an empty input silently parses to 0% stocks
+                const rawStockAlloc = (document.getElementById('stockAllocation')?.value || '').trim();
+                if (rawStockAlloc === '') errors.push('Stock Allocation is blank. Enter a value from 0 to 100.');
+
+                // v17.6: glide path requires an explicit ending allocation
+                if (document.getElementById('enableGlidePath')?.checked) {
+                    const rawEndAlloc = (document.getElementById('endingStockAllocation')?.value || '').trim();
+                    const endAllocPct = getNumberValue('endingStockAllocation');
+                    if (rawEndAlloc === '') errors.push('Glide Path is enabled but Ending Stock Allocation is blank. Enter a value from 0 to 100.');
+                    else if (endAllocPct < 0 || endAllocPct > 100) errors.push('Ending stock allocation must be between 0% and 100%.');
+                }
 
                 // Conditional pension age checks
                 const pension = getNumberValue('pension');
@@ -2375,7 +2387,7 @@
                             wdTaxable: r.log.map(y => y.wdTaxable || 0),
                             wdPreTax: r.log.map(y => y.wdPreTax || 0),
                             wdRoth: r.log.map(y => y.wdRoth || 0),
-                            stockAllocations: r.log.map(y => y.stockAlloc || params.stockAllocation),
+                            stockAllocations: r.log.map(y => y.stockAlloc ?? params.stockAllocation),
                             finalBalance: r.finalBalance,
                             depletionAge: r.depletionAge,
                             solvent: r.solvent
@@ -4012,8 +4024,8 @@
                 // Spending
                 items.push({ label: 'Spending', value: fmtD(params.lifestyleSpending || 0) + '/yr' });
 
-                // Stock/Bond split
-                var stockPct = Math.round((params.stockAllocation || 0.7) * 100);
+                // Stock/Bond split &mdash; show what the engine actually used (v17.6: no 70/30 fallback masking 0%)
+                var stockPct = Math.round((params.stockAllocation || 0) * 100);
                 items.push({ label: 'Stock/Bond', value: stockPct + '/' + (100 - stockPct) });
 
                 grid.innerHTML = items.map(function(item) {
@@ -5102,7 +5114,7 @@
                 }
 
                 const aiData = {
-                    version: 'V17.5',
+                    version: 'V17.6',
                     timestamp: new Date().toISOString(),
                     inputParameters: params,
                     simulationStats: simulationStats,
@@ -5464,9 +5476,9 @@
                 // Initialize currency formatting for dollar inputs
                 initCurrencyFormatting();
 
-                // V17.4 migration: QR code scannability improvements (no data reset needed)
-                if (localStorage.getItem('retirementCalcVersion') !== 'V17.5') {
-                    localStorage.setItem('retirementCalcVersion', 'V17.5');
+                // V17.6 migration: input integrity + restore-flow fixes (no data reset needed)
+                if (localStorage.getItem('retirementCalcVersion') !== 'V17.6') {
+                    localStorage.setItem('retirementCalcVersion', 'V17.6');
                 }
 
                 // Restore input panel collapse state
@@ -5682,6 +5694,13 @@
 
             let _autoSaveRestored = false;
 
+            // v17.6: resolves once the restore-session decision is settled (restored, declined,
+            // or no save found). The setup wizard waits on this before deciding whether to open,
+            // fixing the v17.3 regression where the async restore modal let the wizard open on
+            // top of it for returning users.
+            let _autoSaveSettled;
+            const _autoSaveSettledPromise = new Promise(resolve => { _autoSaveSettled = resolve; });
+
             function checkAutoSave() {
                 try {
                     const saved = localStorage.getItem(AUTO_SAVE_KEY);
@@ -5702,8 +5721,9 @@
                                     localStorage.removeItem(AUTO_SAVE_KEY);
                                 }
                                 startAutoSave();
+                                _autoSaveSettled(); // v17.6: unblock wizard decision
                             });
-                            return; // startAutoSave called in .then()
+                            return; // startAutoSave + _autoSaveSettled called in .then()
                         }
                     }
                 } catch (e) {
@@ -5712,6 +5732,7 @@
 
                 // Start auto-saving regardless
                 startAutoSave();
+                _autoSaveSettled(); // v17.6: no restore prompt needed &mdash; unblock wizard decision
             }
 
             // v17.3: In-app restore session modal (replaces native confirm)
@@ -6102,23 +6123,29 @@
 
             // Initialize wizard on page load
             document.addEventListener('DOMContentLoaded', () => {
-                // Check if we should show wizard (no meaningful data entered yet)
-                const hasData = getNumberValue('currentSalary') > 0 ||
-                    getNumberValue('userPreTaxBalance') > 0 ||
-                    getNumberValue('userRothBalance') > 0 ||
-                    getNumberValue('taxableBalance') > 0 ||
-                    getNumberValue('lifestyleSpending') > 0 ||
-                    getNumberValue('userSS') > 0;
+                // v17.6: wait for the restore-session decision before deciding on the wizard.
+                // Pre-17.3 the native confirm() blocked here, so restored data was already in the
+                // fields when this check ran. The v17.3 async modal broke that ordering: the check
+                // saw empty fields and opened the wizard on top of the restore prompt.
+                _autoSaveSettledPromise.then(() => {
+                    // Check if we should show wizard (no meaningful data entered yet)
+                    const hasData = getNumberValue('currentSalary') > 0 ||
+                        getNumberValue('userPreTaxBalance') > 0 ||
+                        getNumberValue('userRothBalance') > 0 ||
+                        getNumberValue('taxableBalance') > 0 ||
+                        getNumberValue('lifestyleSpending') > 0 ||
+                        getNumberValue('userSS') > 0;
 
-                if (!hasData) {
-                    showSetupWizard();
-                } else if (_autoSaveRestored) {
-                    // Auto-run simulation after restoring saved session
-                    setTimeout(() => {
-                        initiateSimulation();
-                        showAutoSaveToast('Session restored &mdash; running simulation&hellip;');
-                    }, 300);
-                }
+                    if (!hasData) {
+                        showSetupWizard();
+                    } else if (_autoSaveRestored) {
+                        // Auto-run simulation after restoring saved session
+                        setTimeout(() => {
+                            initiateSimulation();
+                            showAutoSaveToast('Session restored &mdash; running simulation&hellip;');
+                        }, 300);
+                    }
+                });
 
                 // Load persisted scenarios (v16.2)
                 loadPersistedScenarios();

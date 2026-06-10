@@ -2,6 +2,9 @@
 *.md
 CLAUDE.md
 
+# Personal data files — NEVER commit (repo is public; e.g. saved scenario JSONs)
+*.json
+
 # macOS
 .DS_Store
 

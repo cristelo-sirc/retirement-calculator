@@ -4,7 +4,7 @@
 
 Two-file HTML retirement planning calculator with Monte Carlo simulations. `index.html` (UI shell, ~9,200 lines) + `engine.js` (simulation engine + render functions, ~6,200 lines).
 
-**Current Version:** 17.5
+**Current Version:** 17.6
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -58,7 +58,7 @@ Audit thoroughness should align with scope of changes and professional standards
 
 ### File Structure (v17.0)
 - `index.html` &mdash; HTML structure, CSS (mobile-first base + desktop `@media (min-width: 769px)` enhancement), bottom sheet/nav wiring
-- `engine.js` &mdash; All simulation logic, render functions, auto-save, tour, scenarios, levers. Loaded via `<script src="engine.js?v=17.0">` before `</body>`
+- `engine.js` &mdash; All simulation logic, render functions, auto-save, tour, scenarios, levers. Loaded via `<script src="engine.js?v=<current version>">` before `</body>` (cache-buster &mdash; bump with every release)
 - Reverting to single-file: copy engine.js contents back into index.html at the script tag location
 
 ### Mobile-First Layout (v17.0)
@@ -222,7 +222,7 @@ All features present in v15.4. This is the complete set of configurable inputs a
 
 **Income:** currentSalary, userSavingsRate, userSavingsDest, spouseCurrentSalary, spouseSavingsRate, spouseSavingsDest
 
-**Social Security:** userSS (monthly), userClaimAge, spouseSS (monthly), spouseClaimAge, enableSpousalBenefit
+**Social Security:** userSS (annual), userClaimAge, spouseSS (annual), spouseClaimAge, enableSpousalBenefit
 
 **Pension:** pension (annual), pensionAge, spousePension (annual), spousePensionAge, enablePensionCOLA, enableSpousePensionCOLA
 
@@ -290,8 +290,8 @@ Social Security benefits use a single nominal growth mechanism: `* inflation` at
 ### Pension COLA Is Per-Spouse
 Two independent toggles: `enablePensionCOLA` (user) and `enableSpousePensionCOLA` (spouse). The simulation uses `userPensionMult` and `spousePensionMult` independently. Most private pensions do not have COLA; some government/military pensions do.
 
-### Input Units Vary: Annual vs Monthly
-Pension inputs (`params.pension`, `params.spousePension`) are **annual** amounts. Social Security inputs (`params.userSS`, `params.spouseSS`) are **monthly** amounts requiring `* 12` for annual display. Always check input field labels before applying multipliers.
+### Input Units: All Income Inputs Are Annual (Doc Corrected 2026-06-10)
+Pension inputs (`params.pension`, `params.spousePension`) AND Social Security inputs (`params.userSS`, `params.spouseSS`) are all **annual** amounts. The engine applies no `* 12` anywhere; sidebar and wizard labels read "Annual SS Benefit." This section previously claimed SS inputs were monthly &mdash; that was wrong and caused a mis-entry during the 2026-06-10 audit. When units matter, verify against the engine (`calculateSSBenefit` is called with `params.userSS` directly) and the input labels, not historical docs.
 
 ### Tax-Aware Display vs Blanket Ratios
 When showing net (after-tax) income segments in budget bars, Roth withdrawals display at full value (tax-free). Only taxable sources (SS, Pension, Part-Time, RMD, Taxable, Pre-Tax) share the tax burden via `taxableNetRatio`. This is display-level only &mdash; the simulation engine correctly handles Roth as untaxed.
@@ -440,6 +440,7 @@ The 5th chart (Outcome Distribution histogram) is intentionally excluded from PD
 | v17.2 | PDF offscreen render pipeline. `prepareChartData()` extracts shared chart data; `renderPDFCharts()` renders to hidden 700&times;350px canvas with `responsive: false`, `animation: false` (synchronous, no setTimeout). `generatePDFContinue()` eliminated. Print color palette for ink optimization. Two-charts-per-page layout (280px height), PDF reduced from 6 to 4 pages. Section titles: "Portfolio &amp; Income Projections" and "Spending &amp; Tax Analysis". |
 | v17.3 | Native browser dialog replacement. Auto-save restore `confirm()` replaced with styled in-app modal (`showRestoreSessionModal()`, promise-based). Scenario naming `prompt()` replaced with in-app modal (`showScenarioNameModal()`, Enter/Escape key support). Both modals use dark card design matching app aesthetic. iOS Safari top overlap fix: `body` height changed from `100vh` to `100dvh` (with `vh` fallback) so viewport excludes Safari URL bar/status bar chrome. `app-header-mobile` already had `env(safe-area-inset-top)` padding from v17.0. Zero engine changes. |
 | v17.5 | UX remediation (items 1&ndash;9). Mobile empty state copy now viewport-aware ("Edit Inputs" vs "sidebar"). Skip Setup converted from `<span>` to `<button>` (a11y). 76 info icons get `tabindex="0"`, `role="button"`, `aria-label`, keydown handler (a11y). Mobile nav "Settings" renamed to "Scenarios" with `ph-shuffle` icon. Guided Setup button demoted to subtle outline style. All 3 report download buttons disabled pre-simulation for visual consistency. Version badge removed from headers, relocated to Scenarios view footer. "INPUTS" section label added above sidebar icon nav to disambiguate input vs output navigation. Zero engine changes. |
+| v17.6 | Input-integrity + restore-flow fixes from the 2026-06-10 audit. (1) Stock Allocation no longer ships blank: default `70` in sidebar + wizard fields; `validateInputs()` blocks a blank Stock Allocation, and blocks a blank Ending Stock Allocation when Glide Path is enabled (blank parsed silently to 0% stocks). Inputs Summary now shows the allocation the engine actually used (removed `\|\| 0.7` display fallback that showed "70/30" while the engine ran 0/100); falsy-zero `\|\|` fallbacks on stockAlloc display paths (chart tooltip data, `stockAllocations` mapping) changed to `??`. (2) Returning-user flow: setup wizard now waits for the restore-session decision via `_autoSaveSettledPromise` before its has-data check, fixing the v17.3 regression (wizard opened on top of the restore modal; post-restore auto-run + toast were unreachable; auto-save didn't start until the modal was answered). (3) CLAUDE.md corrected: SS inputs are ANNUAL, not monthly. (4) `.gitignore` now ignores `*.json` (personal data files in a public repo). Zero engine changes. |
 
 ### Native prompt() No Longer Blocks Chrome MCP
 `captureSnapshot()` previously used `prompt()` for scenario naming, which blocked the entire page and prevented Chrome MCP interaction. The v17.3 in-app modal (`showScenarioNameModal()`) is non-blocking and testable via Chrome MCP.
@@ -454,10 +455,16 @@ Both `showRestoreSessionModal()` and `showScenarioNameModal()` return Promises t
 The desktop `.top-nav` uses a white/light background with dark text (`#1e293b`). Any buttons styled for the nav must use dark text and visible borders against white &mdash; not `rgba(255,255,255,...)` which is invisible. The Guided Setup button was initially invisible after demotion because white text was used against the light nav.
 
 ### Version Badge Location (v17.5)
-Version badge removed from both mobile header (`app-header-mobile`) and desktop header (`top-nav .brand`). Relocated to a `<div class="version-footer">` at the bottom of the Scenarios view. Title tag, PDF report header, PDF footer, and data export object still carry the version. When bumping versions, update: title tag, Scenarios footer, PDF report header (`V17.5`), PDF footer, `engine.js` export object `version` field, `engine.js` localStorage migration check.
+Version badge removed from both mobile header (`app-header-mobile`) and desktop header (`top-nav .brand`). Relocated to a `<div class="version-footer">` at the bottom of the Scenarios view. Title tag, PDF report header, PDF footer, and data export object still carry the version. When bumping versions, update: title tag, Scenarios footer, PDF report header, PDF footer, `engine.js` export object `version` field, `engine.js` localStorage migration check, AND the `engine.js?v=` cache-buster on the script tag in index.html (missing from this list pre-v17.6; without it browsers can serve a stale engine against new HTML).
 
 ### Report Buttons All Disabled Pre-Simulation (v17.5)
 All three report download buttons (PDF, CSV, JSON) start `disabled` in HTML and are enabled by `updateReportsView()` after simulation. Previously JSON was always enabled, creating visual inconsistency.
+
+### Empty Numeric Inputs Silently Become 0 (v17.6)
+`getNumberValue()` returns 0 for a blank input (`parseFloat('') || 0`), and `validateInputs()` range checks pass 0 for fields where 0 is legal. Any always-used numeric input that ships `value=""` therefore runs the engine with a silent 0 &mdash; this is how a blank Stock Allocation produced an all-bond simulation labeled "70/30" (the Inputs Summary's `\|\| 0.7` display fallback masked it). Rules: (1) always-used numeric fields must ship a real default in the HTML; (2) `validateInputs()` should explicitly reject blank critical fields (check the RAW string, not `getNumberValue`); (3) never display a param via `\|\| <default>` when 0 is a legitimate value &mdash; show the actual value, and use `??` (not `\|\|`) for per-year arrays where 0 is meaningful.
+
+### Async Modals Break Load-Time Ordering (v17.6)
+v17.3 replaced blocking native dialogs with promise-based modals. Anything at load time that implicitly depended on the dialog having been ANSWERED before it ran &mdash; like the wizard's has-data check and the post-restore auto-run &mdash; silently broke, because the DOMContentLoaded handlers now run before the user clicks. Pattern: expose a settled-promise (`_autoSaveSettledPromise`, resolved on every checkAutoSave exit path) and have dependent load-time logic `.then()` on it. When converting any remaining blocking dialog to a modal, audit every load-time consumer of its outcome.
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4, v16.5
 
