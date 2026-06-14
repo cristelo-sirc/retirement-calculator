@@ -7412,33 +7412,41 @@
            V18.0 "COVER" — Phase 2: Dashboard as magazine cover
            The success number IS the cover art. Hero cards go square + hairline
            + paper, no shadows. Verdict (sage/amber/clay) flows from the
-           data-verdict attribute set in renderYourStory().
+           data-verdict attribute set in renderYourStory(). Selectors are
+           prefixed with body.a2-lighter to win over the legacy .a2-lighter rules.
            ==================================================================== */
-        .hero-gauge-card {
+        body.a2-lighter .hero-gauge-card,
+        body.a2-lighter .hero-lifespan-card,
+        body.a2-lighter .hero-inputs-card,
+        body.a2-lighter .compact-budget-card,
+        body.a2-lighter .hero-paycheck-card {
             background: var(--cv-paper); border: 1px solid var(--cv-ink);
-            border-radius: 0; box-shadow: none; padding: 32px 22px; justify-content: center;
+            border-radius: 0; box-shadow: none;
         }
-        .hero-gauge-card #successGauge { display: none; }   /* number replaces the donut */
-        .hero-gauge-wrapper {
-            width: 100%; height: auto; margin-bottom: 8px;
+        body.a2-lighter .hero-gauge-card { padding: 30px 18px; justify-content: center; }
+        /* Hide the Chart.js donut (its inline display:block needs !important to beat) */
+        .hero-gauge-card #successGauge { display: none !important; }
+        /* Wrapper holds only the number now — keep height intrinsic so no canvas runaway */
+        body.a2-lighter .hero-gauge-wrapper {
+            width: auto; height: auto; min-height: 0; margin-bottom: 6px;
             display: flex; flex-direction: column; align-items: center;
         }
-        .hero-gauge-value {
+        body.a2-lighter .hero-gauge-value {
             position: static; transform: none;
             font-family: var(--cv-font-display); font-weight: 400;
-            font-size: 7.5rem; line-height: 0.85; letter-spacing: -0.03em;
+            font-size: 5.25rem; line-height: 0.9; letter-spacing: -0.03em;
             color: var(--cv-ink); font-variant-numeric: tabular-nums;
         }
         .hero-gauge-wrapper::after {
-            content: ''; display: block; width: 150px; height: 5px; margin-top: 16px;
+            content: ''; display: block; width: 130px; height: 5px; margin-top: 14px;
             background: var(--cv-ink); transition: background .3s;
         }
-        .hero-gauge-label {
-            order: -1; font-family: var(--cv-font-body); font-size: 0.64rem; font-weight: 600;
-            letter-spacing: 0.18em; text-transform: uppercase; color: var(--cv-ink-50); margin-bottom: 6px;
+        body.a2-lighter .hero-gauge-label {
+            order: -1; font-family: var(--cv-font-body); font-size: 0.62rem; font-weight: 600;
+            letter-spacing: 0.18em; text-transform: uppercase; color: var(--cv-ink-50); margin-bottom: 4px;
         }
-        .hero-gauge-sub {
-            font-family: var(--cv-font-display); font-size: 2.4rem; line-height: 1; color: var(--cv-ink); margin-top: 8px;
+        body.a2-lighter .hero-gauge-sub {
+            font-family: var(--cv-font-display); font-size: 2.1rem; line-height: 1; color: var(--cv-ink); margin-top: 8px;
         }
         .hero-gauge-card[data-verdict="green"]  .hero-gauge-sub { color: var(--cv-sage); }
         .hero-gauge-card[data-verdict="green"]  .hero-gauge-wrapper::after { background: var(--cv-sage); }
@@ -7447,20 +7455,17 @@
         .hero-gauge-card[data-verdict="red"]    .hero-gauge-sub { color: var(--cv-clay); }
         .hero-gauge-card[data-verdict="red"]    .hero-gauge-wrapper::after { background: var(--cv-clay); }
 
-        /* Hero + budget + paycheck cards: square, hairline, paper, no shadow */
-        .hero-lifespan-card, .hero-inputs-card, .compact-budget-card, .hero-paycheck-card {
-            background: var(--cv-paper); border: 1px solid var(--cv-ink);
-            border-radius: 0; box-shadow: none;
-        }
-        .hero-lifespan-header, .hero-inputs-header, .compact-budget-title { font-size: 1.3rem; }
-        .hero-lifespan-header span, .hero-inputs-header span, .compact-budget-title span {
+        body.a2-lighter .hero-lifespan-header, body.a2-lighter .hero-inputs-header,
+        body.a2-lighter .compact-budget-title { font-size: 1.3rem; }
+        body.a2-lighter .hero-lifespan-header span, body.a2-lighter .hero-inputs-header span,
+        body.a2-lighter .compact-budget-title span {
             font-family: var(--cv-font-display); font-weight: 400; letter-spacing: -0.01em; color: var(--cv-ink);
         }
         .hero-lifespan-header i, .hero-inputs-header i, .compact-budget-title i { display: none; }
-        .pill-value, .compact-budget-amount, .compact-budget-value {
+        body.a2-lighter .pill-value, body.a2-lighter .compact-budget-amount, body.a2-lighter .compact-budget-value {
             font-family: var(--cv-font-display); font-weight: 400; letter-spacing: -0.01em;
         }
-        .hero-metric-pill { border-radius: 0; border: 1px solid var(--cv-rule); background: var(--cv-paper-warm); }
+        body.a2-lighter .hero-metric-pill { border-radius: 0; border: 1px solid var(--cv-rule); background: var(--cv-paper-warm); }
 
     </style>
 </head>
