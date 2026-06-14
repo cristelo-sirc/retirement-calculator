@@ -311,9 +311,9 @@
   }
 
   // ── Shell ─────────────────────────────────────────────────────────────────
-  function CoverMobile() {
+  function CoverMobile(props) {
     const [tab, setTab] = React.useState('cover');
-    const [params, setParams] = React.useState(ME.DEFAULTS);
+    props = props || {}; const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
     const results = React.useMemo(() => ME.compute(params), [params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
     const vc = results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber : cm.clay;

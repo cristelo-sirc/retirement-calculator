@@ -29,16 +29,30 @@
   <script type="text/babel" src="cover-app/retire-charts.jsx"></script>
   <script type="text/babel" src="cover-app/compass-cover.jsx"></script>
   <script type="text/babel" src="cover-app/cover-inputs.jsx"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
     const { useState, useEffect } = React;
+    const SAVE_KEY = 'compassParams';
 
     function App() {
       const [screen, setScreen] = useState('cover');
-      const [params, setParams] = useState(window.MockEngine.DEFAULTS);
+      const [params, setParams] = useState(() => {
+        try { var s = localStorage.getItem(SAVE_KEY); if (s) return Object.assign({}, window.MockEngine.DEFAULTS, JSON.parse(s)); } catch (e) {}
+        return window.MockEngine.DEFAULTS;
+      });
+      const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
       useEffect(() => { window._coverNav = (id) => setScreen(id); }, []);
+      useEffect(() => {
+        const onResize = () => setIsMobile(window.innerWidth < 769);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+      }, []);
+      // Persist params across refreshes (private to this browser; no data in the repo)
+      useEffect(() => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(params)); } catch (e) {} }, [params]);
       const shared = { params, setParams };
+      if (isMobile)             return <CoverMobile {...shared} />;
       if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} />;
       if (screen === 'rework')  return <CoverAdjust {...shared} />;
       if (screen === 'chart')   return <CoverCharts {...shared} />;
