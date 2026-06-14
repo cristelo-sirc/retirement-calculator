@@ -29,7 +29,7 @@
     ssBenefit: 33600, ssClaimAge: 67, spouseSS: 22800, spouseClaimAge: 67,   // annual
     pension: 0, pensionStartAge: 65, spousePension: 0, otherIncome: 0,       // annual
     stockAllocation: 60, stockReturn: 7.0, bondReturn: 3.5, stockVol: 17,
-    enableGuardrails: true, enableGlidePath: true, glidePathEndStock: 40,
+    enableGuardrails: false, enableGlidePath: true, glidePathEndStock: 40,
     filingStatus: 'married', stateOfResidence: 'CA'
   };
 
@@ -73,18 +73,18 @@
       enableSpendingReduction: false, spendingReductionAge: 0, spendingReductionPercent: 0,
 
       enableGuardrails: !!m.enableGuardrails,
-      guardrailCeiling: 0.20, guardrailFloor: 0.15, guardrailAdjustment: 0.10,
+      guardrailCeiling: 0.06, guardrailFloor: 0.04, guardrailAdjustment: 0.10,
 
       housingType: 'own', mortgagePrincipal: 0, mortgageLastAge: 0, propertyTax: 0, monthlyRent: 0,
 
-      healthcarePre65: m.healthcare || 0, healthcare65: 0, healthcareInflation: inflFrac,
+      healthcarePre65: m.healthcare || 0, healthcare65: 0, healthcareInflation: 0.05,
 
       stockAllocation: (m.stockAllocation || 0) / 100,
       enableGlidePath: !!m.enableGlidePath,
       endingStockAllocation: (m.glidePathEndStock || 0) / 100,
       stockReturn: (m.stockReturn || 0) / 100, stockVol: (m.stockVol || 0) / 100,
-      bondReturn: (m.bondReturn || 0) / 100, bondVol: 0.05,
-      bracketGrowth: 0.02, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 0.5
+      bondReturn: (m.bondReturn || 0) / 100, bondVol: 0.06,
+      bracketGrowth: 0.025, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 0.6
     };
   }
 
@@ -103,7 +103,7 @@
   // Fast success-only estimate for what-if comparisons / levers
   function quickSuccess(m) {
     if (!window.simulatePath) return 0;
-    return successOf(runPaths(mapToReal(Object.assign({}, DEFAULTS, m || {}), 150)));
+    return successOf(runPaths(mapToReal(Object.assign({}, DEFAULTS, m || {}), 300)));
   }
 
   function verdictFor(rate) {
@@ -117,15 +117,15 @@
 
   function buildLevers(m, real, baseRate) {
     var levers = [];
-    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: 150 })));
+    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: 200 })));
     levers.push({ id: 'delay', title: 'Delay retirement 2 years',
       detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge, delta: r1 - baseRate });
     var newSpend = Math.round(real.lifestyleSpending * 0.9 / 1000) * 1000;
-    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: 150 })));
+    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: 200 })));
     levers.push({ id: 'spend', title: 'Cut spending 10%',
       detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k', delta: r2 - baseRate });
     if (m.ssClaimAge < 70) {
-      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: 150 })));
+      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: 200 })));
       levers.push({ id: 'ss', title: 'Wait until 70 for Social Security',
         detail: 'Claim at 70 instead of ' + m.ssClaimAge, delta: r3 - baseRate });
     }
@@ -140,7 +140,7 @@
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0 };
     }
-    var real = mapToReal(m, 400);
+    var real = mapToReal(m, 1500);
     var results = runPaths(real);
 
     // Sort by final balance, then depletion age (matches initiateSimulation)
@@ -170,22 +170,16 @@
     var medianLegacy = Math.max(0, p50.finalBalance);
     var runwayYears = (p50.depletionAge !== null ? p50.depletionAge : m.endAge) - m.retireAge;
 
-    // Sustainable spending (real solver; fall back to a quick bisection)
-    var sustainableSpending = 0;
-    try {
-      if (window.calculateSustainableSpending) {
-        sustainableSpending = Math.round(window.calculateSustainableSpending(real, 90) / 1000) * 1000;
-      }
-    } catch (e) { sustainableSpending = 0; }
-    if (!sustainableSpending || isNaN(sustainableSpending)) {
-      var lo = 20000, hi = 250000;
-      for (var k = 0; k < 10; k++) {
-        var mid = (lo + hi) / 2;
-        var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: 120 })));
-        if (s < 85) hi = mid; else lo = mid;
-      }
-      sustainableSpending = Math.round(lo / 1000) * 1000;
+    // Sustainable spending: spending level that holds ~90% success (fast bisection
+    // on the real engine — kept light so live recompute stays responsive)
+    var sustainableSpending;
+    var lo = 20000, hi = Math.max(80000, real.lifestyleSpending * 2);
+    for (var k = 0; k < 9; k++) {
+      var mid = (lo + hi) / 2;
+      var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: 250 })));
+      if (s < 90) hi = mid; else lo = mid;
     }
+    sustainableSpending = Math.round(lo / 1000) * 1000;
 
     // Per-year series from the median path
     var path = medianLog.map(function (y) { return { age: y.age, balance: y.totalBal }; });
