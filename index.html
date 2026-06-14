@@ -7408,6 +7408,60 @@
         /* ---- Mobile bottom nav ---- */
         .bottom-nav { background: var(--cv-paper); border-top: 1px solid var(--cv-ink); }
 
+        /* ====================================================================
+           V18.0 "COVER" — Phase 2: Dashboard as magazine cover
+           The success number IS the cover art. Hero cards go square + hairline
+           + paper, no shadows. Verdict (sage/amber/clay) flows from the
+           data-verdict attribute set in renderYourStory().
+           ==================================================================== */
+        .hero-gauge-card {
+            background: var(--cv-paper); border: 1px solid var(--cv-ink);
+            border-radius: 0; box-shadow: none; padding: 32px 22px; justify-content: center;
+        }
+        .hero-gauge-card #successGauge { display: none; }   /* number replaces the donut */
+        .hero-gauge-wrapper {
+            width: 100%; height: auto; margin-bottom: 8px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .hero-gauge-value {
+            position: static; transform: none;
+            font-family: var(--cv-font-display); font-weight: 400;
+            font-size: 7.5rem; line-height: 0.85; letter-spacing: -0.03em;
+            color: var(--cv-ink); font-variant-numeric: tabular-nums;
+        }
+        .hero-gauge-wrapper::after {
+            content: ''; display: block; width: 150px; height: 5px; margin-top: 16px;
+            background: var(--cv-ink); transition: background .3s;
+        }
+        .hero-gauge-label {
+            order: -1; font-family: var(--cv-font-body); font-size: 0.64rem; font-weight: 600;
+            letter-spacing: 0.18em; text-transform: uppercase; color: var(--cv-ink-50); margin-bottom: 6px;
+        }
+        .hero-gauge-sub {
+            font-family: var(--cv-font-display); font-size: 2.4rem; line-height: 1; color: var(--cv-ink); margin-top: 8px;
+        }
+        .hero-gauge-card[data-verdict="green"]  .hero-gauge-sub { color: var(--cv-sage); }
+        .hero-gauge-card[data-verdict="green"]  .hero-gauge-wrapper::after { background: var(--cv-sage); }
+        .hero-gauge-card[data-verdict="yellow"] .hero-gauge-sub { color: var(--cv-amber); }
+        .hero-gauge-card[data-verdict="yellow"] .hero-gauge-wrapper::after { background: var(--cv-amber); }
+        .hero-gauge-card[data-verdict="red"]    .hero-gauge-sub { color: var(--cv-clay); }
+        .hero-gauge-card[data-verdict="red"]    .hero-gauge-wrapper::after { background: var(--cv-clay); }
+
+        /* Hero + budget + paycheck cards: square, hairline, paper, no shadow */
+        .hero-lifespan-card, .hero-inputs-card, .compact-budget-card, .hero-paycheck-card {
+            background: var(--cv-paper); border: 1px solid var(--cv-ink);
+            border-radius: 0; box-shadow: none;
+        }
+        .hero-lifespan-header, .hero-inputs-header, .compact-budget-title { font-size: 1.3rem; }
+        .hero-lifespan-header span, .hero-inputs-header span, .compact-budget-title span {
+            font-family: var(--cv-font-display); font-weight: 400; letter-spacing: -0.01em; color: var(--cv-ink);
+        }
+        .hero-lifespan-header i, .hero-inputs-header i, .compact-budget-title i { display: none; }
+        .pill-value, .compact-budget-amount, .compact-budget-value {
+            font-family: var(--cv-font-display); font-weight: 400; letter-spacing: -0.01em;
+        }
+        .hero-metric-pill { border-radius: 0; border: 1px solid var(--cv-rule); background: var(--cv-paper-warm); }
+
     </style>
 </head>
 
@@ -9521,7 +9575,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=17.6"></script>
+    <script src="engine.js?v=18.0p2"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">

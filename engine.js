@@ -3622,17 +3622,16 @@
                 const successValue = document.getElementById('storySuccessValue');
                 if (successValue) successValue.textContent = successRate.toFixed(1) + '%';
 
-                // Update hero gauge sub text based on success rate
+                // V18.0 "Cover": verdict stoplight (green >=90, yellow 70-89, red <70).
+                // Display-only — sets the gauge card's verdict color + word; engine math untouched.
                 const heroGaugeSub = document.getElementById('heroGaugeSub');
-                if (heroGaugeSub) {
-                    if (successRate >= 90) {
-                        heroGaugeSub.textContent = 'Your plan is on track';
-                    } else if (successRate >= 75) {
-                        heroGaugeSub.textContent = 'Some adjustments recommended';
-                    } else {
-                        heroGaugeSub.textContent = 'Significant changes needed';
-                    }
-                }
+                const gaugeCard = document.getElementById('gaugeAriaContainer');
+                let cvVerdict, cvVerdictWord;
+                if (successRate >= 90) { cvVerdict = 'green'; cvVerdictWord = 'On Track'; }
+                else if (successRate >= 70) { cvVerdict = 'yellow'; cvVerdictWord = 'Tight'; }
+                else { cvVerdict = 'red'; cvVerdictWord = 'At Risk'; }
+                if (gaugeCard) gaugeCard.dataset.verdict = cvVerdict;
+                if (heroGaugeSub) heroGaugeSub.textContent = cvVerdictWord + '.';
 
                 // Render hero lifespan card (replaces old progress bar at bottom)
                 renderHeroLifespan(walls);
