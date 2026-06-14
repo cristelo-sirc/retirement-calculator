@@ -177,55 +177,44 @@
 
             // Top navigation view switching
             function switchMainView(viewId) {
-                // Update nav link active state
+                // Update desktop nav link active state
                 document.querySelectorAll('.nav-link').forEach(btn => btn.classList.remove('active'));
-                const activeLink = document.querySelector(`.nav-link[onclick*="${viewId}"]`);
+                const activeLink = document.querySelector(`.nav-link[onclick*="'${viewId}'"]`);
                 if (activeLink) activeLink.classList.add('active');
 
                 // Hide all main views
                 document.querySelectorAll('.main-view').forEach(view => view.classList.remove('active'));
 
-                // Show selected view
+                const inputPanel = document.getElementById('inputPanel');
+
+                // V18.0 editorial IA: the inputs are the "Questionnaire" screen (the input
+                // panel itself, centered, all sections visible). Editorial tab names map onto
+                // the existing views; legacy ids are kept so the mobile bottom nav still works.
                 const viewMap = {
-                    'dashboard': 'dashboardView',
-                    'charts': 'chartsView',
-                    'scenarios': 'scenariosView',
+                    'cover': 'dashboardView', 'dashboard': 'dashboardView',
+                    'projection': 'chartsView', 'income-odds': 'chartsView', 'charts': 'chartsView',
+                    'rework': 'scenariosView', 'scenarios': 'scenariosView',
                     'reports': 'reportsView'
                 };
 
-                const targetView = document.getElementById(viewMap[viewId]);
-                if (targetView) {
-                    targetView.classList.add('active');
+                if (viewId === 'questionnaire') {
+                    if (inputPanel) inputPanel.classList.add('as-questionnaire-active');
+                } else {
+                    if (inputPanel) inputPanel.classList.remove('as-questionnaire-active');
+                    const targetView = document.getElementById(viewMap[viewId]);
+                    if (targetView) targetView.classList.add('active');
+
+                    if (viewId === 'projection' || viewId === 'income-odds' || viewId === 'charts') {
+                        updateChartsView();
+                    } else if (viewId === 'rework' || viewId === 'scenarios') {
+                        updateScenariosView();
+                        initSolverTracker();
+                    } else if (viewId === 'reports') {
+                        updateReportsView();
+                    }
                 }
 
-                // Update view-specific content
-                if (viewId === 'charts') {
-                    updateChartsView();
-                } else if (viewId === 'scenarios') {
-                    updateScenariosView();
-                    initSolverTracker(); // Initialize solver settings display
-                } else if (viewId === 'reports') {
-                    updateReportsView();
-                }
-
-                // Also update mobile nav bar active states (v16.0)
-                document.querySelectorAll('.mobile-nav-bar .nav-link').forEach(b => b.classList.remove('active'));
-                const viewLabels = {
-                    'dashboard': 'Dashboard',
-                    'charts': 'Charts',
-                    'scenarios': 'What-If',
-                    'reports': 'Reports'
-                };
-                const targetLabel = viewLabels[viewId];
-                if (targetLabel) {
-                    document.querySelectorAll('.mobile-nav-bar .nav-link').forEach(b => {
-                        if (b.textContent.includes(targetLabel)) {
-                            b.classList.add('active');
-                        }
-                    });
-                }
-
-                // v17.0: Update bottom nav active states
+                // v17.0: Update bottom nav active states (mobile)
                 document.querySelectorAll('.bottom-nav-item').forEach(b => b.classList.remove('active'));
                 const activeBottomNav = document.querySelector(`.bottom-nav-item[data-view="${viewId}"]`);
                 if (activeBottomNav) activeBottomNav.classList.add('active');
@@ -2369,6 +2358,11 @@
                     // Render Your Story narrative view
                     renderYourStory();
                     updateReportsView(); // WARNING-03 fix: refresh Reports Quick Summary on every compute
+
+                    // V18.0 editorial IA: computing from the Questionnaire advances to the Cover
+                    if (document.getElementById('inputPanel')?.classList.contains('as-questionnaire-active')) {
+                        switchMainView('cover');
+                    }
 
                     document.getElementById('runSimulationBtn').disabled = false;
                     const scenariosBtn = document.getElementById('scenariosSnapshotBtn');
@@ -5354,11 +5348,12 @@
                     })
                         .from(pdfReport).save().then(() => {
                             pdfReport.style.display = 'none';
-                            // v17.2 fix: restore v17.0 sidebar elements
-                            if (iconSidebar) iconSidebar.style.display = 'flex';
-                            if (inputPanel) inputPanel.style.display = 'flex';
-                            if (panelToggle) panelToggle.style.display = 'flex';
-                            if (mainContent) mainContent.style.display = 'block';
+                            // V18.0: restore by clearing the inline display so CSS governs
+                            // (icon rail + toggle were removed; inputPanel is the Questionnaire screen)
+                            if (iconSidebar) iconSidebar.style.display = '';
+                            if (inputPanel) inputPanel.style.display = '';
+                            if (panelToggle) panelToggle.style.display = '';
+                            if (mainContent) mainContent.style.display = '';
                             if (btn) { btn.innerHTML = '<i class="ph ph-download"></i> Download PDF'; btn.disabled = false; }
                         });
                 }, 100);

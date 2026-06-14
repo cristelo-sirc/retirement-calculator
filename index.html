@@ -7578,6 +7578,30 @@
         .budget-bar-segment.pretax,   .budget-legend-dot.pretax   { background: #3f5a43 !important; }
         .budget-bar-segment.roth,     .budget-legend-dot.roth     { background: #c08a7d !important; }
 
+        /* ====================================================================
+           V18.0 "COVER" — Editorial IA: no sidebar, centered magazine screens.
+           The icon rail + collapse toggle were DELETED from the HTML. The inputs
+           (#inputPanel) are the centered "Questionnaire" screen, shown only when
+           that tab is active; every other screen centers at article width.
+           Desktop only — mobile keeps its bottom-sheet + bottom-nav flow.
+           ==================================================================== */
+        @media (min-width: 769px) {
+            .main-layout { display: block; overflow-y: auto; }
+            .main-view.active { max-width: 1080px; margin: 0 auto; }
+            /* Inputs render as the centered Questionnaire screen (hidden otherwise) */
+            .input-panel { display: none !important; }
+            .input-panel.as-questionnaire-active {
+                display: block !important; width: auto !important;
+                max-width: 940px; margin: 0 auto; height: auto; border-right: none !important;
+            }
+            .input-panel.as-questionnaire-active .input-scroll-area {
+                overflow: visible; height: auto; padding: 30px 40px;
+            }
+            .input-panel.as-questionnaire-active .tab-content { display: block !important; }
+            /* Footer (Compute / Goal Solver) flows at the end of the questionnaire */
+            .input-panel.as-questionnaire-active .sidebar-footer { border-top: 1px solid var(--cv-rule); }
+        }
+
     </style>
 </head>
 
@@ -7609,22 +7633,12 @@
         </div>
 
         <div class="nav-links">
-            <button class="nav-link active" onclick="switchMainView('dashboard')">
-                <i class="ph ph-house"></i>
-                Dashboard
-            </button>
-            <button class="nav-link" onclick="switchMainView('charts')">
-                <i class="ph ph-chart-line"></i>
-                Charts
-            </button>
-            <button class="nav-link" id="navScenarios" onclick="switchMainView('scenarios')">
-                <i class="ph ph-flask"></i>
-                What-If Scenarios
-            </button>
-            <button class="nav-link" onclick="switchMainView('reports')">
-                <i class="ph ph-export"></i>
-                Reports / QR Code
-            </button>
+            <button class="nav-link" onclick="switchMainView('questionnaire')">Questionnaire</button>
+            <button class="nav-link active" onclick="switchMainView('cover')">Cover</button>
+            <button class="nav-link" onclick="switchMainView('rework')">Rework</button>
+            <button class="nav-link" onclick="switchMainView('projection')">Projection</button>
+            <button class="nav-link" onclick="switchMainView('income-odds')">Income &amp; Odds</button>
+            <button class="nav-link" onclick="switchMainView('reports')">Reports</button>
         </div>
 
         <div class="nav-actions">
@@ -7641,41 +7655,19 @@
     <!-- MAIN LAYOUT -->
     <div class="main-layout">
 
-        <!-- ICON SIDEBAR (desktop only) -->
-        <aside class="icon-sidebar">
-            <div class="icon-sidebar-label">INPUTS</div>
-            <button class="icon-nav-btn active" onclick="switchSection('profile')" data-section="profile">
-                <i class="ph ph-user"></i>
-                <span>Profile</span>
-            </button>
-            <button class="icon-nav-btn" onclick="switchSection('assets')" data-section="assets">
-                <i class="ph ph-wallet"></i>
-                <span>Assets</span>
-            </button>
-            <button class="icon-nav-btn" onclick="switchSection('spending')" data-section="spending">
-                <i class="ph ph-shopping-cart"></i>
-                <span>Spending</span>
-            </button>
-            <button class="icon-nav-btn" onclick="switchSection('advanced')" data-section="advanced">
-                <i class="ph ph-faders"></i>
-                <span>Advanced</span>
-            </button>
-        </aside>
+        <!-- V18.0 editorial IA: the icon rail and collapse toggle were removed (no sidebar).
+             The inputs below ARE the "Questionnaire" screen &mdash; a centered, everything-shown
+             intake reached from the nav. The element keeps id="inputPanel" so the engine,
+             validation, auto-save, and the mobile bottom-sheet stay wired. -->
 
-        <!-- INPUT PANEL TOGGLE (outside panel to avoid overflow:hidden issue) -->
-        <button class="input-panel-toggle" id="inputPanelToggle" onclick="toggleInputPanel()"
-            title="Toggle Input Panel">
-            <i class="ph ph-caret-left" id="inputPanelToggleIcon"></i>
-        </button>
-
-        <!-- INPUT PANEL (desktop sidebar / mobile bottom sheet content) -->
+        <!-- QUESTIONNAIRE (inputs) &mdash; centered screen; also feeds the mobile bottom sheet -->
         <div class="input-panel" id="inputPanel">
             <div class="panel-header" id="panelHeader">
                 <button class="mobile-panel-close" id="mobilePanelClose" onclick="closeMobilePanel()" style="display: none; position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.15); border: none; color: white; font-size: 1.2rem; cursor: pointer; align-items: center; justify-content: center; z-index: 10;" aria-label="Close input panel">
                     <i class="ph ph-x"></i>
                 </button>
-                <h2><i class="ph ph-user"></i> Profile & Timeline</h2>
-                <p>Basic information about you and your timeline</p>
+                <h2>A few questions.</h2>
+                <p>Every input the cover uses &mdash; sensible defaults cover anything you skip.</p>
             </div>
 
 
@@ -8481,7 +8473,7 @@
                 <div id="initialMessage" class="empty-state">
                     <i class="ph ph-calculator empty-icon"></i>
                     <h2>Ready for Analysis</h2>
-                    <p class="empty-state-desktop" style="max-width: 400px;">Enter your financial details in the sidebar and click &ldquo;Compute Plan&rdquo;.
+                    <p class="empty-state-desktop" style="max-width: 400px;">Open the <strong>Questionnaire</strong> tab to enter your details, then click &ldquo;Compute Plan&rdquo;.
                         All monetary values default to $0 for a fresh start.</p>
                     <p class="empty-state-mobile" style="max-width: 400px;">Tap <strong>Edit Inputs</strong> above to enter your details, then <strong>Compute Plan</strong>.
                         All monetary values default to $0 for a fresh start.</p>
@@ -9691,7 +9683,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=18.0p4"></script>
+    <script src="engine.js?v=18.0p5"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">
