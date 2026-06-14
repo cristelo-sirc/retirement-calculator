@@ -554,7 +554,7 @@
                             datasets: [
                                 { label: '90th', data: balancePercentiles.p90, borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
                                 { label: '75th', data: balancePercentiles.p75, borderColor: 'rgba(16, 185, 129, 0.4)', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
-                                { label: 'Median', data: balancePercentiles.p50, borderColor: '#3b82f6', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0 },
+                                { label: 'Median', data: balancePercentiles.p50, borderColor: '#1a1815', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0 },
                                 { label: '25th', data: balancePercentiles.p25, borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
                                 { label: '10th', data: balancePercentiles.p10, borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0 }
                             ]
@@ -647,15 +647,15 @@
                 if (incomeCtx) {
                     const dataLen = ssData.length;
                     const datasets = [
-                        { label: 'Social Security', data: ssData, backgroundColor: '#3b82f6', stack: 'stack1' }
+                        { label: 'Social Security', data: ssData, backgroundColor: '#5a7a5e', stack: 'stack1' }
                     ];
-                    // Only add datasets that have nonzero data
-                    if (pensionData.some(v => v > 0)) datasets.push({ label: 'Pension', data: pensionData, backgroundColor: '#10b981', stack: 'stack1' });
-                    if (partTimeData.some(v => v > 0)) datasets.push({ label: 'Part-Time', data: partTimeData, backgroundColor: '#f59e0b', stack: 'stack1' });
-                    if (rmdData.some(v => v > 0)) datasets.push({ label: 'RMD', data: rmdData, backgroundColor: '#a855f7', stack: 'stack1' });
-                    if (taxableData.some(v => v > 0)) datasets.push({ label: 'Taxable', data: taxableData, backgroundColor: '#06b6d4', stack: 'stack1' });
-                    if (preTaxData.some(v => v > 0)) datasets.push({ label: '401k/IRA', data: preTaxData, backgroundColor: '#8b5cf6', stack: 'stack1' });
-                    if (rothData.some(v => v > 0)) datasets.push({ label: 'Roth', data: rothData, backgroundColor: '#ec4899', stack: 'stack1' });
+                    // Only add datasets that have nonzero data (V18.0 editorial palette)
+                    if (pensionData.some(v => v > 0)) datasets.push({ label: 'Pension', data: pensionData, backgroundColor: '#b8843a', stack: 'stack1' });
+                    if (partTimeData.some(v => v > 0)) datasets.push({ label: 'Part-Time', data: partTimeData, backgroundColor: '#9c4b3e', stack: 'stack1' });
+                    if (rmdData.some(v => v > 0)) datasets.push({ label: 'RMD', data: rmdData, backgroundColor: '#1a1815', stack: 'stack1' });
+                    if (taxableData.some(v => v > 0)) datasets.push({ label: 'Taxable', data: taxableData, backgroundColor: '#8c8275', stack: 'stack1' });
+                    if (preTaxData.some(v => v > 0)) datasets.push({ label: '401k/IRA', data: preTaxData, backgroundColor: '#3f5a43', stack: 'stack1' });
+                    if (rothData.some(v => v > 0)) datasets.push({ label: 'Roth', data: rothData, backgroundColor: '#c08a7d', stack: 'stack1' });
 
                     chartsViewInstances.income = new Chart(incomeCtx, {
                         type: 'bar',
@@ -929,8 +929,8 @@
 
                 // Print-optimized colors (slightly muted for ink rendering)
                 const printColors = {
-                    ss: '#4a8af5', pension: '#1ab88a', partTime: '#e8960f', rmd: '#9a50e0',
-                    taxable: '#0aa8c2', preTax: '#7d54e0', roth: '#d94290'
+                    ss: '#5a7a5e', pension: '#b8843a', partTime: '#9c4b3e', rmd: '#1a1815',
+                    taxable: '#8c8275', preTax: '#3f5a43', roth: '#c08a7d'
                 };
 
                 // Shared PDF chart options
@@ -960,7 +960,7 @@
                         datasets: [
                             { label: '90th', data: balancePercentiles.p90, borderColor: 'rgba(16, 185, 129, 0.3)', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
                             { label: '75th', data: balancePercentiles.p75, borderColor: 'rgba(16, 185, 129, 0.4)', backgroundColor: 'rgba(16, 185, 129, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
-                            { label: 'Median', data: balancePercentiles.p50, borderColor: '#3b82f6', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0 },
+                            { label: 'Median', data: balancePercentiles.p50, borderColor: '#1a1815', backgroundColor: 'transparent', borderWidth: 3, pointRadius: 0 },
                             { label: '25th', data: balancePercentiles.p25, borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: '+1', borderWidth: 1, pointRadius: 0 },
                             { label: '10th', data: balancePercentiles.p10, borderColor: 'rgba(239, 68, 68, 0.3)', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 0 }
                         ]
@@ -3376,7 +3376,7 @@
                             datasets: [
                                 { label: '90th Percentile', data: percentilePaths.p90.map(d => d.totalBal), borderColor: '#10b981', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, fill: false },
                                 { label: '75th Percentile', data: percentilePaths.p75.map(d => d.totalBal), borderColor: 'transparent', backgroundColor: 'rgba(16, 185, 129, 0.15)', fill: '+1', pointRadius: 0 },
-                                { label: 'Median (50th)', data: data.map(d => d.totalBal), borderColor: '#3b82f6', borderWidth: 3, pointRadius: 0, tension: 0.3, fill: false },
+                                { label: 'Median (50th)', data: data.map(d => d.totalBal), borderColor: '#1a1815', borderWidth: 3, pointRadius: 0, tension: 0.3, fill: false },
                                 { label: '25th Percentile', data: percentilePaths.p25.map(d => d.totalBal), borderColor: 'transparent', backgroundColor: 'rgba(59, 130, 246, 0.15)', fill: '+1', pointRadius: 0 },
                                 { label: '10th Percentile', data: percentilePaths.p10.map(d => d.totalBal), borderColor: '#ef4444', borderDash: [3, 3], borderWidth: 1, pointRadius: 0, fill: false }
                             ]
@@ -3401,13 +3401,13 @@
                         data: {
                             labels: labels,
                             datasets: [
-                                { label: 'Social Security', data: data.map(d => d.ssIncome), backgroundColor: '#3b82f6', borderRadius: 2 },
-                                { label: 'Pension', data: data.map(d => d.pensionIncome), backgroundColor: '#10b981', borderRadius: 2 },
-                                { label: 'Part-Time Work', data: data.map(d => d.partTimeIncome), backgroundColor: '#f59e0b', borderRadius: 2 },
-                                { label: 'RMD', data: data.map(d => d.rmd || 0), backgroundColor: '#a855f7', borderRadius: 2 },
-                                { label: 'Taxable', data: data.map(d => d.wdTaxable || 0), backgroundColor: '#06b6d4', borderRadius: 2 },
-                                { label: '401k/IRA', data: data.map(d => d.wdPreTax || 0), backgroundColor: '#8b5cf6', borderRadius: 2 },
-                                { label: 'Roth', data: data.map(d => d.wdRoth || 0), backgroundColor: '#ec4899', borderRadius: 2 }
+                                { label: 'Social Security', data: data.map(d => d.ssIncome), backgroundColor: '#5a7a5e', borderRadius: 0 },
+                                { label: 'Pension', data: data.map(d => d.pensionIncome), backgroundColor: '#b8843a', borderRadius: 0 },
+                                { label: 'Part-Time Work', data: data.map(d => d.partTimeIncome), backgroundColor: '#9c4b3e', borderRadius: 0 },
+                                { label: 'RMD', data: data.map(d => d.rmd || 0), backgroundColor: '#1a1815', borderRadius: 0 },
+                                { label: 'Taxable', data: data.map(d => d.wdTaxable || 0), backgroundColor: '#8c8275', borderRadius: 0 },
+                                { label: '401k/IRA', data: data.map(d => d.wdPreTax || 0), backgroundColor: '#3f5a43', borderRadius: 0 },
+                                { label: 'Roth', data: data.map(d => d.wdRoth || 0), backgroundColor: '#c08a7d', borderRadius: 0 }
                             ]
                         },
                         options: {

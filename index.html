@@ -7536,6 +7536,38 @@
         /* Mobile bottom sheet reuses these nodes — keep it paper */
         .bottom-sheet { background: var(--cv-paper); }
 
+        /* ====================================================================
+           V18.0 "COVER" — Phase 4: Charts (Projection / Income & Odds)
+           Card chrome → square + hairline + paper; serif titles; editorial
+           table + mobile chart selector. (Series colors recolored in engine.js.)
+           ==================================================================== */
+        body.a2-lighter .chart-card-full,
+        body.a2-lighter .charts-empty-state {
+            background: var(--cv-paper); border: 1px solid var(--cv-ink) !important;
+            border-radius: 0 !important; box-shadow: none;
+        }
+        .chart-card-full h4, .charts-view-header h2, .charts-empty-state h3 {
+            font-family: var(--cv-font-display); font-weight: 400; color: var(--cv-ink); letter-spacing: -0.01em;
+        }
+        .chart-card-full h4 i, .charts-view-header h2 i { display: none; }
+        .charts-empty-state i { color: var(--cv-ink-20); }
+        /* Mobile chart-type selector */
+        .chart-type-btn {
+            border-radius: 0 !important; border: 1px solid var(--cv-rule) !important;
+            color: var(--cv-ink-50); background: var(--cv-paper-warm);
+        }
+        .chart-type-btn.active { background: var(--cv-ink); color: var(--cv-paper); border-color: var(--cv-ink) !important; }
+        .chart-type-btn i { display: none; }
+        /* Year-by-year detail table */
+        body.a2-lighter .table-card {
+            background: var(--cv-paper) !important; border: 1px solid var(--cv-ink) !important; border-radius: 0 !important;
+        }
+        body.a2-lighter .data-table th {
+            font-family: var(--cv-font-body); text-transform: uppercase; letter-spacing: 0.08em;
+            font-size: 0.7rem; color: var(--cv-ink-50); border-bottom: 1px solid var(--cv-ink);
+        }
+        body.a2-lighter .data-table td { border-bottom: 1px solid var(--cv-rule); color: var(--cv-ink-70); }
+
     </style>
 </head>
 
@@ -9649,7 +9681,7 @@
 
     <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="loadDataFile(event)">
 
-    <script src="engine.js?v=18.0p2"></script>
+    <script src="engine.js?v=18.0p4"></script>
 
         <!-- SETUP WIZARD MODAL -->
         <div id="setupWizard" class="wizard-overlay" style="display:none;">
