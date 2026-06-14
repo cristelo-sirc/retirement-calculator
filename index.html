@@ -13,32 +13,57 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.5.0/lz-string.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- V18.0 "Cover" editorial typefaces: DM Serif Display (numbers/headlines) + Inter (UI) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Palette: Modern Cockpit */
-            --sidebar-bg: #0f172a;
-            /* Dark Navy */
+            /* ============================================================
+               V18.0 "COVER" EDITORIAL TOKENS (Concept 07 design handoff)
+               Single source of truth mirrors src/compass-cover.jsx cvStyles.
+               ============================================================ */
+            /* Surfaces / ink */
+            --cv-paper:        #f6f2ea;   /* primary page background (warm off-white) */
+            --cv-paper-warm:   #efe9dc;   /* secondary panels, article band, cards */
+            --cv-ink:          #1a1815;   /* primary text + 1px hairline rules */
+            --cv-ink-70:       rgba(26, 24, 21, 0.6);    /* body copy */
+            --cv-ink-50:       rgba(26, 24, 21, 0.5);    /* kickers, labels */
+            --cv-ink-20:       rgba(26, 24, 21, 0.19);   /* disabled, stepper borders */
+            --cv-rule:         #d8cfbe;   /* soft divider between groups */
+            /* Verdict / stoplight (semantic) */
+            --cv-sage:         #5a7a5e;   /* GREEN  · On Track (>=90) */
+            --cv-sage-soft:    #cdd9ce;
+            --cv-amber:        #b8843a;   /* YELLOW · Tight   (70-89) */
+            --cv-amber-soft:   #ead9bd;
+            --cv-clay:         #9c4b3e;   /* RED    · At Risk (<70), destructive */
+            --cv-clay-soft:    #e6c7c0;
+            /* Type */
+            --cv-font-display: "DM Serif Display", Georgia, serif;  /* numbers, headlines */
+            --cv-font-body:    Inter, -apple-system, system-ui, sans-serif;
+            --cv-kicker-track: 0.22em;
+            --cv-label-track:  0.13em;
+            --cv-shadow-tip:   0 6px 22px rgba(0, 0, 0, 0.16);      /* info popovers only */
+
+            /* ---- Legacy semantic tokens, REPOINTED to the editorial palette ----
+               Everything in the app references these via var(); repointing the
+               values cascades the new look app-wide with no per-rule edits. */
+            --sidebar-bg: #0f172a;       /* input panel — reskinned in Phase 3 */
             --sidebar-border: #1e293b;
             --sidebar-text: #94a3b8;
             --sidebar-text-active: #f8fafc;
 
-            --main-bg: #f8fafc;
-            /* Slate 50 - A2 Lighter */
-            --card-bg: #ffffff;
+            --main-bg: var(--cv-paper);
+            --card-bg: #fffdf7;          /* warm near-white card; hairline borders give structure */
 
-            --accent-primary: #3b82f6;
-            /* Blue 500 */
-            --accent-hover: #2563eb;
-            /* Blue 600 */
+            --accent-primary: var(--cv-ink);   /* ink is the editorial primary */
+            --accent-hover: #000000;
 
-            --success: #10b981;
-            /* Emerald */
-            --warning: #f59e0b;
-            /* Amber */
-            --danger: #ef4444;
-            /* Red */
+            --success: var(--cv-sage);
+            --warning: var(--cv-amber);
+            --danger: var(--cv-clay);
 
-            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         * {
@@ -7292,6 +7317,97 @@
         }
         /* --- end v17.0 Phase 5 --- */
 
+        /* ====================================================================
+           V18.0 "COVER" EDITORIAL FOUNDATION (Phase 1)
+           Magazine chrome layered over the legacy stylesheet. Color tokens were
+           repointed in :root, so palette cascades app-wide; this block sets
+           editorial typography, square geometry, hairline structure, masthead.
+           ==================================================================== */
+        body, body.a2-lighter {
+            background-color: var(--cv-paper);
+            color: var(--cv-ink-70);
+            font-family: var(--cv-font-body);
+        }
+        .cv-display { font-family: var(--cv-font-display); font-weight: 400; letter-spacing: -0.01em; }
+        .cv-kicker {
+            font-family: var(--cv-font-body); font-size: 10.5px;
+            letter-spacing: var(--cv-kicker-track); text-transform: uppercase; color: var(--cv-ink-50);
+        }
+
+        /* ---- Masthead: desktop top-nav ---- */
+        .top-nav {
+            background: var(--cv-paper);
+            border-bottom: 1px solid var(--cv-ink);
+            height: 64px;
+        }
+        .top-nav .brand {
+            font-family: var(--cv-font-display); font-weight: 400;
+            font-size: 1.95rem; letter-spacing: 0; color: var(--cv-ink); gap: 14px;
+        }
+        .top-nav .brand .brand-icon { display: none; }
+        .brand-issue {
+            font-family: var(--cv-font-body); font-size: 10.5px; letter-spacing: 0.2em;
+            text-transform: uppercase; color: var(--cv-ink-50); align-self: center;
+        }
+
+        /* ---- Nav links: uppercase kicker with ink underline on active ---- */
+        .nav-links { gap: 26px; margin-left: 36px; }
+        .nav-link {
+            background: none !important; border: none; border-radius: 0;
+            border-bottom: 2px solid transparent; color: var(--cv-ink-50);
+            font-family: var(--cv-font-body); font-size: 10.5px; font-weight: 500;
+            letter-spacing: 0.16em; text-transform: uppercase; padding: 8px 2px; gap: 7px;
+        }
+        .nav-link i { display: none; }
+        .nav-link:hover { color: var(--cv-ink); background: none !important; }
+        .nav-link.active {
+            color: var(--cv-ink) !important; background: none !important; font-weight: 600;
+            border-bottom: 2px solid var(--cv-ink);
+        }
+
+        /* ---- Nav actions ---- */
+        .guided-setup-btn {
+            border-radius: 0; border: 1px solid var(--cv-ink); background: transparent;
+            color: var(--cv-ink); font-family: var(--cv-font-body); font-size: 10.5px;
+            letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600;
+        }
+        .guided-setup-btn:hover { background: var(--cv-ink); color: var(--cv-paper); }
+        .guided-setup-btn i { display: none; }
+        .nav-icon-btn { border-radius: 0; color: var(--cv-ink-50); border: 1px solid var(--cv-rule); }
+
+        /* ---- Mobile header ---- */
+        .app-header-mobile { background: var(--cv-paper); border-bottom: 1px solid var(--cv-ink); }
+        .app-header-title {
+            font-family: var(--cv-font-display); font-weight: 400; letter-spacing: 0;
+            color: var(--cv-ink); text-transform: none; font-size: 1.4rem;
+        }
+        .app-header-brand .brand-icon { display: none; }
+        .brand-issue-mobile {
+            font-family: var(--cv-font-body); font-size: 8.5px; letter-spacing: 0.18em;
+            text-transform: uppercase; color: var(--cv-ink-50);
+        }
+        .edit-inputs-btn {
+            border-radius: 0; border: 1px solid var(--cv-ink); background: transparent; color: var(--cv-ink);
+        }
+        .auto-save-indicator { color: var(--cv-ink-50); }
+
+        /* ---- Icon sidebar (INPUTS rail) ---- */
+        .icon-sidebar { background: var(--cv-paper-warm); border-right: 1px solid var(--cv-rule); }
+        .icon-sidebar-label { color: var(--cv-ink-50); letter-spacing: var(--cv-kicker-track); }
+        .icon-nav-btn { border-radius: 0; color: var(--cv-ink-50); }
+        .icon-nav-btn.active { color: var(--cv-ink); background: transparent; border-left: 2px solid var(--cv-ink); }
+
+        /* ---- Layout cards: square, hairline, no drop shadow ---- */
+        .card { border-radius: 0 !important; box-shadow: none !important; border: 1px solid var(--cv-rule); }
+
+        /* ---- Headings to serif display ---- */
+        .main-view h1, .main-view h2, .main-view h3 {
+            font-family: var(--cv-font-display); font-weight: 400; letter-spacing: -0.01em; color: var(--cv-ink);
+        }
+
+        /* ---- Mobile bottom nav ---- */
+        .bottom-nav { background: var(--cv-paper); border-top: 1px solid var(--cv-ink); }
+
     </style>
 </head>
 
@@ -7301,7 +7417,8 @@
     <header class="app-header-mobile" id="appHeaderMobile">
         <div class="app-header-brand">
             <i class="ph ph-strategy brand-icon"></i>
-            <span class="app-header-title">RETIREMENT ARCHITECT</span>
+            <span class="app-header-title">Compass</span>
+            <span class="brand-issue-mobile">No. 5</span>
         </div>
         <div class="app-header-actions">
             <span class="auto-save-indicator" id="autoSaveIndicator"><i class="ph ph-cloud-check"></i> Saved</span>
@@ -7317,7 +7434,8 @@
     <nav class="top-nav">
         <div class="brand">
             <i class="ph ph-strategy brand-icon"></i>
-            <span>RETIREMENT ARCHITECT</span>
+            <span class="cv-display">Compass</span>
+            <span class="brand-issue">The Retirement Issue &middot; No. 5</span>
         </div>
 
         <div class="nav-links">
