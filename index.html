@@ -7467,6 +7467,75 @@
         }
         body.a2-lighter .hero-metric-pill { border-radius: 0; border: 1px solid var(--cv-rule); background: var(--cv-paper-warm); }
 
+        /* ====================================================================
+           V18.0 "COVER" — Phase 3: Input panel → editorial questionnaire
+           CSS-only re-theme of the data-entry surface (no HTML/JS changes).
+           Flips the dark navy panel to warm paper + ink, square + hairline.
+           ==================================================================== */
+        body.a2-lighter .input-panel {
+            background: var(--cv-paper-warm); color: var(--cv-ink); border-right: 1px solid var(--cv-ink);
+        }
+        body.a2-lighter .panel-header {
+            background: var(--cv-paper-warm); border-bottom: 1px solid var(--cv-ink);
+        }
+        .panel-header h2 { font-family: var(--cv-font-display); font-weight: 400; color: var(--cv-ink); letter-spacing: -0.01em; }
+        .panel-header h2 i { display: none; }
+        .panel-header p { color: var(--cv-ink-50); }
+        body.a2-lighter .input-scroll-area { background: var(--cv-paper); }
+
+        /* Accordion section bars → editorial kicker bars */
+        body.a2-lighter .input-panel .section-header {
+            background: var(--cv-paper-warm); color: var(--cv-ink);
+            border: 1px solid var(--cv-rule); border-left: 3px solid var(--cv-ink);
+            border-radius: 0; box-shadow: none; letter-spacing: 0.16em;
+        }
+        body.a2-lighter .input-panel .section-header:hover { background: #e7e0d0; border-left-color: var(--cv-ink); }
+        .section-header i.section-icon { display: none; }
+        .section-header .chevron { color: var(--cv-ink-50); }
+
+        /* Field labels → kicker */
+        body.a2-lighter .input-panel label,
+        body.a2-lighter .input-panel .field-label-row label,
+        body.a2-lighter .field-group label {
+            color: var(--cv-ink-50); text-transform: uppercase; letter-spacing: 0.13em;
+            font-size: 0.66rem; font-weight: 600;
+        }
+        body.a2-lighter .field-group label.critical-field { color: var(--cv-ink); }
+
+        /* Inputs → square, hairline ink, tabular numerals */
+        body.a2-lighter .input-panel input, body.a2-lighter .input-panel select,
+        body.a2-lighter .field-group input, body.a2-lighter .field-group select {
+            background: #fffdf7; border: 1px solid var(--cv-ink); border-radius: 0;
+            color: var(--cv-ink); font-variant-numeric: tabular-nums;
+        }
+        body.a2-lighter .input-panel input:focus, body.a2-lighter .input-panel select:focus,
+        body.a2-lighter .field-group input:focus, body.a2-lighter .field-group select:focus {
+            border-color: var(--cv-sage); box-shadow: 0 0 0 2px var(--cv-sage-soft); outline: none;
+        }
+        .input-panel .input-wrapper i { color: var(--cv-ink-50); }
+        .input-panel .info-icon { color: var(--cv-ink-50); }
+        .input-panel .toggle-switch-label { color: var(--cv-ink); }
+        body.a2-lighter .input-panel .toggle-settings { background: var(--cv-paper-warm); border-color: var(--cv-rule); }
+
+        /* Footer + action buttons */
+        body.a2-lighter .sidebar-footer { background: var(--cv-paper-warm); border-top: 1px solid var(--cv-ink); }
+        .run-btn {
+            background: var(--cv-ink); color: var(--cv-paper); border: 1px solid var(--cv-ink);
+            border-radius: 0; box-shadow: none; letter-spacing: 0.14em;
+        }
+        .run-btn:hover { background: #000; transform: none; box-shadow: none; }
+        .solver-btn {
+            border-radius: 0 !important; border: 1px solid var(--cv-ink) !important;
+            color: var(--cv-ink) !important; background: transparent !important;
+        }
+        .solver-btn:hover { background: var(--cv-ink) !important; color: var(--cv-paper) !important; }
+        .revert-btn, .dropdown-btn {
+            border-radius: 0 !important; border: 1px solid var(--cv-rule) !important; color: var(--cv-ink) !important;
+        }
+
+        /* Mobile bottom sheet reuses these nodes — keep it paper */
+        .bottom-sheet { background: var(--cv-paper); }
+
     </style>
 </head>
 
