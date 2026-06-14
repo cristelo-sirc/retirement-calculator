@@ -468,3 +468,31 @@ v17.3 replaced blocking native dialogs with promise-based modals. Anything at lo
 
 **Archived files kept for reference:** v9.9 (baseline), v14.8, v14.9, v14.9 013126, v15.1, v15.2, v15.3, v15.4, v16.5
 
+
+---
+
+## V18.0 — "Compass" editorial rebuild (Concept 07 Cover)
+
+**Major architecture change.** The front end was rebuilt from the design handoff
+(`handoff-07-cover/`) rather than re-skinning the legacy UI. `index.html` now serves
+the mockup's React components (CDN React + Babel) backed by the REAL Monte Carlo
+engine via an adapter — not the legacy imperative-DOM app.
+
+### File layout
+- `index.html` / `cover.html` — the editorial "Compass" app shell (identical; cover.html kept as a staging URL). Renders one shared-state screen at a time; the in-screen nav switches screens; params persist to `localStorage['compassParams']`; `CoverMobile` renders under 769px.
+- `cover-app/` — design components copied from the handoff, lightly adapted:
+  - `compass-cover.jsx` (Cover/Rework/Projection/Income&Odds + chrome), `cover-inputs.jsx` (Questionnaire), `cover-mobile.jsx`, `retire-ui.jsx`, `retire-charts.jsx`.
+  - Each top-level screen accepts shared `{params,setParams}` props (fallback to internal state); in-screen nav clickable via `window._coverNav`; SS/pension relabeled per-year with rescaled steppers.
+  - `real-engine.js` — adapter exposing `window.MockEngine`. Injects `engine.js` AFTER DOMContentLoaded (so engine.js's two DOM-init listeners never fire), maps the mockup param set onto `collectInputs()`-shape params (real-engine defaults for inputs the mockup omits), runs `simulatePath` (1500 paths), aggregates to the §12 return shape.
+
+### Engine
+`engine.js` is UNCHANGED, reused as a pure math library. `simulatePath` + financial helpers are global/pure; only its DOM init is bypassed.
+
+### Accuracy (verified)
+Adapter vs legacy app on the saved scenario: **93% vs 92%** (Monte Carlo noise), same ~$3.25M median legacy, 30-yr runway. Adapter defaults aligned to engine defaults: taxableGainRatio 0.6, bondVol 0.06, bracketGrowth 0.025, healthcareInflation 0.05, guardrail bands 0.06/0.04/0.10, stateTaxRate 0, guardrails default OFF.
+
+### Rollback
+Pre-rebuild V17.6 preserved on branch **`pre-reskin-v17.6`** (commit a436eea) + git history.
+
+### Deferred (to re-add onto the new app)
+Goal Solver, Reports/QR/PDF export, detailed spending/tax/outcome charts, legacy setup wizard, importing the legacy `retirementArchitect_autoSave` plan, and broadening the Questionnaire's Advanced section to expose every engine input (currently defaulted in the adapter). Interim "V18.0 WIP Phase 1–5" (in-place re-skin) is superseded by this rebuild but remains in git history.
