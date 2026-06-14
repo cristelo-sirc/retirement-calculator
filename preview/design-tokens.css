@@ -1,0 +1,58 @@
+/* design-tokens.css — Concept 07 "Cover" design tokens
+   Lift these into the app's global stylesheet. Values mirror the `cvStyles`
+   object in src/compass-cover.jsx (the single source of truth in the mockups).
+   ------------------------------------------------------------------------- */
+
+:root {
+  /* ── Surfaces / ink ─────────────────────────────────────────────── */
+  --cv-paper:        #f6f2ea;  /* primary page background (warm off-white) */
+  --cv-paper-warm:   #efe9dc;  /* secondary panels, article band, cards */
+  --cv-ink:          #1a1815;  /* primary text + 1px hairline rules */
+  --cv-ink-70:       rgba(26, 24, 21, 0.6);   /* body copy, secondary text */
+  --cv-ink-50:       rgba(26, 24, 21, 0.5);   /* kickers, labels, captions */
+  --cv-ink-20:       rgba(26, 24, 21, 0.19);  /* disabled, stepper borders */
+  --cv-rule:         #d8cfbe;  /* soft divider between groups */
+
+  /* ── Verdict / stoplight (semantic) ─────────────────────────────── */
+  --cv-sage:         #5a7a5e;  /* GREEN  · "On Track" (success ≥ 90) */
+  --cv-sage-soft:    #cdd9ce;  /* sage tint — applied/selected fills */
+  --cv-amber:        #b8843a;  /* YELLOW · "Tight"    (success 70–89) */
+  --cv-amber-soft:   #ead9bd;
+  --cv-clay:         #9c4b3e;  /* RED    · "At Risk"  (success < 70), destructive */
+  --cv-clay-soft:    #e6c7c0;
+
+  /* ── Type ───────────────────────────────────────────────────────── */
+  --cv-font-display: "DM Serif Display", Georgia, serif;  /* numbers, headlines */
+  --cv-font-body:    Inter, -apple-system, system-ui, sans-serif; /* everything else */
+
+  /* Display scale (DM Serif Display) — used for the hero number + headings */
+  --cv-hero:         360px;  /* cover success number (desktop) */
+  --cv-hero-mobile:  150px;  /* cover success number (phone) */
+  --cv-h1:           58px;
+  --cv-h2:           40px;
+  --cv-group-title:  24px;
+
+  /* Body scale (Inter) */
+  --cv-body:         15.5px;
+  --cv-small:        13.5px;
+  --cv-caption:      12px;
+  /* Kicker / label: uppercase, letter-spacing 0.12em–0.22em */
+  --cv-kicker:       10.5px;
+  --cv-kicker-track: 0.22em;
+  --cv-label-track:  0.13em;
+
+  /* ── Geometry ───────────────────────────────────────────────────── */
+  --cv-radius:       0;       /* the concept is intentionally square-cornered */
+  --cv-hairline:     1px solid var(--cv-ink);
+  --cv-touch:        42px;    /* min interactive target on mobile */
+  --cv-shadow-tip:   0 6px 22px rgba(0, 0, 0, 0.16); /* info popovers */
+}
+
+/* Helper class for the recurring "kicker" label treatment. */
+.cv-kicker {
+  font-family: var(--cv-font-body);
+  font-size: var(--cv-kicker);
+  letter-spacing: var(--cv-kicker-track);
+  text-transform: uppercase;
+  color: var(--cv-ink-50);
+}

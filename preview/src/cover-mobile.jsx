@@ -1,0 +1,361 @@
+// cover-mobile.jsx — 07 · Cover · Mobile
+// Phone view of the magazine-cover concept. Two tabs:
+//   • Cover        — the hero success number, verdict, paycheck, and the moves.
+//   • Questionnaire — the "everything shown" intake, single-column, with an
+//                     Advanced toggle for the assumption-level dials.
+// Reuses window.cvStyles / window.FIELD_INFO / window.InfoTip / window.MockEngine
+// and window.CVI_STATES. Loaded after compass-cover.jsx + cover-inputs.jsx.
+
+(function () {
+  const cm = window.cvStyles;
+  const ME = window.MockEngine;
+  const { InfoTip, FIELD_INFO } = window;
+  const money = v => ME.formatCurrency(v, { compact: true });
+
+  const mKick = { fontFamily: cm.body, fontSize: 9.5, letterSpacing: '0.2em',
+    textTransform: 'uppercase', color: cm.ink50 };
+
+  // ── Field primitives (full-width, 42px touch targets) ─────────────────────
+  function FieldHead({ field, label }) {
+    const info = field && FIELD_INFO[field];
+    return (
+      <div style={{ marginBottom: 7 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontFamily: cm.body, fontSize: 10.5, letterSpacing: '0.12em',
+            textTransform: 'uppercase', color: cm.ink50 }}>{label}</span>
+          {info && <InfoTip field={field} theme={cm} />}
+        </div>
+        {info && <div style={{ fontSize: 12, lineHeight: 1.4, color: cm.ink70, marginTop: 3,
+          textWrap: 'pretty' }}>{info.help}</div>}
+      </div>
+    );
+  }
+
+  const mStepBtn = { width: 42, height: 42, borderRadius: '50%', border: `1px solid ${cm.ink20}`,
+    background: 'transparent', color: cm.ink, fontSize: 22, lineHeight: 1, display: 'flex',
+    alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: '0 0 auto', fontFamily: cm.body };
+
+  function MStep({ field, label, value, onChange, min = 0, max = 9999999, step = 1, format, suffix }) {
+    return (
+      <div style={{ marginBottom: 22 }}>
+        <FieldHead field={field} label={label} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
+          <button onClick={() => onChange(Math.max(min, value - step))} style={mStepBtn}>−</button>
+          <span style={{ fontFamily: cm.display, fontSize: 28, color: cm.ink,
+            fontVariantNumeric: 'tabular-nums' }}>{format ? format(value) : value}{suffix || ''}</span>
+          <button onClick={() => onChange(Math.min(max, value + step))} style={mStepBtn}>+</button>
+        </div>
+      </div>
+    );
+  }
+
+  function MToggle({ field, label, value, onChange }) {
+    return (
+      <div style={{ marginBottom: 22 }}>
+        <FieldHead field={field} label={label} />
+        <button onClick={() => onChange(!value)} style={{ display: 'flex', alignItems: 'center', gap: 12,
+          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <span style={{ width: 46, height: 26, borderRadius: 99, background: value ? cm.sage : cm.ink20,
+            position: 'relative', transition: 'background 180ms', flex: '0 0 auto' }}>
+            <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 22, height: 22,
+              borderRadius: '50%', background: cm.paper, transition: 'left 180ms' }} />
+          </span>
+          <span style={{ fontFamily: cm.display, fontSize: 19, color: cm.ink }}>{value ? 'On' : 'Off'}</span>
+        </button>
+      </div>
+    );
+  }
+
+  function MSelect({ field, label, value, onChange, options }) {
+    return (
+      <div style={{ marginBottom: 22 }}>
+        <FieldHead field={field} label={label} />
+        <div style={{ position: 'relative', borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
+          <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%',
+            fontFamily: cm.display, fontSize: 20, color: cm.ink, background: 'transparent', border: 'none',
+            outline: 'none', cursor: 'pointer', WebkitAppearance: 'none', appearance: 'none',
+            padding: '4px 20px 4px 0' }}>
+            {options.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+          </select>
+          <span style={{ position: 'absolute', right: 0, bottom: 11, pointerEvents: 'none',
+            fontSize: 12, color: cm.ink50 }}>▾</span>
+        </div>
+      </div>
+    );
+  }
+
+  function MSegment({ value, onChange }) {
+    const opts = [{ v: false, label: 'Just me' }, { v: true, label: 'Me + partner' }];
+    return (
+      <div style={{ display: 'flex', border: `1px solid ${cm.ink}`, background: cm.paper }}>
+        {opts.map((o, i) => (
+          <button key={String(o.v)} onClick={() => onChange(o.v)} style={{ flex: 1, fontFamily: cm.body,
+            fontSize: 11.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '12px 0',
+            cursor: 'pointer', border: 'none', fontWeight: 600, borderLeft: i ? `1px solid ${cm.ink}` : 'none',
+            background: value === o.v ? cm.ink : 'transparent', color: value === o.v ? cm.paper : cm.ink70 }}>
+            {o.label}</button>
+        ))}
+      </div>
+    );
+  }
+
+  function MGroup({ title, children }) {
+    return (
+      <div style={{ paddingBottom: 26, marginBottom: 26, borderBottom: `1px solid ${cm.rule}` }}>
+        <div style={{ fontFamily: cm.display, fontSize: 22, marginBottom: 16, letterSpacing: '-0.01em' }}>{title}</div>
+        {children}
+      </div>
+    );
+  }
+
+  function MSub({ title, children }) {
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ ...mKick, marginBottom: 14 }}>{title}</div>
+        {children}
+      </div>
+    );
+  }
+
+  // ── Paycheck mini-bar ─────────────────────────────────────────────────────
+  function MPaycheck({ paycheck }) {
+    const total = paycheck.total || 1;
+    const segs = [
+      { key: 'ss', label: 'Social Security', val: paycheck.ss, bg: cm.sage, fg: cm.paper },
+      { key: 'pension', label: 'Pension & other', val: paycheck.pension, bg: cm.amber, fg: cm.paper },
+      { key: 'port', label: 'Portfolio', val: paycheck.portfolio, bg: cm.paperWarm, fg: cm.ink },
+    ].filter(s => s.val > 0.5);
+    return (
+      <div>
+        <div style={{ display: 'flex', height: 46, border: `1px solid ${cm.ink}` }}>
+          {segs.map((s, i) => (
+            <div key={s.key} style={{ width: `${(s.val / total) * 100}%`, background: s.bg, color: s.fg,
+              borderLeft: i ? `1px solid ${cm.ink}` : 'none', display: 'flex', alignItems: 'center',
+              paddingLeft: 9, fontFamily: cm.display, fontSize: 14, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              {ME.formatCurrency(s.val)}</div>
+          ))}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', marginTop: 8, fontSize: 10,
+          letterSpacing: '0.06em', textTransform: 'uppercase', color: cm.ink70 }}>
+          {segs.map(s => <span key={s.key}>{s.label} {Math.round((s.val / total) * 100)}%</span>)}
+        </div>
+      </div>
+    );
+  }
+
+  // ── The two views ─────────────────────────────────────────────────────────
+  function CoverView({ results, vc, partner }) {
+    return (
+      <div style={{ padding: '22px 20px 28px' }}>
+        <div style={{ textAlign: 'center', paddingBottom: 22, marginBottom: 22,
+          borderBottom: `1px solid ${cm.rule}` }}>
+          <div style={{ ...mKick, marginBottom: 4 }}>Chance of never running out</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
+            <span style={{ fontFamily: cm.display, fontSize: 150, lineHeight: 0.84, color: cm.ink,
+              letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', transition: 'color 300ms' }}>{results.successRate}</span>
+            <span style={{ fontFamily: cm.display, fontSize: 30, color: cm.ink50, marginTop: 14 }}>/100</span>
+          </div>
+          <div style={{ width: 130, height: 4, background: vc, margin: '6px auto 12px', transition: 'background 300ms' }} />
+          <div style={{ fontFamily: cm.display, fontSize: 38, color: vc, lineHeight: 1, marginBottom: 10,
+            transition: 'color 300ms' }}>{results.verdictWord}.</div>
+          <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
+            textWrap: 'pretty' }}>{results.verdictBlurb}</p>
+        </div>
+
+        <section style={{ marginBottom: 26 }}>
+          <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
+          <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
+            At {results.params.retireAge}, {partner ? "you'll both" : "you'll"} need{' '}
+            {ME.formatCurrency(results.paycheck.total)}/mo.
+          </p>
+          <MPaycheck paycheck={results.paycheck} />
+        </section>
+
+        <section>
+          <div style={{ ...mKick, marginBottom: 12 }}>Three moves that buy better odds</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {results.levers.map(l => (
+              <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 14, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '13px 15px' }}>
+                <div>
+                  <div style={{ fontFamily: cm.display, fontSize: 17, lineHeight: 1.15 }}>{l.title}</div>
+                  <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 2 }}>{l.detail}</div>
+                </div>
+                <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
+                  <div style={{ fontFamily: cm.display, fontSize: 26, color: cm.sage, lineHeight: 1 }}>+{l.delta}</div>
+                  <div style={{ ...mKick, fontSize: 8 }}>points</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  function QuizView({ params, update, vc, partner, results }) {
+    const [adv, setAdv] = React.useState(false);
+    return (
+      <div style={{ padding: '24px 20px 28px' }}>
+        <div style={{ ...mKick, textAlign: 'center', marginBottom: 8 }}>The Questionnaire · Detailed</div>
+        <h1 style={{ fontFamily: cm.display, fontSize: 38, lineHeight: 1.05, textAlign: 'center',
+          margin: '0 0 10px', letterSpacing: '-0.01em' }}>A few questions.</h1>
+        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: cm.ink70, textAlign: 'center',
+          margin: '0 auto 24px', maxWidth: 320, textWrap: 'pretty' }}>
+          Every input the cover uses, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
+        </p>
+
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ ...mKick, marginBottom: 8 }}>This plan is for</div>
+          <MSegment value={partner} onChange={v => update('hasPartner', v)} />
+        </div>
+
+        <MGroup title="The people">
+          <MStep field="currentAge" label="Your age" value={params.currentAge} onChange={v => update('currentAge', v)} min={20} max={85} />
+          <MStep field="retireAge" label="You retire at" value={params.retireAge} onChange={v => update('retireAge', v)} min={params.currentAge + 1} max={80} />
+          <MStep field="endAge" label="Plan to age" value={params.endAge} onChange={v => update('endAge', v)} min={params.retireAge + 1} max={110} />
+          {partner && <MStep field="spouseAge" label="Partner's age" value={params.spouseAge} onChange={v => update('spouseAge', v)} min={20} max={85} />}
+          {partner && <MStep field="retireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} />}
+        </MGroup>
+
+        <MGroup title="What you've saved">
+          <MStep field="preTax" label={partner ? 'Your pre-tax (401k/IRA)' : 'Pre-tax (401k/IRA)'} value={params.userPreTax} step={10000} min={0} max={5000000} onChange={v => update('userPreTax', v)} format={money} />
+          <MStep field="roth" label={partner ? 'Your Roth' : 'Roth'} value={params.userRoth} step={10000} min={0} max={3000000} onChange={v => update('userRoth', v)} format={money} />
+          <MStep field="taxable" label="Taxable (joint)" value={params.taxable} step={10000} min={0} max={3000000} onChange={v => update('taxable', v)} format={money} />
+          {partner && <MStep field="preTax" label="Partner's pre-tax" value={params.spousePreTax} step={10000} min={0} max={5000000} onChange={v => update('spousePreTax', v)} format={money} />}
+          {partner && <MStep field="roth" label="Partner's Roth" value={params.spouseRoth} step={10000} min={0} max={3000000} onChange={v => update('spouseRoth', v)} format={money} />}
+        </MGroup>
+
+        <MGroup title="What comes in">
+          <MStep field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} />
+          <MStep field="savingsRate" label="Your saving rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" />
+          {partner && <MStep field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} />}
+          {partner && <MStep field="spouseSavingsRate" label="Partner's saving rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" />}
+        </MGroup>
+
+        <MGroup title="What goes out">
+          <MStep field="spending" label="Spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} />
+          <MStep field="healthcare" label="Healthcare to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} />
+          <MStep field="inflation" label="Inflation" value={params.inflation} step={0.1} min={0} max={8} onChange={v => update('inflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+          <MStep field="legacyGoal" label="Legacy goal" value={params.legacyGoal} step={25000} min={0} max={3000000} onChange={v => update('legacyGoal', v)} format={money} />
+        </MGroup>
+
+        <MGroup title="Guaranteed income">
+          <MStep field="ssBenefit" label={partner ? 'Your SS / mo (at 67)' : 'SS / mo (at 67)'} value={params.ssBenefit} step={100} min={0} max={5000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} />
+          <MStep field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} />
+          <MStep field="pension" label="Your pension / mo" value={params.pension} step={250} min={0} max={15000} onChange={v => update('pension', v)} format={v => '$' + v.toLocaleString()} />
+          <MStep field="otherIncome" label="Other income / mo" value={params.otherIncome} step={250} min={0} max={15000} onChange={v => update('otherIncome', v)} format={v => '$' + v.toLocaleString()} />
+          {partner && <MStep field="spouseSS" label="Partner's SS / mo" value={params.spouseSS} step={100} min={0} max={5000} onChange={v => update('spouseSS', v)} format={v => '$' + v.toLocaleString()} />}
+          {partner && <MStep field="spouseClaimAge" label="Partner claims at" value={params.spouseClaimAge} min={62} max={70} onChange={v => update('spouseClaimAge', v)} />}
+          {partner && <MStep field="spousePension" label="Partner's pension / mo" value={params.spousePension} step={250} min={0} max={15000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} />}
+        </MGroup>
+
+        <MGroup title="Investments">
+          <MStep field="stockAllocation" label="Stocks now" value={params.stockAllocation} min={0} max={100} onChange={v => update('stockAllocation', v)} suffix="%" />
+          <MToggle field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} />
+          {params.enableGlidePath && <MStep label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
+        </MGroup>
+
+        {/* Advanced assumptions */}
+        <div style={{ borderTop: `1px solid ${cm.ink}`, paddingTop: 22 }}>
+          <button onClick={() => setAdv(o => !o)} style={{ width: '100%', display: 'flex',
+            alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, background: 'none',
+            border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
+            <div>
+              <div style={{ fontFamily: cm.display, fontSize: 22, letterSpacing: '-0.01em' }}>Advanced assumptions</div>
+              <div style={{ fontSize: 12, lineHeight: 1.45, color: cm.ink70, marginTop: 4 }}>
+                Tax, market, and strategy settings. Most people leave these at our defaults.
+              </div>
+            </div>
+            <span style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
+              color: cm.ink70, flex: '0 0 auto', paddingTop: 6, whiteSpace: 'nowrap' }}>
+              {adv ? '▾ Hide' : '▸ 7'}</span>
+          </button>
+          {adv && (
+            <div style={{ marginTop: 24 }}>
+              <MSub title="Tax & residence">
+                <MSelect field="filingStatus" label="Filing status" value={params.filingStatus}
+                  onChange={v => update('filingStatus', v)}
+                  options={[{ v: 'single', label: 'Single' }, { v: 'married', label: 'Married, joint' }, { v: 'head', label: 'Head of household' }]} />
+                <MSelect field="stateOfResidence" label="State in retirement" value={params.stateOfResidence}
+                  onChange={v => update('stateOfResidence', v)} options={window.CVI_STATES} />
+                <MStep field="pensionStartAge" label="Pension starts at" value={params.pensionStartAge} min={55} max={75} onChange={v => update('pensionStartAge', v)} />
+              </MSub>
+              <MSub title="Market assumptions">
+                <MStep field="stockReturn" label="Stock return" value={params.stockReturn} step={0.1} min={3} max={12} onChange={v => update('stockReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+                <MStep field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7} onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+                <MStep field="stockVol" label="Market volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
+              </MSub>
+              <MSub title="Strategy">
+                <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
+              </MSub>
+            </div>
+          )}
+        </div>
+
+        {/* Result card */}
+        <div style={{ marginTop: 30, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '20px 22px' }}>
+          <div style={{ ...mKick, marginBottom: 6 }}>Your number, so far</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+            <span style={{ fontFamily: cm.display, fontSize: 64, lineHeight: 0.9, color: vc, transition: 'color 300ms' }}>{results.successRate}</span>
+            <span style={{ fontFamily: cm.display, fontSize: 22, color: cm.ink50 }}>/100</span>
+            <span style={{ fontFamily: cm.display, fontSize: 22, color: vc, marginLeft: 'auto', transition: 'color 300ms' }}>{results.verdictWord}.</span>
+          </div>
+          <div style={{ fontSize: 12, color: cm.ink70, marginTop: 6 }}>
+            {partner ? 'Modeled as a couple' : 'Modeled for one'} · {money(results.totalSavings)} saved today
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Shell ─────────────────────────────────────────────────────────────────
+  function CoverMobile() {
+    const [tab, setTab] = React.useState('cover');
+    const [params, setParams] = React.useState(ME.DEFAULTS);
+    const results = React.useMemo(() => ME.compute(params), [params]);
+    const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
+    const vc = results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber : cm.clay;
+    const partner = params.hasPartner;
+
+    return (
+      <div style={{ width: '100%', height: '100%', background: cm.paper, color: cm.ink,
+        fontFamily: cm.body, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* status bar */}
+        <div style={{ height: 40, padding: '12px 24px 0', display: 'flex', justifyContent: 'space-between',
+          alignItems: 'center', fontSize: 13, fontWeight: 600, flex: '0 0 auto' }}>
+          <span>9:41</span>
+          <span style={{ fontSize: 11 }}>● ● ●</span>
+        </div>
+        {/* masthead */}
+        <header style={{ padding: '10px 20px 12px', borderBottom: `1px solid ${cm.ink}`, flex: '0 0 auto',
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <div style={{ fontFamily: cm.display, fontSize: 24, lineHeight: 1 }}>Compass</div>
+          <div style={{ ...mKick, fontSize: 8.5 }}>The Retirement Issue · No. 5</div>
+        </header>
+
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+          {tab === 'cover'
+            ? <CoverView results={results} vc={vc} partner={partner} />
+            : <QuizView params={params} update={update} vc={vc} partner={partner} results={results} />}
+        </main>
+
+        {/* bottom tab nav */}
+        <nav style={{ borderTop: `1px solid ${cm.ink}`, background: cm.paper, display: 'flex',
+          padding: '0 0 20px', flex: '0 0 auto' }}>
+          {[{ id: 'cover', label: 'Cover' }, { id: 'quiz', label: 'Questionnaire' }].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, textAlign: 'center',
+              padding: '14px 0 10px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+              cursor: 'pointer', background: 'none', border: 'none', fontFamily: cm.body,
+              color: tab === t.id ? cm.ink : cm.ink50, fontWeight: tab === t.id ? 600 : 400,
+              borderTop: tab === t.id ? `2px solid ${cm.ink}` : '2px solid transparent', marginTop: -1 }}>
+              {t.label}</button>
+          ))}
+        </nav>
+      </div>
+    );
+  }
+
+  window.CoverMobile = CoverMobile;
+})();
