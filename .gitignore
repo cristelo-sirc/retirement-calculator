@@ -10,3 +10,11 @@ CLAUDE.md
 
 # Claude/Cowork session data
 .claude/
+
+# Archived / superseded local files (kept locally, never committed)
+_archive/
+data/
+Retirement_Calculator_v*.html
+
+# FUSE mount artifacts
+.fuse_hidden*

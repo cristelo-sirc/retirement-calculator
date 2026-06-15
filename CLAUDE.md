@@ -213,3 +213,16 @@ Every engine input is now editable in the Compass Questionnaire; nothing runs on
 **No engine impact** (UI/placement only). **Cache-buster:** `engine.js?v=18.3` + `?v=18.3` on all `cover-app/*.jsx` includes; titles bumped to V18.3. Engine.js UNCHANGED.
 
 **Note (carried from V18.2 audit, still open):** the untouched-defaults scenario scores ~42/100, not the ~93% an older doc line implied; that figure referred to a specific saved scenario, not `DEFAULTS`. Pre-existing, unrelated to V18.2/V18.3 (engine math unchanged). Reconciliation deferred pending Cris's direction.
+
+---
+
+## Repo Maintenance &mdash; 2026-06-15
+
+Housekeeping only &mdash; **no app or engine changes** (V18.3 unchanged; `engine.js` untouched; zero Monte Carlo impact).
+
+- **Removed superseded files from the repo** (still recoverable from git history): the pre-V18 monolithic builds `Retirement_Calculator_v15_6/v16_0/v16_1/v16_5.html`; the stale plans `V16_1_Improvement_Plan.md`, `v16.5-plan.md`, `v17-mobile-rewrite-plan.md`; and the `preview/` placeholder mockup (its content lives on in `cover-app/`). Verified the live app references none of these &mdash; `index.html`/`cover.html` load only `cover-app/*` + CDN.
+- **Added `scripts/deploy.sh`** &mdash; the standard deploy path. The project folder is a FUSE mount where git's lock/rename ops fail ("operation not permitted"), so the script does all git work in a writable clone on the sandbox disk and pushes from there. It pins the commit identity to the GitHub no-reply email (`cristelo-sirc@users.noreply.github.com`) so email-privacy (GH007) can't reject the push. Usage: `GITHUB_TOKEN=... bash scripts/deploy.sh "message"`.
+- **Tightened `.gitignore`**: added `_archive/`, `data/`, `Retirement_Calculator_v*.html`, `.fuse_hidden*`.
+- **Local-only tidy** (never on GitHub; `.gitignore` already excludes `*.md`/`*.json`): older version HTMLs, superseded planning docs, and the `handoff-07-cover/` design source moved to a local `_archive/` folder; personal-data JSONs moved to a gitignored `data/` folder.
+
+**Note:** the mounted folder's own `.git` is stale (the FUSE write block left its index "behind"); it is no longer used for committing. All deploys go through `scripts/deploy.sh`, which reads the folder's current file contents and pushes from a clean clone.
