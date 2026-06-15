@@ -367,10 +367,14 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: cvi.display, fontSize: 34, color: vc, marginBottom: 14, transition: 'color 300ms' }}>{results.verdictWord}.</div>
-            <button style={{ padding: '15px 30px', background: cvi.ink, color: cvi.paper, border: 'none',
+            <button onClick={() => window._coverNav && window._coverNav('cover')} style={{ padding: '15px 30px', background: cvi.ink, color: cvi.paper, border: 'none',
               fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase',
               cursor: 'pointer', fontWeight: 600 }}>See the cover →</button>
           </div>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <window.CoverSaveLoad params={params} setParams={setParams} align="left" />
         </div>
       </div>
     </window.CoverChrome>

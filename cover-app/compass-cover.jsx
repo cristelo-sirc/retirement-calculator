@@ -35,6 +35,92 @@ function cvVerdictColor(v) {
 function cvTheme(accent) { return { ...cvStyles, accent: accent || cvStyles.ink }; }
 window.cvTheme = cvTheme;
 
+// ============================================================================
+// CompassIO — file Save / Load (V18.2). Pure-validate path merges over the
+// engine DEFAULTS using only known keys, so a foreign or partial file can
+// never feed unknown/garbage fields into the engine.
+// ============================================================================
+window.CompassIO = {
+  SCHEMA: 'compass-retirement-plan',
+  buildPlanJSON: function (params) {
+    return JSON.stringify({
+      schema: this.SCHEMA, version: '18.2', savedAt: new Date().toISOString(),
+      params: params || {}
+    }, null, 2);
+  },
+  savePlan: function (params) {
+    try {
+      var blob = new Blob([this.buildPlanJSON(params)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var d = new Date();
+      var stamp = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var a = document.createElement('a');
+      a.href = url; a.download = 'compass-plan-' + stamp + '.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      return { ok: true };
+    } catch (e) { return { ok: false, error: 'Could not save: ' + e }; }
+  },
+  parsePlan: function (text) {
+    var DEF = (window.MockEngine && window.MockEngine.DEFAULTS) || {};
+    var obj;
+    try { obj = JSON.parse(text); }
+    catch (e) { return { ok: false, error: 'That file isn’t valid JSON.' }; }
+    var raw = (obj && obj.params && typeof obj.params === 'object') ? obj.params : obj;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return { ok: false, error: 'That doesn’t look like a Compass plan file.' };
+    }
+    var merged = Object.assign({}, DEF);
+    var keys = Object.keys(DEF), hit = 0;
+    for (var i = 0; i < keys.length; i++) {
+      if (raw[keys[i]] !== undefined) { merged[keys[i]] = raw[keys[i]]; hit++; }
+    }
+    if (hit === 0) return { ok: false, error: 'No recognizable plan settings in that file.' };
+    return { ok: true, params: merged };
+  },
+  pickPlanFile: function (onResult) {
+    try {
+      var self = this;
+      var input = document.createElement('input');
+      input.type = 'file'; input.accept = 'application/json,.json';
+      input.onchange = function (e) {
+        var f = e.target.files && e.target.files[0];
+        if (!f) { onResult({ ok: false, error: 'No file selected.' }); return; }
+        var reader = new FileReader();
+        reader.onload = function () { onResult(self.parsePlan(String(reader.result))); };
+        reader.onerror = function () { onResult({ ok: false, error: 'Could not read that file.' }); };
+        reader.readAsText(f);
+      };
+      input.click();
+    } catch (e) { onResult({ ok: false, error: 'Could not open the file picker.' }); }
+  }
+};
+
+// Small shared Save/Load control row used on the cover + questionnaire.
+function CoverSaveLoad({ params, setParams, align }) {
+  const [msg, setMsg] = React.useState('');
+  const link = { background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+    fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
+    color: cvStyles.ink70, textDecoration: 'underline', textUnderlineOffset: 3 };
+  const save = () => { const r = window.CompassIO.savePlan(params); setMsg(r.ok ? 'Plan saved to your downloads.' : r.error); };
+  const load = () => { setMsg(''); window.CompassIO.pickPlanFile(r => {
+    if (r && r.ok) { setParams(r.params); setMsg('Plan loaded.'); } else { setMsg((r && r.error) || 'Could not load that file.'); }
+  }); };
+  return (
+    <div style={{ textAlign: align || 'center' }}>
+      <div style={{ display: 'flex', gap: 22, justifyContent: align === 'left' ? 'flex-start' : 'center', flexWrap: 'wrap' }}>
+        <button onClick={save} style={link}>Save plan to a file ↓</button>
+        <button onClick={load} style={link}>Load a saved plan ↑</button>
+      </div>
+      <div style={{ fontSize: 11, color: cvStyles.ink50, marginTop: 8 }}>
+        {msg || 'Your plan auto-saves in this browser. Save to a file to keep a copy or move it between devices.'}
+      </div>
+    </div>
+  );
+}
+window.CoverSaveLoad = CoverSaveLoad;
+
 function CoverDesktop(props) {
   props = props || {}; const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
@@ -57,22 +143,37 @@ function CoverDesktop(props) {
           <div style={{ fontFamily: cvStyles.display, fontSize: 34, lineHeight: 1 }}>Compass</div>
           <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
         </div>
-        <CoverNav active="cover" />
+        <CoverNav active="cover" emphasizeQuiz={!dirty} />
 
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '0.85fr 1.15fr',
           alignItems: 'center', gap: 40 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 34 }}>
-            <CoverLine kicker="The Verdict" title={`Your plan is ${results.verdictWord.toLowerCase()}.`}
-              body={results.verdictBlurb} accent={vc} big />
+            <CoverLine kicker={dirty ? 'The Verdict' : 'Sample Verdict'}
+              title={`${dirty ? 'Your plan' : 'This sample plan'} is ${results.verdictWord.toLowerCase()}.`}
+              body={dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Answer the questionnaire and this cover fills in with your real plan.'}
+              accent={vc} big />
             <CoverLine kicker="Your Paycheck, Explained"
               title={`${fmt(results.paycheck.total)} a month`}
               body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.params.retireAge}.`} />
             <CoverLine kicker="Inside"
               title="Three moves that buy better odds"
               body="Small, specific changes — and exactly how many points each is worth." />
+            {!dirty && (
+              <button onClick={() => window._coverNav && window._coverNav('quiz')}
+                style={{ alignSelf: 'flex-start', padding: '14px 26px', background: cvStyles.ink, color: cvStyles.paper,
+                  border: 'none', cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.14em',
+                  textTransform: 'uppercase', fontWeight: 600 }}>
+                Answer the questionnaire →</button>
+            )}
           </div>
 
           <div style={{ textAlign: 'center', position: 'relative' }}>
+            {!dirty && (
+              <div style={{ display: 'inline-block', marginBottom: 14, padding: '5px 12px',
+                border: `1px solid ${cvStyles.clay}`, color: cvStyles.clay, background: cvStyles.claySoft,
+                fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+                Sample plan · not your numbers yet</div>
+            )}
             <div style={{ ...cvKicker, marginBottom: -6 }}>Chance of never running out</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ fontFamily: cvStyles.display, fontSize: 360, lineHeight: 0.82,
@@ -179,7 +280,10 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · Auto-saved 30s ago</div>
+          <div style={{ marginTop: 48, paddingTop: 28, borderTop: `1px solid ${cvStyles.rule}` }}>
+            <CoverSaveLoad params={params} setParams={setParams} />
+            <div style={{ ...cvKicker, textAlign: 'center', marginTop: 20 }}>Concept 07 / Cover · V18.2</div>
+          </div>
         </div>
       </section>
     </div>
@@ -256,7 +360,7 @@ function CoverSlider({ label, value, onChange, min, max, step = 1, display, acce
 // ============================================================================
 // SHARED CHROME + NAV
 // ============================================================================
-function CoverNav({ active }) {
+function CoverNav({ active, emphasizeQuiz }) {
   const tabs = [
     { id: 'quiz', label: 'Questionnaire' },
     { id: 'cover', label: 'Cover' },
@@ -265,15 +369,25 @@ function CoverNav({ active }) {
     { id: 'charts2', label: 'Income & Odds' },
   ];
   return (
-    <nav style={{ display: 'flex', gap: 26, justifyContent: 'center', paddingTop: 14, flexWrap: 'wrap' }}>
-      {tabs.map(t => (
-        <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)} style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.18em',
-          textTransform: 'uppercase', paddingBottom: 7,
-          color: active === t.id ? cvStyles.ink : cvStyles.ink50,
-          fontWeight: active === t.id ? 600 : 400,
-          borderBottom: active === t.id ? `2px solid ${cvStyles.ink}` : '2px solid transparent' }}>
-          {t.label}</span>
-      ))}
+    <nav style={{ display: 'flex', gap: 26, justifyContent: 'center', alignItems: 'center', paddingTop: 14, flexWrap: 'wrap' }}>
+      {tabs.map(t => {
+        const isCTA = emphasizeQuiz && t.id === 'quiz' && active !== 'quiz';
+        if (isCTA) return (
+          <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)}
+            style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.16em',
+              textTransform: 'uppercase', fontWeight: 600, color: cvStyles.paper, background: cvStyles.sage,
+              padding: '6px 14px', borderRadius: 99 }}>
+            Start here · {t.label}</span>
+        );
+        return (
+          <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)} style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.18em',
+            textTransform: 'uppercase', paddingBottom: 7,
+            color: active === t.id ? cvStyles.ink : cvStyles.ink50,
+            fontWeight: active === t.id ? 600 : 400,
+            borderBottom: active === t.id ? `2px solid ${cvStyles.ink}` : '2px solid transparent' }}>
+            {t.label}</span>
+        );
+      })}
     </nav>
   );
 }
@@ -496,4 +610,71 @@ function CoverBigStat({ big, unit, label }) {
   );
 }
 
-Object.assign(window, { CoverDesktop, CoverAdjust, CoverCharts, CoverCharts2 });
+// ============================================================================
+// WELCOME — launch screen shown on every load (Continue / Start new / Load).
+// Responsive: same component renders at desktop and 375px.
+// ============================================================================
+function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
+  const [err, setErr] = React.useState('');
+  const doLoad = () => {
+    setErr('');
+    window.CompassIO.pickPlanFile(res => {
+      if (res && res.ok) onLoaded(res.params);
+      else setErr((res && res.error) || 'Could not load that file.');
+    });
+  };
+  const sub = { display: 'block', fontSize: 12, marginTop: 3, opacity: 0.7,
+    letterSpacing: 0, textTransform: 'none', fontWeight: 400 };
+  const btn = (primary) => ({
+    width: '100%', padding: '15px 20px', textAlign: 'left', cursor: 'pointer',
+    fontFamily: cvStyles.body, border: `1px solid ${cvStyles.ink}`,
+    background: primary ? cvStyles.ink : 'transparent',
+    color: primary ? cvStyles.paper : cvStyles.ink,
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 });
+  const ActionButton = ({ primary, onClick, title, note, glyph }) => (
+    <button onClick={onClick} style={btn(primary)}>
+      <span style={{ display: 'block' }}>
+        <span style={{ fontFamily: cvStyles.display, fontSize: 18, display: 'block' }}>{title}</span>
+        <span style={sub}>{note}</span>
+      </span>
+      <span style={{ flex: '0 0 auto', fontSize: 18 }}>{glyph}</span>
+    </button>
+  );
+  return (
+    <div style={{ width: '100%', height: '100%', background: cvStyles.paper, color: cvStyles.ink,
+      fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden' }}>
+      <div style={{ maxWidth: 560, width: '100%', margin: '0 auto', minHeight: '100%',
+        padding: 'clamp(28px,6vw,64px) 24px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14, marginBottom: 'clamp(28px,6vw,52px)' }}>
+          <div style={{ fontFamily: cvStyles.display, fontSize: 'clamp(28px,7vw,34px)', lineHeight: 1 }}>Compass</div>
+          <div style={{ ...cvKicker }}>The Retirement Issue · No. 5</div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ ...cvKicker, marginBottom: 14 }}>Welcome</div>
+          <h1 style={{ fontFamily: cvStyles.display, fontSize: 'clamp(34px,8vw,54px)', lineHeight: 1.05,
+            letterSpacing: '-0.01em', margin: '0 0 16px' }}>
+            {hasSession ? 'Welcome back.' : 'Let’s build your plan.'}
+          </h1>
+          <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 430, margin: '0 0 32px' }}>
+            {hasSession
+              ? 'Pick up where you left off, load a plan you saved, or start fresh. Your answers stay in this browser unless you save them to a file.'
+              : 'Answer a few questions and the cover fills in with your real numbers — about 3–5 minutes. Your answers stay in this browser unless you save them to a file.'}
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 430 }}>
+            {hasSession && <ActionButton primary onClick={onContinue}
+              title="Continue your plan" note="Reopen your saved session" glyph="→" />}
+            <ActionButton primary={!hasSession} onClick={onStartNew}
+              title="Start a new plan" note="Enter your details from scratch" glyph="→" />
+            <ActionButton primary={false} onClick={doLoad}
+              title="Load a saved plan" note="Open a .json file you saved before" glyph="↑" />
+          </div>
+          {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
+        </div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.2</div>
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { CoverDesktop, CoverAdjust, CoverCharts, CoverCharts2, CoverWelcome });

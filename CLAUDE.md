@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.1
+**Current Version:** 18.2
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -161,7 +161,7 @@ Adapter vs legacy app on the saved scenario: **93% vs 92%** (Monte Carlo noise),
 Pre-rebuild V17.6 preserved on branch **`pre-reskin-v17.6`** (commit a436eea) + git history.
 
 ### Deferred (to re-add onto the new app)
-Goal Solver, Reports/QR/PDF export, detailed spending/tax/outcome charts, legacy setup wizard, and importing the legacy `retirementArchitect_autoSave` plan. Interim "V18.0 WIP Phase 1&ndash;5" (in-place re-skin) is superseded by this rebuild but remains in git history.
+Goal Solver, Reports/QR/PDF export, detailed spending/tax/outcome charts, legacy setup wizard, and importing the legacy `retirementArchitect_autoSave` plan. Interim "V18.0 WIP Phase 1&ndash;5" (in-place re-skin) is superseded by this rebuild but remains in git history. (**Update:** explicit file Save/Load shipped in V18.2 &mdash; see below. Legacy `retirementArchitect_autoSave` import and Reports/QR/PDF export remain deferred.)
 
 ---
 
@@ -178,3 +178,22 @@ Every engine input is now editable in the Compass Questionnaire; nothing runs on
 **Also fixed:** mobile SS/pension fields were "/mo" with monthly-scaled steppers while the engine treats them as ANNUAL &mdash; corrected to "/yr" to match desktop and the engine. `FIELD_INFO` "monthly" wording on SS/pension corrected to annual.
 
 **Cache-buster:** `engine.js?v=18.1` in `real-engine.js`. Engine.js UNCHANGED (math untouched). Shipped to the live site (both `index.html` and `cover.html` load the shared `cover-app/` files).
+
+---
+
+## V18.2 &mdash; Welcome launch screen + file Save/Load
+
+**Problem solved:** on open, the app always landed on the Cover showing a confident "93/100 &mdash; On Track" verdict computed from `DEFAULTS`, with the word "Your" in front of placeholder numbers and the Questionnaire just one of five equal tabs. Nothing signaled that you must fill out the Questionnaire, and explicit save/load (a V18 deferred item) didn't exist &mdash; only silent `compassParams` auto-save.
+
+**Welcome launch screen (`CoverWelcome` in `compass-cover.jsx`, gated in `index.html`).** Shows on **every** load before the app (`started` flag). Choices adapt to context via `hasSession` (a *personalized* saved plan exists &mdash; saved params differ from `DEFAULTS`, computed in a `useState` initializer so it reads the prior session before the auto-save effect rewrites it):
+- **Continue your plan** &mdash; primary, only when `hasSession`; reopens the `compassParams` session.
+- **Start a new plan** &mdash; resets to `DEFAULTS` and routes to the Questionnaire (desktop `screen='quiz'`; mobile via new `initialTab` prop on `CoverMobile`). `window.confirm` guards against overwriting a personalized session.
+- **Load a saved plan** &mdash; file picker &rarr; import &rarr; Cover.
+
+**File Save/Load (`window.CompassIO` in `compass-cover.jsx`).** `savePlan` downloads `compass-plan-YYYY-MM-DD.json` = `{schema, version, savedAt, params}`. `parsePlan` is defensive: JSON-parse in try/catch, accepts our wrapped shape or a bare params object, and **merges only known `DEFAULTS` keys over `DEFAULTS`** so a foreign/partial/garbage file can never feed unknown fields to the engine (returns friendly errors otherwise). Shared `CoverSaveLoad` control row appears on the desktop Cover footer, the desktop Questionnaire footer, and the mobile Cover.
+
+**Sample labeling (safety net, persists whenever `!dirty`).** Desktop Cover + mobile Cover show a "Sample plan &middot; not your numbers yet" badge, reword the verdict to "This sample plan is&hellip;", surface a primary "Answer the questionnaire" CTA, and render the Questionnaire nav item/tab as an emphasized "Start here" pill. All of it clears the instant any input changes.
+
+**Also fixed:** the desktop Questionnaire's "See the cover &rarr;" button had no `onClick` (dead button) &mdash; now navigates to the Cover.
+
+**Cache-buster:** bumped `engine.js?v=18.2` in `real-engine.js` and added `?v=18.2` to all five `cover-app/*.jsx` includes in `index.html` (they previously had none, risking stale JSX on deploy). Engine.js UNCHANGED (math untouched); all changes are UI/data plumbing, zero Monte Carlo impact.

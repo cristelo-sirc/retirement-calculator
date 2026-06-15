@@ -145,11 +145,17 @@
   }
 
   // ── The two views ─────────────────────────────────────────────────────────
-  function CoverView({ results, vc, partner }) {
+  function CoverView({ results, vc, partner, dirty, goQuiz, params, setParams }) {
     return (
       <div style={{ padding: '22px 20px 28px' }}>
         <div style={{ textAlign: 'center', paddingBottom: 22, marginBottom: 22,
           borderBottom: `1px solid ${cm.rule}` }}>
+          {!dirty && (
+            <div style={{ display: 'inline-block', marginBottom: 12, padding: '4px 10px',
+              border: `1px solid ${cm.clay}`, color: cm.clay, background: cm.claySoft,
+              fontFamily: cm.body, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+              Sample · not your numbers yet</div>
+          )}
           <div style={{ ...mKick, marginBottom: 4 }}>Chance of never running out</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
             <span style={{ fontFamily: cm.display, fontSize: 150, lineHeight: 0.84, color: cm.ink,
@@ -160,7 +166,13 @@
           <div style={{ fontFamily: cm.display, fontSize: 38, color: vc, lineHeight: 1, marginBottom: 10,
             transition: 'color 300ms' }}>{results.verdictWord}.</div>
           <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
-            textWrap: 'pretty' }}>{results.verdictBlurb}</p>
+            textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Answer the questionnaire and this fills in with your real plan.'}</p>
+          {!dirty && (
+            <button onClick={goQuiz} style={{ marginTop: 16, padding: '13px 22px', background: cm.ink,
+              color: cm.paper, border: 'none', cursor: 'pointer', fontFamily: cm.body, fontSize: 11.5,
+              letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
+              Start the questionnaire →</button>
+          )}
         </div>
 
         <section style={{ marginBottom: 26 }}>
@@ -190,6 +202,10 @@
             ))}
           </div>
         </section>
+
+        <div style={{ marginTop: 26, paddingTop: 20, borderTop: `1px solid ${cm.rule}` }}>
+          <window.CoverSaveLoad params={params} setParams={setParams} />
+        </div>
       </div>
     );
   }
@@ -353,12 +369,14 @@
 
   // ── Shell ─────────────────────────────────────────────────────────────────
   function CoverMobile(props) {
-    const [tab, setTab] = React.useState('cover');
-    props = props || {}; const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
+    props = props || {};
+    const [tab, setTab] = React.useState(props.initialTab || 'cover');
+    const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
     const results = React.useMemo(() => ME.compute(params), [params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
     const vc = results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber : cm.clay;
     const partner = params.hasPartner;
+    const dirty = JSON.stringify(params) !== JSON.stringify(ME.DEFAULTS);
 
     return (
       <div style={{ width: '100%', height: '100%', background: cm.paper, color: cm.ink,
@@ -378,21 +396,23 @@
 
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           {tab === 'cover'
-            ? <CoverView results={results} vc={vc} partner={partner} />
+            ? <CoverView results={results} vc={vc} partner={partner} dirty={dirty} goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
             : <QuizView params={params} update={update} vc={vc} partner={partner} results={results} />}
         </main>
 
         {/* bottom tab nav */}
         <nav style={{ borderTop: `1px solid ${cm.ink}`, background: cm.paper, display: 'flex',
           padding: '0 0 20px', flex: '0 0 auto' }}>
-          {[{ id: 'cover', label: 'Cover' }, { id: 'quiz', label: 'Questionnaire' }].map(t => (
+          {[{ id: 'cover', label: 'Cover' }, { id: 'quiz', label: 'Questionnaire' }].map(t => {
+            const cta = !dirty && t.id === 'quiz' && tab !== 'quiz';
+            return (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, textAlign: 'center',
               padding: '14px 0 10px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
-              cursor: 'pointer', background: 'none', border: 'none', fontFamily: cm.body,
-              color: tab === t.id ? cm.ink : cm.ink50, fontWeight: tab === t.id ? 600 : 400,
+              cursor: 'pointer', background: cta ? cm.sage : 'none', border: 'none', fontFamily: cm.body,
+              color: cta ? cm.paper : (tab === t.id ? cm.ink : cm.ink50), fontWeight: (cta || tab === t.id) ? 600 : 400,
               borderTop: tab === t.id ? `2px solid ${cm.ink}` : '2px solid transparent', marginTop: -1 }}>
-              {t.label}</button>
-          ))}
+              {cta ? 'Start here →' : t.label}</button>
+          );})}
         </nav>
       </div>
     );

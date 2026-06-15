@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Compass &middot; The Retirement Issue</title>
+  <title>Compass &middot; The Retirement Issue &middot; V18.2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,17 +19,17 @@
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
   <!-- Real engine adapter: defines window.MockEngine and loads engine.js (math) after DOMContentLoaded -->
-  <script src="cover-app/real-engine.js"></script>
+  <script src="cover-app/real-engine.js?v=18.2"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- The mockup design components (the exact handoff UI) -->
-  <script type="text/babel" src="cover-app/retire-ui.jsx"></script>
-  <script type="text/babel" src="cover-app/retire-charts.jsx"></script>
-  <script type="text/babel" src="cover-app/compass-cover.jsx"></script>
-  <script type="text/babel" src="cover-app/cover-inputs.jsx"></script>
-  <script type="text/babel" src="cover-app/cover-mobile.jsx"></script>
+  <script type="text/babel" src="cover-app/retire-ui.jsx?v=18.2"></script>
+  <script type="text/babel" src="cover-app/retire-charts.jsx?v=18.2"></script>
+  <script type="text/babel" src="cover-app/compass-cover.jsx?v=18.2"></script>
+  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=18.2"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=18.2"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
@@ -42,6 +42,17 @@
         try { var s = localStorage.getItem(SAVE_KEY); if (s) return Object.assign({}, window.MockEngine.DEFAULTS, JSON.parse(s)); } catch (e) {}
         return window.MockEngine.DEFAULTS;
       });
+      // Welcome launch screen shows on every load. hasSession = a personalized
+      // saved plan already exists (saved params differ from the defaults).
+      const [started, setStarted] = useState(false);
+      const [hasSession] = useState(() => {
+        try {
+          var s = localStorage.getItem(SAVE_KEY);
+          if (!s) return false;
+          var saved = Object.assign({}, window.MockEngine.DEFAULTS, JSON.parse(s));
+          return JSON.stringify(saved) !== JSON.stringify(window.MockEngine.DEFAULTS);
+        } catch (e) { return false; }
+      });
       const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
       useEffect(() => { window._coverNav = (id) => setScreen(id); }, []);
       useEffect(() => {
@@ -51,8 +62,20 @@
       }, []);
       // Persist params across refreshes (private to this browser; no data in the repo)
       useEffect(() => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(params)); } catch (e) {} }, [params]);
+
+      const beginContinue = () => setStarted(true);
+      const beginLoad = (loaded) => { setParams(loaded); setScreen('cover'); setStarted(true); };
+      const beginNew = () => {
+        if (hasSession && !window.confirm('Starting a new plan replaces the plan saved in this browser. You can Save it to a file first. Continue?')) return;
+        setParams(window.MockEngine.DEFAULTS);
+        setScreen('quiz');
+        setStarted(true);
+      };
+
+      if (!started) return <CoverWelcome hasSession={hasSession} onContinue={beginContinue} onStartNew={beginNew} onLoaded={beginLoad} />;
+
       const shared = { params, setParams };
-      if (isMobile)             return <CoverMobile {...shared} />;
+      if (isMobile)             return <CoverMobile {...shared} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} />;
       if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} />;
       if (screen === 'rework')  return <CoverAdjust {...shared} />;
       if (screen === 'chart')   return <CoverCharts {...shared} />;
