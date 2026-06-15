@@ -233,8 +233,12 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         <CGroup title="What comes in" mode={mode}
           advanced={[
             <CField key="sav" field="savingsRate" label="Your saving rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" theme={theme} />,
+            <CSelect key="dest" field="savingsDest" label="Your savings go to" value={params.savingsDest} onChange={v => update('savingsDest', v)} theme={theme}
+              options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />,
             partner && <CField key="ssal" field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} theme={theme} />,
             partner && <CField key="ssav" field="spouseSavingsRate" label="Partner's saving rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" theme={theme} />,
+            partner && <CSelect key="sdest" field="savingsDest" label="Partner's savings go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)} theme={theme}
+              options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />,
           ].filter(Boolean)}>
           <CField field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} theme={theme} />
         </CGroup>
@@ -242,24 +246,47 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         {/* Spending */}
         <CGroup title="What goes out" mode={mode}
           advanced={[
-            <CField key="hc" field="healthcare" label="Healthcare to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} theme={theme} />,
+            <CField key="hc" field="healthcare" label="Healthcare / yr to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} theme={theme} />,
+            <CField key="hc65" field="healthcare65" label="Healthcare / yr from 65" value={params.healthcare65} step={1000} min={0} max={60000} onChange={v => update('healthcare65', v)} format={money} theme={theme} />,
+            <CField key="hci" field="healthcareInflation" label="Healthcare inflation" value={params.healthcareInflation} step={0.5} min={0} max={12} onChange={v => update('healthcareInflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />,
             <CField key="inf" field="inflation" label="Inflation" value={params.inflation} step={0.1} min={0} max={8} onChange={v => update('inflation', Math.round(v * 10) / 10)} suffix="%" theme={theme} />,
             <CField key="leg" field="legacyGoal" label="Legacy goal" value={params.legacyGoal} step={25000} min={0} max={3000000} onChange={v => update('legacyGoal', v)} format={money} theme={theme} />,
-          ]}>
+            <CToggle key="srt" field="spendingReduction" label="Spend less later in life" value={params.enableSpendingReduction} onChange={v => update('enableSpendingReduction', v)} theme={theme} />,
+            params.enableSpendingReduction && <CField key="sra" field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} theme={theme} />,
+            params.enableSpendingReduction && <CField key="srp" field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" theme={theme} />,
+          ].filter(Boolean)}>
           <CField field="spending" label="Spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} theme={theme} />
         </CGroup>
 
         {/* Guaranteed income */}
         <CGroup title="Guaranteed income" mode={mode}
           advanced={[
+            partner && <CToggle key="spb" field="enableSpousalBenefit" label="Apply SS spousal benefit" value={params.enableSpousalBenefit} onChange={v => update('enableSpousalBenefit', v)} theme={theme} />,
             <CField key="pen" field="pension" label="Your pension / yr" value={params.pension} step={1000} min={0} max={200000} onChange={v => update('pension', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
-            <CField key="oth" field="otherIncome" label="Other income / yr" value={params.otherIncome} step={1000} min={0} max={200000} onChange={v => update('otherIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
+            params.pension > 0 && <CField key="pena" field="pensionStartAge" label="Your pension starts at" value={params.pensionStartAge} min={50} max={75} onChange={v => update('pensionStartAge', v)} theme={theme} />,
+            params.pension > 0 && <CToggle key="penc" field="pensionCOLA" label="Your pension has COLA" value={params.enablePensionCOLA} onChange={v => update('enablePensionCOLA', v)} theme={theme} />,
             partner && <CField key="spen" field="spousePension" label="Partner's pension / yr" value={params.spousePension} step={1000} min={0} max={200000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
+            partner && params.spousePension > 0 && <CField key="spena" field="pensionStartAge" label="Partner's pension starts at" value={params.spousePensionStartAge} min={50} max={75} onChange={v => update('spousePensionStartAge', v)} theme={theme} />,
+            partner && params.spousePension > 0 && <CToggle key="spenc" field="pensionCOLA" label="Partner's pension has COLA" value={params.enableSpousePensionCOLA} onChange={v => update('enableSpousePensionCOLA', v)} theme={theme} />,
+            <CToggle key="ptt" field="partTime" label="Part-time / other income" value={params.enablePartTime} onChange={v => update('enablePartTime', v)} theme={theme} />,
+            params.enablePartTime && <CField key="pti" field="partTimeIncome" label="Amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
+            params.enablePartTime && <CField key="pts" field="partTimeStartAge" label="From age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} theme={theme} />,
+            params.enablePartTime && <CField key="pte" field="partTimeEndAge" label="To age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} theme={theme} />,
           ].filter(Boolean)}>
           <CField field="ssBenefit" label={partner ? 'Your SS / yr (at 67)' : 'SS / yr (at 67)'} value={params.ssBenefit} step={1000} min={0} max={80000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} theme={theme} />
           <CField field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} theme={theme} />
           {partner && <CField field="spouseSS" label="Partner's SS / yr" value={params.spouseSS} step={1000} min={0} max={80000} onChange={v => update('spouseSS', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
           {partner && <CField field="spouseClaimAge" label="Partner claims at" value={params.spouseClaimAge} min={62} max={70} onChange={v => update('spouseClaimAge', v)} theme={theme} />}
+        </CGroup>
+
+        {/* Your home */}
+        <CGroup title="Your home" mode={mode}>
+          <CSelect field="housingType" label="In retirement you" value={params.housingType} onChange={v => update('housingType', v)} theme={theme}
+            options={[{ v: 'own', label: 'Own your home' }, { v: 'rent', label: 'Rent' }]} />
+          {params.housingType === 'own' && <CField field="mortgagePayment" label="Mortgage / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
+          {params.housingType === 'own' && params.mortgagePayment > 0 && <CField field="mortgageLastAge" label="Mortgage paid off at" value={params.mortgageLastAge} min={params.currentAge} max={params.endAge} onChange={v => update('mortgageLastAge', v)} theme={theme} />}
+          {params.housingType === 'own' && <CField field="propertyTax" label="Property tax / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
+          {params.housingType === 'rent' && <CField field="monthlyRent" label="Rent / mo" value={params.monthlyRent} step={250} min={0} max={20000} onChange={v => update('monthlyRent', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
         </CGroup>
 
         {/* Investments */}
@@ -272,28 +299,57 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         </CGroup>
 
         {/* Advanced assumptions — the remaining engine inputs, collapsed by default */}
-        <CAdvanced count={7}>
+        <CAdvanced count={18}>
           <CSub title="Tax & residence">
-            <CSelect field="filingStatus" label="Filing status" value={params.filingStatus}
-              onChange={v => update('filingStatus', v)} theme={theme}
-              options={[{ v: 'single', label: 'Single' }, { v: 'married', label: 'Married, joint' }, { v: 'head', label: 'Head of household' }]} />
-            <CSelect field="stateOfResidence" label="State in retirement" value={params.stateOfResidence}
-              onChange={v => update('stateOfResidence', v)} options={CVI_STATES} theme={theme} />
-            <CField field="pensionStartAge" label="Pension starts at" value={params.pensionStartAge}
-              min={55} max={75} onChange={v => update('pensionStartAge', v)} theme={theme} />
+            <CField field="stateTaxRate" label="State tax rate" value={params.stateTaxRate} step={0.5} min={0} max={14}
+              onChange={v => update('stateTaxRate', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
+            <CField field="taxableGainRatio" label="Taxable account gain %" value={params.taxableGainRatio} step={5} min={0} max={100}
+              onChange={v => update('taxableGainRatio', v)} suffix="%" theme={theme} />
+            <CField field="bracketGrowth" label="Tax bracket growth" value={params.bracketGrowth} step={0.1} min={0} max={5}
+              onChange={v => update('bracketGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
+            <CToggle field="tcjaSunset" label="TCJA expires 2026" value={params.enableTCJASunset}
+              onChange={v => update('enableTCJASunset', v)} theme={theme} />
           </CSub>
           <CSub title="Market assumptions">
             <CField field="stockReturn" label="Stock return" value={params.stockReturn} step={0.1} min={3} max={12}
               onChange={v => update('stockReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
             <CField field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7}
               onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
-            <CField field="stockVol" label="Market volatility" value={params.stockVol} min={8} max={30}
+            <CField field="stockVol" label="Stock volatility" value={params.stockVol} min={8} max={30}
               onChange={v => update('stockVol', v)} suffix="%" theme={theme} />
+            <CField field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15}
+              onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
           </CSub>
           <CSub title="Strategy">
             <CToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails}
               onChange={v => update('enableGuardrails', v)} theme={theme} />
+            {params.enableGuardrails && <CField field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12}
+              onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
+            {params.enableGuardrails && <CField field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12}
+              onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
+            {params.enableGuardrails && <CField field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30}
+              onChange={v => update('guardrailAdjustment', v)} suffix="%" theme={theme} />}
           </CSub>
+          <CSub title="Windfall & conversions">
+            <CToggle field="windfall" label="One-time windfall" value={params.enableWindfall}
+              onChange={v => update('enableWindfall', v)} theme={theme} />
+            {params.enableWindfall && <CField field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000}
+              onChange={v => update('windfallAmount', v)} format={money} theme={theme} />}
+            {params.enableWindfall && <CField field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge}
+              onChange={v => update('windfallAge', v)} theme={theme} />}
+            <CToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion}
+              onChange={v => update('enableRothConversion', v)} theme={theme} />
+            {params.enableRothConversion && <CField field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000}
+              onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
+            {params.enableRothConversion && <CField field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge}
+              onChange={v => update('rothConversionStartAge', v)} theme={theme} />}
+            {params.enableRothConversion && <CField field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge}
+              onChange={v => update('rothConversionEndAge', v)} theme={theme} />}
+          </CSub>
+          <div style={{ fontSize: 11.5, lineHeight: 1.5, color: cvi.ink50, textWrap: 'pretty' }}>
+            Note: tax filing status follows your “Just me / Me + partner” choice above (single vs. married-joint).
+            State tax is modeled as one flat rate on income and gains — it does not apply state-specific Social Security or pension exemptions.
+          </div>
         </CAdvanced>
 
         {/* Reveal panel */}

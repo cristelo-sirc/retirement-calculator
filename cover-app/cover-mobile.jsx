@@ -230,25 +230,51 @@
         <MGroup title="What comes in">
           <MStep field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} />
           <MStep field="savingsRate" label="Your saving rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" />
+          <MSelect field="savingsDest" label="Your savings go to" value={params.savingsDest} onChange={v => update('savingsDest', v)}
+            options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
           {partner && <MStep field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} />}
           {partner && <MStep field="spouseSavingsRate" label="Partner's saving rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" />}
+          {partner && <MSelect field="savingsDest" label="Partner's savings go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)}
+            options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />}
         </MGroup>
 
         <MGroup title="What goes out">
           <MStep field="spending" label="Spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} />
-          <MStep field="healthcare" label="Healthcare to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} />
+          <MStep field="healthcare" label="Healthcare / yr to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} />
+          <MStep field="healthcare65" label="Healthcare / yr from 65" value={params.healthcare65} step={1000} min={0} max={60000} onChange={v => update('healthcare65', v)} format={money} />
+          <MStep field="healthcareInflation" label="Healthcare inflation" value={params.healthcareInflation} step={0.5} min={0} max={12} onChange={v => update('healthcareInflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
           <MStep field="inflation" label="Inflation" value={params.inflation} step={0.1} min={0} max={8} onChange={v => update('inflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
           <MStep field="legacyGoal" label="Legacy goal" value={params.legacyGoal} step={25000} min={0} max={3000000} onChange={v => update('legacyGoal', v)} format={money} />
+          <MToggle field="spendingReduction" label="Spend less later in life" value={params.enableSpendingReduction} onChange={v => update('enableSpendingReduction', v)} />
+          {params.enableSpendingReduction && <MStep field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} />}
+          {params.enableSpendingReduction && <MStep field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" />}
         </MGroup>
 
         <MGroup title="Guaranteed income">
-          <MStep field="ssBenefit" label={partner ? 'Your SS / mo (at 67)' : 'SS / mo (at 67)'} value={params.ssBenefit} step={100} min={0} max={5000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} />
+          <MStep field="ssBenefit" label={partner ? 'Your SS / yr (at 67)' : 'SS / yr (at 67)'} value={params.ssBenefit} step={1000} min={0} max={80000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} />
           <MStep field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} />
-          <MStep field="pension" label="Your pension / mo" value={params.pension} step={250} min={0} max={15000} onChange={v => update('pension', v)} format={v => '$' + v.toLocaleString()} />
-          <MStep field="otherIncome" label="Other income / mo" value={params.otherIncome} step={250} min={0} max={15000} onChange={v => update('otherIncome', v)} format={v => '$' + v.toLocaleString()} />
-          {partner && <MStep field="spouseSS" label="Partner's SS / mo" value={params.spouseSS} step={100} min={0} max={5000} onChange={v => update('spouseSS', v)} format={v => '$' + v.toLocaleString()} />}
+          {partner && <MStep field="spouseSS" label="Partner's SS / yr" value={params.spouseSS} step={1000} min={0} max={80000} onChange={v => update('spouseSS', v)} format={v => '$' + v.toLocaleString()} />}
           {partner && <MStep field="spouseClaimAge" label="Partner claims at" value={params.spouseClaimAge} min={62} max={70} onChange={v => update('spouseClaimAge', v)} />}
-          {partner && <MStep field="spousePension" label="Partner's pension / mo" value={params.spousePension} step={250} min={0} max={15000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} />}
+          {partner && <MToggle field="enableSpousalBenefit" label="Apply SS spousal benefit" value={params.enableSpousalBenefit} onChange={v => update('enableSpousalBenefit', v)} />}
+          <MStep field="pension" label="Your pension / yr" value={params.pension} step={1000} min={0} max={200000} onChange={v => update('pension', v)} format={v => '$' + v.toLocaleString()} />
+          {params.pension > 0 && <MStep field="pensionStartAge" label="Your pension starts at" value={params.pensionStartAge} min={50} max={75} onChange={v => update('pensionStartAge', v)} />}
+          {params.pension > 0 && <MToggle field="pensionCOLA" label="Your pension has COLA" value={params.enablePensionCOLA} onChange={v => update('enablePensionCOLA', v)} />}
+          {partner && <MStep field="spousePension" label="Partner's pension / yr" value={params.spousePension} step={1000} min={0} max={200000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} />}
+          {partner && params.spousePension > 0 && <MStep field="pensionStartAge" label="Partner's pension starts at" value={params.spousePensionStartAge} min={50} max={75} onChange={v => update('spousePensionStartAge', v)} />}
+          {partner && params.spousePension > 0 && <MToggle field="pensionCOLA" label="Partner's pension has COLA" value={params.enableSpousePensionCOLA} onChange={v => update('enableSpousePensionCOLA', v)} />}
+          <MToggle field="partTime" label="Part-time / other income" value={params.enablePartTime} onChange={v => update('enablePartTime', v)} />
+          {params.enablePartTime && <MStep field="partTimeIncome" label="Amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
+          {params.enablePartTime && <MStep field="partTimeStartAge" label="From age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} />}
+          {params.enablePartTime && <MStep field="partTimeEndAge" label="To age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} />}
+        </MGroup>
+
+        <MGroup title="Your home">
+          <MSelect field="housingType" label="In retirement you" value={params.housingType} onChange={v => update('housingType', v)}
+            options={[{ v: 'own', label: 'Own your home' }, { v: 'rent', label: 'Rent' }]} />
+          {params.housingType === 'own' && <MStep field="mortgagePayment" label="Mortgage / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} />}
+          {params.housingType === 'own' && params.mortgagePayment > 0 && <MStep field="mortgageLastAge" label="Mortgage paid off at" value={params.mortgageLastAge} min={params.currentAge} max={params.endAge} onChange={v => update('mortgageLastAge', v)} />}
+          {params.housingType === 'own' && <MStep field="propertyTax" label="Property tax / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} />}
+          {params.housingType === 'rent' && <MStep field="monthlyRent" label="Rent / mo" value={params.monthlyRent} step={250} min={0} max={20000} onChange={v => update('monthlyRent', v)} format={v => '$' + v.toLocaleString()} />}
         </MGroup>
 
         <MGroup title="Investments">
@@ -270,26 +296,41 @@
             </div>
             <span style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: cm.ink70, flex: '0 0 auto', paddingTop: 6, whiteSpace: 'nowrap' }}>
-              {adv ? '▾ Hide' : '▸ 7'}</span>
+              {adv ? '▾ Hide' : '▸ 18'}</span>
           </button>
           {adv && (
             <div style={{ marginTop: 24 }}>
               <MSub title="Tax & residence">
-                <MSelect field="filingStatus" label="Filing status" value={params.filingStatus}
-                  onChange={v => update('filingStatus', v)}
-                  options={[{ v: 'single', label: 'Single' }, { v: 'married', label: 'Married, joint' }, { v: 'head', label: 'Head of household' }]} />
-                <MSelect field="stateOfResidence" label="State in retirement" value={params.stateOfResidence}
-                  onChange={v => update('stateOfResidence', v)} options={window.CVI_STATES} />
-                <MStep field="pensionStartAge" label="Pension starts at" value={params.pensionStartAge} min={55} max={75} onChange={v => update('pensionStartAge', v)} />
+                <MStep field="stateTaxRate" label="State tax rate" value={params.stateTaxRate} step={0.5} min={0} max={14} onChange={v => update('stateTaxRate', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+                <MStep field="taxableGainRatio" label="Taxable account gain %" value={params.taxableGainRatio} step={5} min={0} max={100} onChange={v => update('taxableGainRatio', v)} suffix="%" />
+                <MStep field="bracketGrowth" label="Tax bracket growth" value={params.bracketGrowth} step={0.1} min={0} max={5} onChange={v => update('bracketGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+                <MToggle field="tcjaSunset" label="TCJA expires 2026" value={params.enableTCJASunset} onChange={v => update('enableTCJASunset', v)} />
               </MSub>
               <MSub title="Market assumptions">
                 <MStep field="stockReturn" label="Stock return" value={params.stockReturn} step={0.1} min={3} max={12} onChange={v => update('stockReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
                 <MStep field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7} onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MStep field="stockVol" label="Market volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
+                <MStep field="stockVol" label="Stock volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
+                <MStep field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15} onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
               </MSub>
               <MSub title="Strategy">
                 <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
+                {params.enableGuardrails && <MStep field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12} onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
+                {params.enableGuardrails && <MStep field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
+                {params.enableGuardrails && <MStep field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30} onChange={v => update('guardrailAdjustment', v)} suffix="%" />}
               </MSub>
+              <MSub title="Windfall & conversions">
+                <MToggle field="windfall" label="One-time windfall" value={params.enableWindfall} onChange={v => update('enableWindfall', v)} />
+                {params.enableWindfall && <MStep field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000} onChange={v => update('windfallAmount', v)} format={money} />}
+                {params.enableWindfall && <MStep field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge} onChange={v => update('windfallAge', v)} />}
+                <MToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} />
+                {params.enableRothConversion && <MStep field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} />}
+                {params.enableRothConversion && <MStep field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} />}
+                {params.enableRothConversion && <MStep field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} />}
+              </MSub>
+              <div style={{ fontSize: 11.5, lineHeight: 1.5, color: cm.ink50, textWrap: 'pretty', marginTop: 4 }}>
+                Note: tax filing status follows your “Just me / Me + partner” choice (single vs. married-joint).
+                State tax is one flat rate on income and gains — it does not apply state-specific Social Security or pension exemptions.
+              </div>
             </div>
           )}
         </div>

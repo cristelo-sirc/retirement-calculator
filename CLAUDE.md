@@ -4,7 +4,7 @@
 
 Two-file HTML retirement planning calculator with Monte Carlo simulations. `index.html` (UI shell, ~9,200 lines) + `engine.js` (simulation engine + render functions, ~6,200 lines).
 
-**Current Version:** 17.6
+**Current Version:** 18.1
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -495,4 +495,21 @@ Adapter vs legacy app on the saved scenario: **93% vs 92%** (Monte Carlo noise),
 Pre-rebuild V17.6 preserved on branch **`pre-reskin-v17.6`** (commit a436eea) + git history.
 
 ### Deferred (to re-add onto the new app)
-Goal Solver, Reports/QR/PDF export, detailed spending/tax/outcome charts, legacy setup wizard, importing the legacy `retirementArchitect_autoSave` plan, and broadening the Questionnaire's Advanced section to expose every engine input (currently defaulted in the adapter). Interim "V18.0 WIP Phase 1–5" (in-place re-skin) is superseded by this rebuild but remains in git history.
+Goal Solver, Reports/QR/PDF export, detailed spending/tax/outcome charts, legacy setup wizard, and importing the legacy `retirementArchitect_autoSave` plan. Interim "V18.0 WIP Phase 1–5" (in-place re-skin) is superseded by this rebuild but remains in git history.
+
+
+---
+
+## V18.1 — Full input exposure in the Questionnaire
+
+Every engine input is now editable in the Compass Questionnaire; nothing runs on a hidden adapter default. Before this, the adapter (`real-engine.js`) hardcoded ~40 of `collectInputs()`'s 67 inputs.
+
+**Newly exposed** (desktop `cover-inputs.jsx` + mobile `cover-mobile.jsx`): savings destination (pre-tax/Roth/split, per spouse); a real Part-time/other-income block (toggle, amount, start/end age) replacing the old "Other income" proxy that was silently modeled as lifelong part-time; **post-65 healthcare** + healthcare inflation (post-65 was previously $0); spending reduction (slow-go) block; SS spousal benefit; pension start ages + COLA per spouse; a Home group (own/rent &rarr; mortgage payment, payoff age, property tax, or monthly rent); windfall; Roth conversions; guardrail bands (ceiling/floor/adjustment); bond volatility, tax-bracket growth, TCJA sunset, taxable gain ratio.
+
+**Decisions (per Cris):** the State dropdown was replaced by a numeric **State tax rate %** that maps straight to the engine's flat `stateTaxRate` (engine applies ONE flat rate and does NOT honor state SS/pension exemptions &mdash; disclosed in an in-form note). The **Filing status** dropdown was removed &mdash; the engine derives MFJ vs Single from the partner toggle and has no head-of-household path; a note explains the link.
+
+**Units/conventions** (mock param shape &rarr; adapter): `$` amounts ANNUAL except `mortgagePayment` and `monthlyRent` which are MONTHLY (engine `&times;12`); percentages entered as whole numbers and divided by 100 in `mapToReal`. New `DEFAULTS` mirror the verified engine defaults exactly, so an untouched questionnaire reproduces the prior baseline (~93%).
+
+**Also fixed:** mobile SS/pension fields were "/mo" with monthly-scaled steppers while the engine treats them as ANNUAL &mdash; corrected to "/yr" to match desktop and the engine. `FIELD_INFO` "monthly" wording on SS/pension corrected to annual.
+
+**Cache-buster:** `engine.js?v=18.1` in `real-engine.js`. Engine.js UNCHANGED (math untouched). Shipped to the live site (both `index.html` and `cover.html` load the shared `cover-app/` files).

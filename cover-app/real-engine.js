@@ -1,4 +1,4 @@
-// real-engine.js — V18.0 adapter
+// real-engine.js — V18.1 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,25 +12,50 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.0p6';
+      s.src = 'engine.js?v=18.1';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
     });
   });
 
-  // ---- Defaults (mock param shape; SS/pension are ANNUAL per the /yr decision) --
+  // ---- Defaults (mock param shape) ---------------------------------------------
+  // Conventions: $ amounts are ANNUAL except mortgagePayment + monthlyRent (MONTHLY,
+  // engine multiplies these by 12). Percentages are WHOLE NUMBERS (e.g. 12 = 12%);
+  // the adapter divides them by 100. Every value below mirrors the verified engine
+  // default so an untouched questionnaire reproduces the legacy baseline exactly.
   var DEFAULTS = {
     hasPartner: true,
     currentAge: 55, retireAge: 65, endAge: 92, spouseAge: 53, spouseRetireAge: 65,
+
     userPreTax: 520000, userRoth: 120000, spousePreTax: 180000, spouseRoth: 40000, taxable: 90000,
-    salary: 145000, savingsRate: 12, spouseSalary: 78000, spouseSavingsRate: 6,
-    spending: 115000, healthcare: 8000, inflation: 2.5, legacyGoal: 0,
-    ssBenefit: 33600, ssClaimAge: 67, spouseSS: 22800, spouseClaimAge: 67,   // annual
-    pension: 0, pensionStartAge: 65, spousePension: 0, otherIncome: 0,       // annual
-    stockAllocation: 60, stockReturn: 7.0, bondReturn: 3.5, stockVol: 17,
-    enableGuardrails: false, enableGlidePath: true, glidePathEndStock: 40,
-    filingStatus: 'married', stateOfResidence: 'CA'
+
+    salary: 145000, savingsRate: 12, savingsDest: 'pretax',
+    spouseSalary: 78000, spouseSavingsRate: 6, spouseSavingsDest: 'pretax',
+
+    spending: 115000, inflation: 2.5, legacyGoal: 0,
+    healthcare: 8000, healthcare65: 0, healthcareInflation: 5.0,            // healthcare = pre-65, annual/person
+    enableSpendingReduction: false, spendingReductionAge: 75, spendingReductionPercent: 20,
+
+    ssBenefit: 33600, ssClaimAge: 67, spouseSS: 22800, spouseClaimAge: 67,  // annual
+    enableSpousalBenefit: false,
+
+    pension: 0, pensionStartAge: 65, enablePensionCOLA: false,              // annual
+    spousePension: 0, spousePensionStartAge: 65, enableSpousePensionCOLA: false,
+
+    enablePartTime: false, partTimeIncome: 0, partTimeStartAge: 65, partTimeEndAge: 70,  // annual
+
+    enableWindfall: false, windfallAmount: 0, windfallAge: 70,
+    enableRothConversion: false, rothConversionAmount: 0, rothConversionStartAge: 65, rothConversionEndAge: 72,
+
+    housingType: 'own', mortgagePayment: 0, mortgageLastAge: 70, propertyTax: 0, monthlyRent: 0,  // mortgage/rent MONTHLY, propertyTax annual
+
+    stockAllocation: 60, enableGlidePath: true, glidePathEndStock: 40,
+    stockReturn: 7.0, bondReturn: 3.5, stockVol: 17, bondVol: 6.0,
+
+    enableGuardrails: false, guardrailCeiling: 6.0, guardrailFloor: 4.0, guardrailAdjustment: 10,
+
+    bracketGrowth: 2.5, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 60
   };
 
   // ---- Map mockup params -> real engine params (collectInputs() shape) ----------
@@ -46,45 +71,69 @@
 
       userSS: m.ssBenefit || 0, userClaimAge: m.ssClaimAge || 67,
       spouseSS: partner ? (m.spouseSS || 0) : 0, spouseClaimAge: m.spouseClaimAge || 67,
-      enableSpousalBenefit: false,
+      enableSpousalBenefit: partner ? !!m.enableSpousalBenefit : false,
 
-      // "Other income" (annuity/rental) modeled as steady part-time-equivalent income
-      enablePartTime: (m.otherIncome || 0) > 0,
-      partTimeIncome: m.otherIncome || 0, partTimeStartAge: m.retireAge, partTimeEndAge: m.endAge,
+      // Part-time / other steady income (engine has one such channel)
+      enablePartTime: !!m.enablePartTime,
+      partTimeIncome: m.enablePartTime ? (m.partTimeIncome || 0) : 0,
+      partTimeStartAge: m.partTimeStartAge || m.retireAge,
+      partTimeEndAge: m.partTimeEndAge || m.endAge,
 
-      enableWindfall: false, windfallAmount: 0, windfallAge: 0,
+      enableWindfall: !!m.enableWindfall,
+      windfallAmount: m.enableWindfall ? (m.windfallAmount || 0) : 0,
+      windfallAge: m.windfallAge || 0,
 
       userPreTaxBalance: m.userPreTax || 0, userRothBalance: m.userRoth || 0,
       spousePreTaxBalance: partner ? (m.spousePreTax || 0) : 0,
       spouseRothBalance: partner ? (m.spouseRoth || 0) : 0,
       taxableBalance: m.taxable || 0,
 
-      currentSalary: m.salary || 0, userSavingsRate: (m.savingsRate || 0) / 100, userSavingsDest: 'pretax',
+      currentSalary: m.salary || 0, userSavingsRate: (m.savingsRate || 0) / 100,
+      userSavingsDest: m.savingsDest || 'pretax',
       spouseCurrentSalary: partner ? (m.spouseSalary || 0) : 0,
-      spouseSavingsRate: partner ? (m.spouseSavingsRate || 0) / 100 : 0, spouseSavingsDest: 'pretax',
+      spouseSavingsRate: partner ? (m.spouseSavingsRate || 0) / 100 : 0,
+      spouseSavingsDest: partner ? (m.spouseSavingsDest || 'pretax') : 'pretax',
 
       pension: m.pension || 0, pensionAge: m.pensionStartAge || 65,
-      spousePension: partner ? (m.spousePension || 0) : 0, spousePensionAge: m.pensionStartAge || 65,
-      enablePensionCOLA: false, enableSpousePensionCOLA: false,
+      enablePensionCOLA: !!m.enablePensionCOLA,
+      spousePension: partner ? (m.spousePension || 0) : 0,
+      spousePensionAge: partner ? (m.spousePensionStartAge || 65) : 65,
+      enableSpousePensionCOLA: partner ? !!m.enableSpousePensionCOLA : false,
 
-      enableRothConversion: false, rothConversionAmount: 0, rothConversionStartAge: 0, rothConversionEndAge: 0,
+      enableRothConversion: !!m.enableRothConversion,
+      rothConversionAmount: m.enableRothConversion ? (m.rothConversionAmount || 0) : 0,
+      rothConversionStartAge: m.rothConversionStartAge || 0,
+      rothConversionEndAge: m.rothConversionEndAge || 0,
 
       lifestyleSpending: m.spending || 0, lifestyleInflation: inflFrac,
-      enableSpendingReduction: false, spendingReductionAge: 0, spendingReductionPercent: 0,
+      enableSpendingReduction: !!m.enableSpendingReduction,
+      spendingReductionAge: m.spendingReductionAge || 0,
+      spendingReductionPercent: (m.spendingReductionPercent || 0) / 100,
 
       enableGuardrails: !!m.enableGuardrails,
-      guardrailCeiling: 0.06, guardrailFloor: 0.04, guardrailAdjustment: 0.10,
+      guardrailCeiling: (m.guardrailCeiling != null ? m.guardrailCeiling : 6) / 100,
+      guardrailFloor: (m.guardrailFloor != null ? m.guardrailFloor : 4) / 100,
+      guardrailAdjustment: (m.guardrailAdjustment != null ? m.guardrailAdjustment : 10) / 100,
 
-      housingType: 'own', mortgagePrincipal: 0, mortgageLastAge: 0, propertyTax: 0, monthlyRent: 0,
+      housingType: m.housingType || 'own',
+      mortgagePrincipal: (m.housingType === 'own') ? (m.mortgagePayment || 0) : 0,  // engine ×12 (monthly payment)
+      mortgageLastAge: m.mortgageLastAge || 0,
+      propertyTax: (m.housingType === 'own') ? (m.propertyTax || 0) : 0,            // annual
+      monthlyRent: (m.housingType === 'rent') ? (m.monthlyRent || 0) : 0,           // engine ×12
 
-      healthcarePre65: m.healthcare || 0, healthcare65: 0, healthcareInflation: 0.05,
+      healthcarePre65: m.healthcare || 0, healthcare65: m.healthcare65 || 0,
+      healthcareInflation: (m.healthcareInflation != null ? m.healthcareInflation : 5) / 100,
 
       stockAllocation: (m.stockAllocation || 0) / 100,
       enableGlidePath: !!m.enableGlidePath,
       endingStockAllocation: (m.glidePathEndStock || 0) / 100,
       stockReturn: (m.stockReturn || 0) / 100, stockVol: (m.stockVol || 0) / 100,
-      bondReturn: (m.bondReturn || 0) / 100, bondVol: 0.06,
-      bracketGrowth: 0.025, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 0.6
+      bondReturn: (m.bondReturn || 0) / 100,
+      bondVol: (m.bondVol != null ? m.bondVol : 6) / 100,
+      bracketGrowth: (m.bracketGrowth != null ? m.bracketGrowth : 2.5) / 100,
+      enableTCJASunset: !!m.enableTCJASunset,
+      stateTaxRate: (m.stateTaxRate || 0) / 100,
+      taxableGainRatio: (m.taxableGainRatio != null ? m.taxableGainRatio : 60) / 100
     };
   }
 
