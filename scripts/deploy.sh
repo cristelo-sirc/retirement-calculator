@@ -10,11 +10,12 @@
 #   GitHub no-reply email so GitHub's email-privacy rule (GH007) can't reject
 #   the push.
 #
-# USAGE:
-#   GITHUB_TOKEN=<github-PAT> bash scripts/deploy.sh "commit message"
+# TOKEN:
+#   Uses $GITHUB_TOKEN if set, otherwise reads data/deploy-token.txt
+#   (gitignored and never deployed).
 #
-#   Deploys the CURRENT contents of this repo folder to origin/main.
-#   _archive/, data/, .git, .claude and junk files are never deployed.
+# USAGE:
+#   bash scripts/deploy.sh "commit message"
 #
 set -euo pipefail
 
@@ -27,9 +28,15 @@ BRANCH="main"
 # Resolve this repo folder (the mount) from the script's own location.
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-if [ -z "${GITHUB_TOKEN:-}" ]; then
-  echo "ERROR: set GITHUB_TOKEN to a GitHub PAT with push access." >&2
-  echo "Usage: GITHUB_TOKEN=<pat> bash scripts/deploy.sh \"message\"" >&2
+# Token: prefer env var, else the private gitignored file.
+TOKEN_FILE="$SRC/data/deploy-token.txt"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+if [ -z "$GITHUB_TOKEN" ] && [ -f "$TOKEN_FILE" ]; then
+  GITHUB_TOKEN="$(tr -d '[:space:]' < "$TOKEN_FILE")"
+fi
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "ERROR: no GitHub token found." >&2
+  echo "Set GITHUB_TOKEN=<pat> or put the token in data/deploy-token.txt" >&2
   exit 1
 fi
 

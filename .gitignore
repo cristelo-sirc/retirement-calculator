@@ -18,3 +18,7 @@ Retirement_Calculator_v*.html
 
 # FUSE mount artifacts
 .fuse_hidden*
+
+# Deploy token (private; never commit)
+*token*.txt
+deploy-token*
