@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.2
+**Current Version:** 18.3
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -197,3 +197,19 @@ Every engine input is now editable in the Compass Questionnaire; nothing runs on
 **Also fixed:** the desktop Questionnaire's "See the cover &rarr;" button had no `onClick` (dead button) &mdash; now navigates to the Cover.
 
 **Cache-buster:** bumped `engine.js?v=18.2` in `real-engine.js` and added `?v=18.2` to all five `cover-app/*.jsx` includes in `index.html` (they previously had none, risking stale JSX on deploy). Engine.js UNCHANGED (math untouched); all changes are UI/data plumbing, zero Monte Carlo impact.
+
+---
+
+## V18.3 &mdash; Save/Load surfaced at the top of each page
+
+**Problem solved:** V18.2's Save/Load lived only at the *bottom* of the cover and questionnaire, so a returning user couldn't see "Load my plan" until after scrolling past (or re-entering) everything &mdash; backwards, since Load is the whole point of avoiding re-entry.
+
+**New `CoverSaveLoadCallout` (in `compass-cover.jsx`).** A prominent bordered callout (prompt + Load/Save buttons, `primary` selects which is filled, `compact` flag, inline success/error feedback in sage/clay). Reused across desktop + mobile via `window.CoverSaveLoadCallout`.
+
+**Placement:**
+- **Questionnaire** (desktop `cover-inputs.jsx` + mobile `QuizView`): callout at the TOP, right under the intro and above the first question, leading with **Load** ("no need to re-enter everything"). The desktop questionnaire keeps its bottom Save/Load row for the natural post-entry save moment. (Mobile's questionnaire previously had no Save/Load at all &mdash; now fixed; `QuizView` gained a `setParams` prop.)
+- **Cover** (desktop `CoverDesktop` + mobile `CoverView`): callout moved UP &mdash; directly under the nav on desktop, at the top of the mobile cover &mdash; so it's visible without scrolling. The buried V18.2 footer row was removed so there's one clear home (Save-primary copy, since the cover always has a plan in view).
+
+**No engine impact** (UI/placement only). **Cache-buster:** `engine.js?v=18.3` + `?v=18.3` on all `cover-app/*.jsx` includes; titles bumped to V18.3. Engine.js UNCHANGED.
+
+**Note (carried from V18.2 audit, still open):** the untouched-defaults scenario scores ~42/100, not the ~93% an older doc line implied; that figure referred to a specific saved scenario, not `DEFAULTS`. Pre-existing, unrelated to V18.2/V18.3 (engine math unchanged). Reconciliation deferred pending Cris's direction.

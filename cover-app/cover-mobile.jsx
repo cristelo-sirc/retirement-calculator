@@ -175,6 +175,11 @@
           )}
         </div>
 
+        <div style={{ marginBottom: 26 }}>
+          <window.CoverSaveLoadCallout params={params} setParams={setParams}
+            prompt="Save this plan to a file, or load another." primary="save" compact />
+        </div>
+
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
@@ -202,15 +207,11 @@
             ))}
           </div>
         </section>
-
-        <div style={{ marginTop: 26, paddingTop: 20, borderTop: `1px solid ${cm.rule}` }}>
-          <window.CoverSaveLoad params={params} setParams={setParams} />
-        </div>
       </div>
     );
   }
 
-  function QuizView({ params, update, vc, partner, results }) {
+  function QuizView({ params, update, setParams, vc, partner, results }) {
     const [adv, setAdv] = React.useState(false);
     return (
       <div style={{ padding: '24px 20px 28px' }}>
@@ -221,6 +222,11 @@
           margin: '0 auto 24px', maxWidth: 320, textWrap: 'pretty' }}>
           Every input the cover uses, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
         </p>
+
+        <div style={{ marginBottom: 26 }}>
+          <window.CoverSaveLoadCallout params={params} setParams={setParams}
+            prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
+        </div>
 
         <div style={{ marginBottom: 28 }}>
           <div style={{ ...mKick, marginBottom: 8 }}>This plan is for</div>
@@ -397,7 +403,7 @@
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           {tab === 'cover'
             ? <CoverView results={results} vc={vc} partner={partner} dirty={dirty} goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
-            : <QuizView params={params} update={update} vc={vc} partner={partner} results={results} />}
+            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} />}
         </main>
 
         {/* bottom tab nav */}

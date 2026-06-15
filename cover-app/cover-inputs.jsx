@@ -199,6 +199,11 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             : 'Answer the essentials; open “Show more” in any section for the finer dials. Every field explains itself, and the number on your cover updates as you go.'}
         </p>
 
+        <div style={{ maxWidth: 760, margin: '0 auto 36px' }}>
+          <window.CoverSaveLoadCallout params={params} setParams={setParams}
+            prompt="Returning? Load your saved plan — no need to re-enter everything." primary="load" />
+        </div>
+
         {/* Who the plan is for */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
           marginBottom: 40 }}>

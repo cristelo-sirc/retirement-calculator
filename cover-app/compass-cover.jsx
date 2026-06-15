@@ -121,6 +121,39 @@ function CoverSaveLoad({ params, setParams, align }) {
 }
 window.CoverSaveLoad = CoverSaveLoad;
 
+// Prominent Save/Load callout (V18.3) — sits at the TOP of the cover and the
+// questionnaire so a returning user sees Load before re-entering anything.
+function CoverSaveLoadCallout({ params, setParams, prompt, primary, compact }) {
+  const [msg, setMsg] = React.useState(null); // { text, ok }
+  const save = () => { const r = window.CompassIO.savePlan(params); setMsg({ text: r.ok ? 'Saved to your downloads.' : (r.error || 'Could not save.'), ok: r.ok }); };
+  const load = () => { setMsg(null); window.CompassIO.pickPlanFile(r => {
+    if (r && r.ok) { setParams(r.params); setMsg({ text: 'Plan loaded.', ok: true }); }
+    else { setMsg({ text: (r && r.error) || 'Could not load that file.', ok: false }); }
+  }); };
+  const loadPrimary = primary !== 'save';
+  const btn = (filled) => ({ padding: compact ? '10px 16px' : '13px 22px', cursor: 'pointer',
+    border: `1px solid ${cvStyles.ink}`, background: filled ? cvStyles.ink : 'transparent',
+    color: filled ? cvStyles.paper : cvStyles.ink, fontFamily: cvStyles.body, fontSize: 11.5,
+    letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' });
+  return (
+    <div style={{ border: `1px solid ${cvStyles.ink}`, background: cvStyles.paperWarm,
+      padding: compact ? '12px 16px' : '16px 22px', display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+      <div style={{ flex: '1 1 240px', minWidth: 200 }}>
+        <div style={{ ...cvKicker, marginBottom: 4 }}>Saved plan</div>
+        <div style={{ fontFamily: cvStyles.display, fontSize: compact ? 16 : 18, lineHeight: 1.25,
+          letterSpacing: '-0.01em' }}>{prompt}</div>
+        {msg && <div style={{ fontSize: 11.5, color: msg.ok ? cvStyles.sage : cvStyles.clay, marginTop: 5, fontWeight: 600 }}>{msg.text}</div>}
+      </div>
+      <div style={{ display: 'flex', gap: 10, flex: '0 0 auto', flexWrap: 'wrap' }}>
+        <button onClick={load} style={btn(loadPrimary)}>Load a saved plan ↑</button>
+        <button onClick={save} style={btn(!loadPrimary)}>Save plan ↓</button>
+      </div>
+    </div>
+  );
+}
+window.CoverSaveLoadCallout = CoverSaveLoadCallout;
+
 function CoverDesktop(props) {
   props = props || {}; const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
@@ -144,6 +177,10 @@ function CoverDesktop(props) {
           <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
         </div>
         <CoverNav active="cover" emphasizeQuiz={!dirty} />
+        <div style={{ marginTop: 16 }}>
+          <CoverSaveLoadCallout params={params} setParams={setParams}
+            prompt="Have a saved plan? Load it — or save this one to a file." primary="save" compact />
+        </div>
 
         <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '0.85fr 1.15fr',
           alignItems: 'center', gap: 40 }}>
@@ -280,10 +317,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ marginTop: 48, paddingTop: 28, borderTop: `1px solid ${cvStyles.rule}` }}>
-            <CoverSaveLoad params={params} setParams={setParams} />
-            <div style={{ ...cvKicker, textAlign: 'center', marginTop: 20 }}>Concept 07 / Cover · V18.2</div>
-          </div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.3</div>
         </div>
       </section>
     </div>
@@ -671,7 +705,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.2</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.3</div>
       </div>
     </div>
   );
