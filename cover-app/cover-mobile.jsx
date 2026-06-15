@@ -387,12 +387,6 @@
     return (
       <div style={{ width: '100%', height: '100%', background: cm.paper, color: cm.ink,
         fontFamily: cm.body, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* status bar */}
-        <div style={{ height: 40, padding: '12px 24px 0', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', fontSize: 13, fontWeight: 600, flex: '0 0 auto' }}>
-          <span>9:41</span>
-          <span style={{ fontSize: 11 }}>● ● ●</span>
-        </div>
         {/* masthead */}
         <header style={{ padding: '10px 20px 12px', borderBottom: `1px solid ${cm.ink}`, flex: '0 0 auto',
           display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>

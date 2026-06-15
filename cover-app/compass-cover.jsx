@@ -121,7 +121,7 @@ function CoverSaveLoad({ params, setParams, align }) {
 }
 window.CoverSaveLoad = CoverSaveLoad;
 
-// Prominent Save/Load callout (V18.3) — sits at the TOP of the cover and the
+// Prominent Save/Load callout (V18.4) — sits at the TOP of the cover and the
 // questionnaire so a returning user sees Load before re-entering anything.
 function CoverSaveLoadCallout({ params, setParams, prompt, primary, compact }) {
   const [msg, setMsg] = React.useState(null); // { text, ok }
@@ -317,7 +317,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.3</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.4</div>
         </div>
       </section>
     </div>
@@ -705,7 +705,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.3</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.4</div>
       </div>
     </div>
   );

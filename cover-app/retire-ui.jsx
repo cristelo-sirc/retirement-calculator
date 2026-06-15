@@ -127,14 +127,14 @@ function InfoTip({ field, text, theme }) {
         <span
           role="tooltip"
           style={{
-            position: 'absolute', top: 'calc(100% + 7px)', left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', top: 'calc(100% + 7px)', left: 0,
             width: 232, background: paper, color: ink, border: `1px solid ${ink}`,
             padding: '11px 13px', fontFamily: body, fontSize: 12, lineHeight: 1.5, fontWeight: 400,
             letterSpacing: 0, textTransform: 'none', zIndex: 50,
             boxShadow: '0 6px 22px rgba(0,0,0,0.16)', textAlign: 'left',
           }}
         >
-          <span style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)',
+          <span style={{ position: 'absolute', bottom: '100%', left: 8,
             width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent',
             borderBottom: `6px solid ${ink}` }} />
           {detail}
