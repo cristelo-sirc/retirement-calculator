@@ -1,4 +1,4 @@
-// real-engine.js — V18.6 adapter
+// real-engine.js — V18.7 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.6';
+      s.src = 'engine.js?v=18.7';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -153,9 +153,16 @@
     return results;
   }
 
-  function successOf(results) {
+  // A path "succeeds" if it never went broke AND finishes with at least the legacy goal
+  // left over. The goal is a FLAT future-dollar amount (no inflation growth). Default 0
+  // reproduces the prior behavior exactly: a solvent path always ends >= 0, so goal 0 is
+  // the old solvent-only test.
+  function successOf(results, goal) {
+    goal = goal || 0;
     var solved = 0;
-    for (var i = 0; i < results.length; i++) if (results[i].solvent) solved++;
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].solvent && results[i].finalBalance >= goal) solved++;
+    }
     return Math.round((solved / results.length) * 100);
   }
 
@@ -164,7 +171,7 @@
   function quickSuccess(m) {
     if (!window.simulatePath) return 0;
     var mm = Object.assign({}, DEFAULTS, m || {});
-    return successOf(runPaths(mapToReal(mm, mm.numPaths || 1500)));
+    return successOf(runPaths(mapToReal(mm, mm.numPaths || 1500)), mm.legacyGoal || 0);
   }
 
   function verdictFor(rate) {
@@ -176,19 +183,25 @@
       verdictBlurb: 'Your plan runs out of money in too many scenarios. Adjustments are needed.' };
   }
 
-  function buildLevers(m, real, baseRate) {
+  // Cover "Three Moves" deltas. Each move AND the base are measured at the same 200 paths
+  // (V18.7) so the delta is apples-to-apples — it now lines up with the full-count Income &
+  // Odds deltas instead of mixing a 200-path move with a 1500-path base. Legacy goal applied
+  // to every run so the deltas respect the goal too.
+  function buildLevers(m, real) {
+    var goal = m.legacyGoal || 0;
+    var base = successOf(runPaths(Object.assign({}, real, { numPaths: 200 })), goal);
     var levers = [];
-    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: 200 })));
+    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: 200 })), goal);
     levers.push({ id: 'delay', title: 'Delay retirement 2 years',
-      detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge, delta: r1 - baseRate });
+      detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge, delta: r1 - base });
     var newSpend = Math.round(real.lifestyleSpending * 0.9 / 1000) * 1000;
-    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: 200 })));
+    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: 200 })), goal);
     levers.push({ id: 'spend', title: 'Cut spending 10%',
-      detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k', delta: r2 - baseRate });
+      detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k', delta: r2 - base });
     if (m.ssClaimAge < 70) {
-      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: 200 })));
+      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: 200 })), goal);
       levers.push({ id: 'ss', title: 'Wait until 70 for Social Security',
-        detail: 'Claim at 70 instead of ' + m.ssClaimAge, delta: r3 - baseRate });
+        detail: 'Claim at 70 instead of ' + m.ssClaimAge, delta: r3 - base });
     }
     return levers.sort(function (a, b) { return b.delta - a.delta; }).filter(function (l) { return l.delta >= 0; }).slice(0, 3);
   }
@@ -202,6 +215,7 @@
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0 };
     }
     var real = mapToReal(m, m.numPaths || 1500);
+    var goal = m.legacyGoal || 0;            // flat future-dollar target the plan must end at/above
     var results = runPaths(real);
 
     // Sort by final balance, then depletion age (matches initiateSimulation)
@@ -214,7 +228,7 @@
     var n = results.length;
     var p50 = results[Math.floor(n * 0.50)];
     var medianLog = p50.log;
-    var successRate = successOf(results);
+    var successRate = successOf(results, goal);
 
     // Paycheck (monthly) from the median path's first retirement year
     var retIdx = Math.max(0, m.retireAge - m.currentAge);
@@ -237,7 +251,7 @@
     var lo = 20000, hi = Math.max(80000, real.lifestyleSpending * 2);
     for (var k = 0; k < 9; k++) {
       var mid = (lo + hi) / 2;
-      var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: 250 })));
+      var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: 250 })), goal);
       if (s < 90) hi = mid; else lo = mid;
     }
     sustainableSpending = Math.round(lo / 1000) * 1000;
@@ -261,7 +275,7 @@
     return Object.assign({
       params: m, successRate: successRate, numPaths: real.numPaths,
       sustainableSpending: sustainableSpending, runwayYears: runwayYears, medianLegacy: medianLegacy,
-      levers: buildLevers(m, real, successRate), paycheck: paycheck,
+      levers: buildLevers(m, real), paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings
     }, v);
   }

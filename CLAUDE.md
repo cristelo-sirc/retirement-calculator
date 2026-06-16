@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.6
+**Current Version:** 18.7
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -300,6 +300,38 @@ silently.
 **Cache-buster:** `engine.js?v=18.6` + `?v=18.6` on all `cover-app/*` includes; all version strings
 (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.6. V18.5
 shipped as commit 5f208d7; this is the fast-follow that completes finding #1.
+
+---
+
+## V18.7 &mdash; Legacy goal wired into scoring (adapter) + Cover lever deltas reconciled
+
+**`engine.js` is UNCHANGED.** Both changes live in `real-engine.js` scoring only &mdash; we changed how the
+already-simulated paths are graded, not how they are simulated. Zero Monte Carlo math impact.
+
+**Legacy goal now binds the success test (flat target).** `legacyGoal` was collected but ignored. Now
+`successOf(results, goal)` counts a path as a success only if it is solvent **and** its `finalBalance &ge;
+goal`. Per Cris the goal is a **flat future-dollar amount** (not inflation-adjusted): the plan must finish
+at or above the literal number entered. `finalBalance` is the engine&rsquo;s nominal end balance (sum of all
+accounts at `endAge`), so this is the &ldquo;leave exactly $X at the finish line&rdquo; reading. **Default
+`legacyGoal: 0` reproduces prior behavior exactly** &mdash; a solvent path always ends &ge; 0, so goal 0 is
+the old solvent-only test (verified: DEFAULTS still 40/100). Threaded through every scorer &mdash; `compute()`
+headline, `quickSuccess()` (Income &amp; Odds), `buildLevers` (cover moves), and the sustainable-spending
+bisection &mdash; so a goal lowers the odds consistently on every screen and also shrinks the safe-to-spend
+figure. **Implementation note:** this did NOT require an engine change after all, contrary to the earlier
+V18.5/18.6 &ldquo;needs an engine change&rdquo; note &mdash; grading on `finalBalance` in the adapter is sufficient.
+
+**Cover &ldquo;Three Moves&rdquo; deltas reconciled with Income &amp; Odds.** `buildLevers` measured each move at
+200 paths but subtracted a 1500-path base, biasing the delta &mdash; the cover showed e.g. +26/+16/+12 while
+Income &amp; Odds (full count) showed +23/+9/+5 for the same moves (up to 7 pts apart; caught in live testing,
+not static review). Fix: `buildLevers` now measures its **base at the same 200 paths** as its moves, so each
+delta is apples-to-apples and lines up with the full-count deltas (within ~1 pt). No performance change (still
+200-path runs). The `buildLevers(m, real)` signature dropped the now-unused `baseRate` argument.
+
+**Status:** the `legacyGoal` wiring earmarked for V18.7/Batch B is shipped. No remaining items from the
+external code review.
+
+**Cache-buster:** `engine.js?v=18.7` + `?v=18.7` on all `cover-app/*` includes; all version strings (both
+HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.7.
 
 ---
 
