@@ -1,4 +1,4 @@
-// real-engine.js — V18.1 adapter
+// real-engine.js — V18.5 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.4';
+      s.src = 'engine.js?v=18.5';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -137,9 +137,17 @@
     };
   }
 
+  // Fixed seed base => the SAME plan produces the SAME set of paths on every screen
+  // (Cover, Projection, Income & Odds, Rework, Questionnaire, mobile). Reuses
+  // engine.js's existing deterministic solver RNG via solverPathIndex; engine.js
+  // itself is UNCHANGED. Without this each screen re-rolled Math.random(), so the
+  // identical plan showed slightly different odds (V18.5 cross-screen-drift fix).
+  var SEED_BASE = 0x5f3759df;
   function runPaths(real) {
+    real._solverDeterministic = true;
+    real._solverSeedBase = SEED_BASE;
     var results = [];
-    for (var i = 0; i < real.numPaths; i++) results.push(window.simulatePath(real));
+    for (var i = 0; i < real.numPaths; i++) results.push(window.simulatePath(real, i));
     return results;
   }
 
@@ -184,7 +192,7 @@
   function compute(params) {
     var m = Object.assign({}, DEFAULTS, params || {});
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
-      return { params: m, successRate: 0, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
+      return { params: m, successRate: 0, numPaths: 1500, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
         levers: [], medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0 };
@@ -247,7 +255,7 @@
 
     var v = verdictFor(successRate);
     return Object.assign({
-      params: m, successRate: successRate,
+      params: m, successRate: successRate, numPaths: real.numPaths,
       sustainableSpending: sustainableSpending, runwayYears: runwayYears, medianLegacy: medianLegacy,
       levers: buildLevers(m, real, successRate), paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings

@@ -232,6 +232,12 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
           <CField field="preTax" label={partner ? 'Your pre-tax (401k/IRA)' : 'Pre-tax (401k/IRA)'} value={params.userPreTax} step={10000} min={0} max={5000000} onChange={v => update('userPreTax', v)} format={money} theme={theme} />
           <CField field="roth" label={partner ? 'Your Roth' : 'Roth'} value={params.userRoth} step={10000} min={0} max={3000000} onChange={v => update('userRoth', v)} format={money} theme={theme} />
           <CField field="taxable" label="Taxable (joint)" value={params.taxable} step={10000} min={0} max={3000000} onChange={v => update('taxable', v)} format={money} theme={theme} />
+          <CToggle field="windfall" label="One-time windfall" value={params.enableWindfall}
+            onChange={v => update('enableWindfall', v)} theme={theme} />
+          {params.enableWindfall && <CField field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000}
+            onChange={v => update('windfallAmount', v)} format={money} theme={theme} />}
+          {params.enableWindfall && <CField field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge}
+            onChange={v => update('windfallAge', v)} theme={theme} />}
         </CGroup>
 
         {/* Income today */}
@@ -299,12 +305,16 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
           advanced={[
             <CToggle key="gp" field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} theme={theme} />,
             params.enableGlidePath && <CField key="gpe" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" theme={theme} />,
+            <CToggle key="rc" field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} theme={theme} />,
+            params.enableRothConversion && <CField key="rca" field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
+            params.enableRothConversion && <CField key="rcs" field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} theme={theme} />,
+            params.enableRothConversion && <CField key="rce" field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} theme={theme} />,
           ].filter(Boolean)}>
           <CField field="stockAllocation" label="Stocks now" value={params.stockAllocation} min={0} max={100} onChange={v => update('stockAllocation', v)} suffix="%" theme={theme} />
         </CGroup>
 
         {/* Advanced assumptions — the remaining engine inputs, collapsed by default */}
-        <CAdvanced count={18}>
+        <CAdvanced count={12}>
           <CSub title="Tax & residence">
             <CField field="stateTaxRate" label="State tax rate" value={params.stateTaxRate} step={0.5} min={0} max={14}
               onChange={v => update('stateTaxRate', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
@@ -312,7 +322,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
               onChange={v => update('taxableGainRatio', v)} suffix="%" theme={theme} />
             <CField field="bracketGrowth" label="Tax bracket growth" value={params.bracketGrowth} step={0.1} min={0} max={5}
               onChange={v => update('bracketGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
-            <CToggle field="tcjaSunset" label="TCJA expires 2026" value={params.enableTCJASunset}
+            <CToggle field="tcjaSunset" label="Assume higher future tax rates" value={params.enableTCJASunset}
               onChange={v => update('enableTCJASunset', v)} theme={theme} />
           </CSub>
           <CSub title="Market assumptions">
@@ -334,22 +344,6 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
               onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
             {params.enableGuardrails && <CField field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30}
               onChange={v => update('guardrailAdjustment', v)} suffix="%" theme={theme} />}
-          </CSub>
-          <CSub title="Windfall & conversions">
-            <CToggle field="windfall" label="One-time windfall" value={params.enableWindfall}
-              onChange={v => update('enableWindfall', v)} theme={theme} />
-            {params.enableWindfall && <CField field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000}
-              onChange={v => update('windfallAmount', v)} format={money} theme={theme} />}
-            {params.enableWindfall && <CField field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge}
-              onChange={v => update('windfallAge', v)} theme={theme} />}
-            <CToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion}
-              onChange={v => update('enableRothConversion', v)} theme={theme} />
-            {params.enableRothConversion && <CField field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000}
-              onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
-            {params.enableRothConversion && <CField field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge}
-              onChange={v => update('rothConversionStartAge', v)} theme={theme} />}
-            {params.enableRothConversion && <CField field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge}
-              onChange={v => update('rothConversionEndAge', v)} theme={theme} />}
           </CSub>
           <div style={{ fontSize: 11.5, lineHeight: 1.5, color: cvi.ink50, textWrap: 'pretty' }}>
             Note: tax filing status follows your “Just me / Me + partner” choice above (single vs. married-joint).

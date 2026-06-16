@@ -44,7 +44,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '18.2', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '18.5', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -254,7 +254,7 @@ function CoverDesktop(props) {
             paddingBottom: 56, borderBottom: `1px solid ${cvStyles.rule}`, marginBottom: 56 }}>
             <CoverReason big={`${results.successRate}%`}
               head="of futures succeed"
-              body={`Across a thousand simulated histories, ${results.successRate}% finish with money still in the account at ${results.params.endAge}.`} />
+              body={`Across ${(results.numPaths || 0).toLocaleString()} simulated histories, ${results.successRate}% finish with money still in the account at ${results.params.endAge}.`} />
             <CoverReason big={fmt(results.medianLegacy, { compact: true })}
               head="median legacy"
               body="The middle outcome leaves this for heirs or late-life care — more in fair markets, less in foul." />
@@ -317,7 +317,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.4</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.5</div>
         </div>
       </section>
     </div>
@@ -562,7 +562,7 @@ function CoverCharts(props) {
   return (
     <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="Concept 07 / Cover · Projection">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
-        <div style={{ ...cvKicker, marginBottom: 10 }}>The Projection · 1,000 paths</div>
+        <div style={{ ...cvKicker, marginBottom: 10 }}>The Projection · {(results.numPaths || 0).toLocaleString()} paths</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 52, margin: '0 0 8px',
           letterSpacing: '-0.01em', lineHeight: 1.05 }}>Where the money goes,<br />year by year.</h1>
         <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 600, margin: '0 0 32px' }}>
@@ -705,7 +705,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.4</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.5</div>
       </div>
     </div>
   );

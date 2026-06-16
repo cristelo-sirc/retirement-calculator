@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.3
+**Current Version:** 18.5
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -213,6 +213,57 @@ Every engine input is now editable in the Compass Questionnaire; nothing runs on
 **No engine impact** (UI/placement only). **Cache-buster:** `engine.js?v=18.3` + `?v=18.3` on all `cover-app/*.jsx` includes; titles bumped to V18.3. Engine.js UNCHANGED.
 
 **Note (carried from V18.2 audit, still open):** the untouched-defaults scenario scores ~42/100, not the ~93% an older doc line implied; that figure referred to a specific saved scenario, not `DEFAULTS`. Pre-existing, unrelated to V18.2/V18.3 (engine math unchanged). Reconciliation deferred pending Cris's direction.
+
+---
+
+## V18.5 &mdash; Cross-screen consistency, tax relabel, input reorg, version hygiene
+
+Batch of fixes from an external code review (findings independently verified against the code first).
+**`engine.js` is UNCHANGED** &mdash; every change is in the adapter, the React UI, or docs. Zero Monte
+Carlo math impact.
+
+**Consistent odds across every screen (the review's top P1).** `real-engine.js`'s `runPaths()` re-rolled
+`Math.random()` on every call, with no shared seed or cache, so the *same* plan showed slightly
+different success % on each screen (Cover/Projection/Income&amp;Odds/Rework/Questionnaire/mobile) &mdash;
+e.g. 39 vs 42 vs 44. Fix: `runPaths()` now activates the engine's **existing, already-trusted
+deterministic RNG** (sets `_solverDeterministic` + a fixed `_solverSeedBase` and passes the loop index
+as `solverPathIndex` to `simulatePath`). Same plan &rarr; identical paths &rarr; identical odds everywhere,
+and Rework's filed-vs-proposed delta now reflects only the change made, not dice noise. `engine.js`
+itself is untouched &mdash; we only switch on a code path it already had. **Disclosure:** a plan's displayed
+score may shift a point or two vs. the old random draw (we fixed the dice instead of re-rolling);
+statistically equivalent, now reproducible.
+
+**TCJA toggle relabeled (copy only).** The 2017 cuts were made permanent by the 2025 budget law
+(Public Law 119-21), so &ldquo;TCJA expires 2026&rdquo; was a counterfactual. Relabeled to **&ldquo;Assume
+higher future tax rates&rdquo;** with a tooltip explaining it now stress-tests a *possible future* reversal
+(desktop `cover-inputs.jsx`, mobile `cover-mobile.jsx`, tooltip `retire-ui.jsx`). Per Cris, the engine's
+tax tables and the `2025 + i` start-year are intentionally **NOT** touched here &mdash; refreshing the
+hardcoded 2025 brackets to current law remains a separate future item.
+
+**Path-count copy now dynamic.** Adapter runs 1500 paths but copy said &ldquo;a thousand&rdquo; / &ldquo;1,000 paths.&rdquo;
+`compute()` now returns `numPaths`; the two strings in `compass-cover.jsx` read from it, so the copy can't
+drift again.
+
+**Questionnaire reorg (desktop + mobile).** **Windfall** moved out of the bottom Advanced block into
+**&ldquo;What you've saved&rdquo;** as an always-visible field. **Roth conversions** moved into the **Investments**
+group (under &ldquo;Show more&rdquo;). The now-empty &ldquo;Windfall &amp; conversions&rdquo; sub-section was removed; the
+Advanced &ldquo;Show N settings&rdquo; count dropped 18 &rarr; 12 on both layouts. No field logic changed &mdash; Windfall
+and Roth conversions were already wired to the engine; this is pure relocation.
+
+**Version hygiene (review P2).** All version strings reconciled to **18.5**: both HTML titles, every
+`?v=` cache-buster (incl. `engine.js?v=`), the `real-engine.js` header (was V18.1), the saved-plan
+JSON stamp (was frozen at 18.2), and the two on-screen cover kickers (were V18.4). **Note:** V18.4 shipped
+to the live site without a changelog (this folder's stale git only goes to V18.1; real history is on
+GitHub); 18.5 reconciles the drift. Saved plans now stamp `18.5`; older files stamped `18.2` still load
+(the loader merges known keys; version is only a label). Provenance comments (&ldquo;added in V18.2/V18.4&rdquo;)
+left as-is.
+
+**Deferred to V18.6:** wire `legacyGoal` into the engine so &ldquo;money left at the end&rdquo; actually binds the
+success test (today it is collected but ignored &mdash; the only finding that needs an engine change). Per
+Cris the field stays **visible** in the interim rather than being hidden.
+
+**Cache-buster:** `engine.js?v=18.5` + `?v=18.5` on all `cover-app/*` includes in both shells.
+Source for the tax-law point: Congress.gov H.R.1 / Public Law 119-21.
 
 ---
 
