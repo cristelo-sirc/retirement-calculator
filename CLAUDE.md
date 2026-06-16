@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.5
+**Current Version:** 18.6
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -264,6 +264,42 @@ Cris the field stays **visible** in the interim rather than being hidden.
 
 **Cache-buster:** `engine.js?v=18.5` + `?v=18.5` on all `cover-app/*` includes in both shells.
 Source for the tax-law point: Congress.gov H.R.1 / Public Law 119-21.
+
+---
+
+## V18.6 &mdash; Cross-screen odds fully consistent + user-facing path-count control
+
+Completes the V18.5 cross-screen consistency fix and adds a Monte Carlo path-count input.
+**`engine.js` is UNCHANGED.**
+
+**Income &amp; Odds now matches the headline.** V18.5's seeding made Cover/Questionnaire/Projection/Rework
+agree (e.g. 40/100), but the Income &amp; Odds &ldquo;what each change is worth&rdquo; base still read 45,
+because its `ScenarioCompareChart` used `quickSuccess()` at **300 paths** while every other screen used
+**1500**. Live testing on the deployed V18.5 caught it. Fix: `numPaths` is now a **SINGLE SOURCE** &mdash;
+added to `DEFAULTS` (1500) and read by BOTH `compute()` and `quickSuccess()` (`mapToReal(m, m.numPaths)`),
+so every screen&rsquo;s odds use the same count and move together. Income &amp; Odds base now equals the cover.
+**Cost:** that screen recomputes in ~1.8s (full count on all five bars) vs ~0.9s before &mdash; only that
+screen, only when opened. Per Cris, accuracy over speed here.
+
+**New &ldquo;Simulation paths&rdquo; input (Advanced &rarr; Market assumptions; desktop + mobile).** Range
+500&ndash;5000, step 500, default 1500. It IS the single source above, so changing it moves the odds on
+every screen in lockstep (Cris&rsquo;s explicit intent). Saved in the plan JSON (known key; older plans without
+it default to 1500). Advanced count 12 &rarr; 13. Tooltip notes more paths = steadier estimate but slower;
+default unchanged so out-of-box behavior is identical.
+
+**Still fast internals (disclosed, not yet unified).** The cover&rsquo;s &ldquo;Three Moves, Ranked&rdquo; deltas
+(`buildLevers`, 200 paths) and the sustainable-spending bisection (250 paths) remain deliberate speed
+optimizations and do **not** scale with `numPaths` &mdash; they drive deltas/estimates, not the headline odds.
+Because `buildLevers` measures move-deltas at 200 paths against the full-count base, a cover delta can differ
+by a point or two from the same move on Income &amp; Odds (full count). **Flagged for a separate decision:**
+unifying them would slow every screen&rsquo;s live recompute (compute() ~0.7s &rarr; ~1.6s), so it was not done
+silently.
+
+**Deferred to V18.7:** wire `legacyGoal` into the engine (Batch B). Field stays visible meanwhile.
+
+**Cache-buster:** `engine.js?v=18.6` + `?v=18.6` on all `cover-app/*` includes; all version strings
+(both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.6. V18.5
+shipped as commit 5f208d7; this is the fast-follow that completes finding #1.
 
 ---
 

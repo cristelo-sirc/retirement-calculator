@@ -325,7 +325,7 @@
             </div>
             <span style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
               color: cm.ink70, flex: '0 0 auto', paddingTop: 6, whiteSpace: 'nowrap' }}>
-              {adv ? '▾ Hide' : '▸ 12'}</span>
+              {adv ? '▾ Hide' : '▸ 13'}</span>
           </button>
           {adv && (
             <div style={{ marginTop: 24 }}>
@@ -340,6 +340,7 @@
                 <MStep field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7} onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
                 <MStep field="stockVol" label="Stock volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
                 <MStep field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15} onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+                <MStep field="numPaths" label="Simulation paths" value={params.numPaths} step={500} min={500} max={5000} onChange={v => update('numPaths', v)} format={v => v.toLocaleString()} />
               </MSub>
               <MSub title="Strategy">
                 <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />

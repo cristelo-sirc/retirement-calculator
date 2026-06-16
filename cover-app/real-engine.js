@@ -1,4 +1,4 @@
-// real-engine.js — V18.5 adapter
+// real-engine.js — V18.6 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.5';
+      s.src = 'engine.js?v=18.6';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -55,7 +55,9 @@
 
     enableGuardrails: false, guardrailCeiling: 6.0, guardrailFloor: 4.0, guardrailAdjustment: 10,
 
-    bracketGrowth: 2.5, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 60
+    bracketGrowth: 2.5, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 60,
+
+    numPaths: 1500            // Monte Carlo paths — SINGLE SOURCE for every screen's odds (user-editable in Advanced)
   };
 
   // ---- Map mockup params -> real engine params (collectInputs() shape) ----------
@@ -157,10 +159,12 @@
     return Math.round((solved / results.length) * 100);
   }
 
-  // Fast success-only estimate for what-if comparisons / levers
+  // Success-only estimate at the FULL path count (same numPaths as compute()), so the
+  // Income & Odds what-if base equals the cover's headline. Reads the single numPaths source.
   function quickSuccess(m) {
     if (!window.simulatePath) return 0;
-    return successOf(runPaths(mapToReal(Object.assign({}, DEFAULTS, m || {}), 300)));
+    var mm = Object.assign({}, DEFAULTS, m || {});
+    return successOf(runPaths(mapToReal(mm, mm.numPaths || 1500)));
   }
 
   function verdictFor(rate) {
@@ -192,12 +196,12 @@
   function compute(params) {
     var m = Object.assign({}, DEFAULTS, params || {});
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
-      return { params: m, successRate: 0, numPaths: 1500, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
+      return { params: m, successRate: 0, numPaths: m.numPaths || 1500, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
         levers: [], medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0 };
     }
-    var real = mapToReal(m, 1500);
+    var real = mapToReal(m, m.numPaths || 1500);
     var results = runPaths(real);
 
     // Sort by final balance, then depletion age (matches initiateSimulation)

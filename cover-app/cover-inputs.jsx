@@ -314,7 +314,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         </CGroup>
 
         {/* Advanced assumptions — the remaining engine inputs, collapsed by default */}
-        <CAdvanced count={12}>
+        <CAdvanced count={13}>
           <CSub title="Tax & residence">
             <CField field="stateTaxRate" label="State tax rate" value={params.stateTaxRate} step={0.5} min={0} max={14}
               onChange={v => update('stateTaxRate', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
@@ -334,6 +334,8 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
               onChange={v => update('stockVol', v)} suffix="%" theme={theme} />
             <CField field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15}
               onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
+            <CField field="numPaths" label="Simulation paths" value={params.numPaths} step={500} min={500} max={5000}
+              onChange={v => update('numPaths', v)} format={v => v.toLocaleString()} theme={theme} />
           </CSub>
           <CSub title="Strategy">
             <CToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails}
