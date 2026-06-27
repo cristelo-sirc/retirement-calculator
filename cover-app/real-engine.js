@@ -1,4 +1,4 @@
-// real-engine.js — V18.7 adapter
+// real-engine.js — V18.8 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.7';
+      s.src = 'engine.js?v=18.8';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -57,7 +57,7 @@
 
     bracketGrowth: 2.5, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 60,
 
-    numPaths: 1500            // Monte Carlo paths — SINGLE SOURCE for every screen's odds (user-editable in Advanced)
+    numPaths: 5000            // Monte Carlo paths — SINGLE SOURCE for every screen's odds (user-editable in Advanced)
   };
 
   // ---- Map mockup params -> real engine params (collectInputs() shape) ----------
@@ -171,7 +171,7 @@
   function quickSuccess(m) {
     if (!window.simulatePath) return 0;
     var mm = Object.assign({}, DEFAULTS, m || {});
-    return successOf(runPaths(mapToReal(mm, mm.numPaths || 1500)), mm.legacyGoal || 0);
+    return successOf(runPaths(mapToReal(mm, mm.numPaths || 5000)), mm.legacyGoal || 0);
   }
 
   function verdictFor(rate) {
@@ -189,17 +189,18 @@
   // to every run so the deltas respect the goal too.
   function buildLevers(m, real) {
     var goal = m.legacyGoal || 0;
-    var base = successOf(runPaths(Object.assign({}, real, { numPaths: 200 })), goal);
+    var lp = Math.max(50, Math.round((real.numPaths || 5000) * 200 / 1500));  // "Three Moves" sample = same share of the path count as the old 200/1500, so it tracks the slider
+    var base = successOf(runPaths(Object.assign({}, real, { numPaths: lp })), goal);
     var levers = [];
-    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: 200 })), goal);
+    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: lp })), goal);
     levers.push({ id: 'delay', title: 'Delay retirement 2 years',
       detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge, delta: r1 - base });
     var newSpend = Math.round(real.lifestyleSpending * 0.9 / 1000) * 1000;
-    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: 200 })), goal);
+    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: lp })), goal);
     levers.push({ id: 'spend', title: 'Cut spending 10%',
       detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k', delta: r2 - base });
     if (m.ssClaimAge < 70) {
-      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: 200 })), goal);
+      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: lp })), goal);
       levers.push({ id: 'ss', title: 'Wait until 70 for Social Security',
         detail: 'Claim at 70 instead of ' + m.ssClaimAge, delta: r3 - base });
     }
@@ -209,12 +210,12 @@
   function compute(params) {
     var m = Object.assign({}, DEFAULTS, params || {});
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
-      return { params: m, successRate: 0, numPaths: m.numPaths || 1500, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
+      return { params: m, successRate: 0, numPaths: m.numPaths || 5000, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
         levers: [], medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0 };
     }
-    var real = mapToReal(m, m.numPaths || 1500);
+    var real = mapToReal(m, m.numPaths || 5000);
     var goal = m.legacyGoal || 0;            // flat future-dollar target the plan must end at/above
     var results = runPaths(real);
 
@@ -248,10 +249,11 @@
     // Sustainable spending: spending level that holds ~90% success (fast bisection
     // on the real engine — kept light so live recompute stays responsive)
     var sustainableSpending;
+    var bp = Math.max(50, Math.round((real.numPaths || 5000) * 250 / 1500));  // bisection sample = same share of the path count as the old 250/1500, so it tracks the slider
     var lo = 20000, hi = Math.max(80000, real.lifestyleSpending * 2);
     for (var k = 0; k < 9; k++) {
       var mid = (lo + hi) / 2;
-      var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: 250 })), goal);
+      var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: bp })), goal);
       if (s < 90) hi = mid; else lo = mid;
     }
     sustainableSpending = Math.round(lo / 1000) * 1000;

@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.7
+**Current Version:** 18.8
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -345,3 +345,55 @@ Housekeeping only &mdash; **no app or engine changes** (V18.3 unchanged; `engine
 - **Local-only tidy** (never on GitHub; `.gitignore` already excludes `*.md`/`*.json`): older version HTMLs, superseded planning docs, and the `handoff-07-cover/` design source moved to a local `_archive/` folder; personal-data JSONs moved to a gitignored `data/` folder.
 
 **Note:** the mounted folder's own `.git` is stale (the FUSE write block left its index "behind"); it is no longer used for committing. All deploys go through `scripts/deploy.sh`, which reads the folder's current file contents and pushes from a clean clone.
+
+---
+
+## V18.8 &mdash; Monte Carlo default raised to 5,000, range to 10,000, internals proportional
+
+**`engine.js` is UNCHANGED.** Every change is in the adapter (`real-engine.js`), the questionnaire UI, or docs.
+Zero Monte Carlo math impact &mdash; this only changes how many already-trusted paths we run and how the two
+helper estimates are sized.
+
+**Default path count 1,500 &rarr; 5,000; user range 500&ndash;5,000 &rarr; 500&ndash;10,000.** `DEFAULTS.numPaths`
+is now 5,000 and the `numPaths` input (desktop `cover-inputs.jsx` + mobile `cover-mobile.jsx`) tops out at
+10,000 (min 500, step 500 unchanged). The three defensive `|| 1500` fallbacks in `real-engine.js` were
+reconciled to 5,000. Per Cris: accuracy over speed, with a higher ceiling for anyone who wants an even
+steadier read.
+
+**The two internals are now PROPORTIONAL to the path count (the "proportionally" ask).** Previously the
+cover's "Three Moves" deltas ran at a fixed 200 paths (`buildLevers`) and the sustainable-spending bisection
+at a fixed 250. Both now scale as the same share of the active count they held against the old 1,500 default:
+`lp = round(numPaths &times; 200/1500)` (&asymp;13.3%) for the levers and `bp = round(numPaths &times; 250/1500)`
+(&asymp;16.7%) for the bisection, each floored at 50 (the floor never triggers within the 500&ndash;10,000
+range). So at the 5,000 default they run ~667 and ~833; at 10,000, ~1,333 and ~1,667. This keeps the cover
+deltas and the safe-to-spend figure apples-to-apples with the headline at **every** slider position &mdash;
+including low settings, where the old fixed counts would have absurdly run *more* internal paths than the
+headline itself. At the default both readings coincide; they only diverge once the slider moves, and
+proportional is the one that stays consistent.
+
+**Measured performance (live, on Cris's machine, pre-change baseline).** Timed real `compute()` /
+`quickSuccess()` calls on the deployed app: cover recompute **0.25s / 0.56s / 1.01s** at 1,500 / 5,000 /
+10,000 paths; the heaviest screen (Income &amp; Odds, 5&times; full count) **0.33s / 1.49s / 3.81s**. So the
+5,000 default stays snappy (cover ~0.6s); only pushing the slider to the 10,000 ceiling makes Income &amp; Odds
+noticeably heavier (~3.8s), and only while that screen is open. These supersede the stale ~0.9s/1.8s figures in
+the V18.6 note (a slower/older baseline). Numbers are simulation time; on-screen redraw adds a small fixed
+overhead that does not scale with paths.
+
+**Diminishing returns, confirmed live.** The untouched-`DEFAULTS` sample scored **40 at 1,500, 42 at 5,000,
+42 at 10,000** &mdash; the estimate has settled by 5,000, which is exactly why 5,000 is the new default and
+10,000 is offered but rarely worth the wait. (Because the solver RNG is deterministically seeded, raising the
+default nudges existing scores a point or two as the estimate converges &mdash; the same harmless shift
+disclosed in V18.5.)
+
+**Copy:** the `numPaths` tooltip (`retire-ui.jsx`) updated from &ldquo;1,500 is plenty&hellip;&rdquo; to
+&ldquo;5,000 is plenty&hellip; raise it toward 10,000&hellip;&rdquo;. The cover/projection path-count copy was
+already dynamic (reads `numPaths`), so it tracks automatically.
+
+**Saved plans:** stamp is now `18.8`. Older plans that predate the `numPaths` key inherit the new 5,000
+default; plans saved with an explicit `numPaths` keep their value (the old max was 5,000, so every existing
+value is still within the new range). Version is only a label; the loader still merges known keys over
+`DEFAULTS`.
+
+**Cache-buster:** `engine.js?v=18.8` + `?v=18.8` on all `cover-app/*` includes in both shells; all version
+strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.8. The
+V18.7 provenance comment in `real-engine.js` is left as-is per convention.

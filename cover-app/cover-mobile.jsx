@@ -340,7 +340,7 @@
                 <MStep field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7} onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
                 <MStep field="stockVol" label="Stock volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
                 <MStep field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15} onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MStep field="numPaths" label="Simulation paths" value={params.numPaths} step={500} min={500} max={5000} onChange={v => update('numPaths', v)} format={v => v.toLocaleString()} />
+                <MStep field="numPaths" label="Simulation paths" value={params.numPaths} step={500} min={500} max={10000} onChange={v => update('numPaths', v)} format={v => v.toLocaleString()} />
               </MSub>
               <MSub title="Strategy">
                 <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
