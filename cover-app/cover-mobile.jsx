@@ -124,6 +124,7 @@
     const segs = [
       { key: 'ss', label: 'Social Security', val: paycheck.ss, bg: cm.sage, fg: cm.paper },
       { key: 'pension', label: 'Pension & other', val: paycheck.pension, bg: cm.amber, fg: cm.paper },
+      { key: 'wages', label: 'Wages', val: paycheck.wages, bg: cm.clay, fg: cm.paper },
       { key: 'port', label: 'Portfolio', val: paycheck.portfolio, bg: cm.paperWarm, fg: cm.ink },
     ].filter(s => s.val > 0.5);
     return (
@@ -140,6 +141,11 @@
           letterSpacing: '0.06em', textTransform: 'uppercase', color: cm.ink70 }}>
           {segs.map(s => <span key={s.key}>{s.label} {Math.round((s.val / total) * 100)}%</span>)}
         </div>
+        {paycheck.taxes > 0.5 && (
+          <div style={{ fontSize: 10.5, color: cm.ink50, marginTop: 7, lineHeight: 1.4 }}>
+            Includes {ME.formatCurrency(paycheck.taxes)}/mo for taxes; {ME.formatCurrency(paycheck.spending)}/mo is what you spend.
+          </div>
+        )}
       </div>
     );
   }
@@ -183,7 +189,7 @@
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
-            At {results.params.retireAge}, {partner ? "you'll both" : "you'll"} need{' '}
+            At {results.paycheck.atAge}, {partner ? "you'll both" : "you'll"} need{' '}
             {ME.formatCurrency(results.paycheck.total)}/mo.
           </p>
           <MPaycheck paycheck={results.paycheck} />

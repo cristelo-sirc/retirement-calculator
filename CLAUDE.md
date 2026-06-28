@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.9
+**Current Version:** 18.10
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -428,3 +428,66 @@ the worst case, so 5,000 and 1,500 pass trivially.
 
 **Cache-buster:** `engine.js?v=18.9` + `?v=18.9` on all `cover-app/*` includes in both shells; all version
 strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.9.
+
+---
+
+## V18.10 &mdash; Audit Pass 1 (app-only fixes from the 2026-06-27 external audit)
+
+Pass 1 of a **two-pass** batch addressing `AUDIT_FINDINGS_AND_RECOMMENDATIONS.txt` (2026-06-27). Per Cris,
+the audit's items were triaged: Pass 1 (this release) ships the **app-only** fixes &mdash; zero Monte Carlo
+math change; the only `engine.js` edits are comments. Pass 2 (V18.11) will ship the **engine-math** items
+(couple IRMAA per-person + 2-yr lookback, frozen-limit growth, paycheck reconciliation). Audit item 9
+(production hardening) and "load enacted 2026 statutory values" are on `BACKLOG.md`.
+
+**Item 1 &mdash; Social Security move is consistent across every screen (audit #6).** The "claim at 70" move
+previously delayed **both** partners on the Cover and Income &amp; Odds but only the **primary** on Rework
+(42 filed &rarr; 44 user-only vs 46 both). Now unified on **both partners** everywhere: Rework gained a
+**"Spouse claims SS at"** dial (shown only for couples; `sc.spouseClaimAge` threaded through reset/anyChange/
+publish), and its suggested move is relabeled **"Claim SS at 70 (both of you)"** and sets both claim ages.
+Live-verified: tapping it moves both dials to 70 and the proposed score to **46**, matching Cover &amp;
+Income &amp; Odds. The user SS dial is relabeled "You claim SS at" for couples. (`compass-cover.jsx`,
+`real-engine.js`/`retire-charts.jsx` already used both.)
+
+**Item 2 &mdash; headline label discloses the legacy goal (audit #9).** Success counts a path only if it is
+solvent **and** finishes &ge; `legacyGoal`, but the headline always read "Chance of never running out." New
+`cvChanceLabel(params)` (in `compass-cover.jsx`, exposed on `window`): at goal 0 it keeps the original copy;
+at goal &gt; 0 it reads **"Chance of leaving $Xk or more."** Applied to the desktop cover kicker, the desktop
+"futures succeed" reason body, and the mobile cover label (`cover-mobile.jsx`). Live-verified:
+`cvChanceLabel({legacyGoal:500000})` &rarr; "Chance of leaving $500k or more".
+
+**Item 3 &mdash; centralized validation + hard path-count ceiling (audit #5).** New
+`window.MockEngine.normalizeParams(raw)` in `real-engine.js`: coerces each known field by its DEFAULT's type,
+clamps numerics to a `RANGES` table, validates string enums, fixes age ordering (current &lt; retire &lt;
+end; spouse), and **caps `numPaths` at 500&ndash;10,000** so a malformed file/localStorage can't freeze the
+browser. Idempotent &mdash; an untouched DEFAULTS plan passes through unchanged (so the baseline is preserved,
+verified). Wired into `compute()`, `quickSuccess()`, `CompassIO.parsePlan` (with a "values were adjusted"
+load message), and the `localStorage` reads in both HTML shells. Unit-tested against the shipped file and
+live: numPaths 90,000,000 &rarr; 10,000; ages 70/60/50 &rarr; 70/71/72; stock 250 &rarr; 100; bad enum &rarr;
+default.
+
+**Item 5 &mdash; RMD/FRA design-decision comments (audit #1, #2; engine.js COMMENTS ONLY).** Per Cris, the
+hardcoded RMD age 75 and FRA 67 are a **conscious decision** (people born before 1960 aren't this tool's
+planning audience), not bugs. Added explanatory comments at `getDistributionPeriod()` and `const FRA = 67`.
+No logic change; `engine.js` math remains untouched.
+
+**Item 8 &mdash; projection chart shows real percentiles (audit #8).** `BalanceFanChart` (`retire-charts.jsx`)
+replaced the absolute **min&ndash;max** band + single median-**ending** path with true **per-year P10 / P50 /
+P90** computed across all paths (new `rcPercentile` helper), the y-axis capped at the 90th percentile so rare
+outliers no longer flatten the chart, and a caption stating the definition. Still array-safe (per-age sort, no
+`Math.max(...spread)`), so the V18.9 high-path-count `RangeError` cannot recur &mdash; **live-verified no throw
+at 10,000 paths**. Projection intro copy updated to match (median + P10&ndash;P90, not "most likely path").
+
+**Validation (per audit standard).** Local: `node --check` on plain JS, Babel-transform of all five JSX files,
+and a `normalizeParams` unit test against the shipped adapter. Deployed via `scripts/deploy.sh`, then
+**live-tested on the GitHub Pages URL** at desktop (1680/1440) and the mobile component (Cover + Questionnaire):
+default score **unchanged at 42** (regression gate), all five items confirmed, **zero console errors**, and the
+user's saved `localStorage` plan was backed up and restored intact.
+
+**Repo hygiene follow-up.** The Pass-1 deploy accidentally synced a local `node_modules/` (installed for the
+JSX syntax check; the FUSE mount blocked deleting it pre-deploy). Removed from the repo with `git rm --cached`,
+added `node_modules/` to `.gitignore`, and added `--exclude 'node_modules/'` to `scripts/deploy.sh` so it
+cannot recur.
+
+**Cache-buster:** `engine.js?v=18.10` + `?v=18.10` on all `cover-app/*` includes in both shells; all version
+strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.10.
+**`engine.js` math is UNCHANGED** (item 5 is comments only).

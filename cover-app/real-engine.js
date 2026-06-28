@@ -1,4 +1,4 @@
-// real-engine.js — V18.10 adapter
+// real-engine.js — V18.11 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.10';
+      s.src = 'engine.js?v=18.11';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -60,7 +60,7 @@
     numPaths: 5000            // Monte Carlo paths — SINGLE SOURCE for every screen's odds (user-editable in Advanced)
   };
 
-  // ---- Validation / normalization (V18.10) -------------------------------------
+  // ---- Validation / normalization (V18.10, extended V18.11) -------------------
   // Defends every entry point (loaded files, localStorage, live params) against bad
   // types, out-of-range values, contradictory ages, and a runaway path count that
   // could freeze the browser. Coerces each known field by its DEFAULT's type, clamps
@@ -293,15 +293,25 @@
     var medianLog = p50.log;
     var successRate = successOf(results, goal);
 
-    // Paycheck (monthly) from the median path's first retirement year
-    var retIdx = Math.max(0, m.retireAge - m.currentAge);
+    // Paycheck (monthly) from the median path. V18.11 (item 7): feature the HOUSEHOLD'S fully-retired
+    // year (both partners have stopped working) so the breakdown matches the "once you both stop working"
+    // copy, and include wages + taxes so the source bars reconcile to spending + taxes exactly.
+    var userRetIdx = Math.max(0, m.retireAge - m.currentAge);
+    var spouseRetIdx = m.hasPartner ? Math.max(0, (m.spouseRetireAge || 0) - (m.spouseAge || 0)) : 0;
+    var retIdx = Math.max(userRetIdx, spouseRetIdx);
     var ry = medianLog[Math.min(retIdx, medianLog.length - 1)] || {};
     var portfolioDraw = (ry.rmd || 0) + (ry.wdTaxable || 0) + (ry.wdPreTax || 0) + (ry.wdRoth || 0);
+    var taxesMo = (ry.taxBill || 0) / 12;
+    var spendingMo = (ry.spending || 0) / 12;
     var paycheck = {
-      total: (ry.spending || 0) / 12,
+      total: spendingMo + taxesMo,                 // total monthly outflow; SS+pension+wages+portfolio sum to this
       ss: (ry.ssIncome || 0) / 12,
       pension: ((ry.pensionIncome || 0) + (ry.partTimeIncome || 0)) / 12,
-      portfolio: portfolioDraw / 12
+      wages: (ry.wages || 0) / 12,
+      portfolio: portfolioDraw / 12,
+      taxes: taxesMo,
+      spending: spendingMo,
+      atAge: (ry.age != null ? ry.age : m.retireAge)
     };
 
     // Median legacy + runway
@@ -324,6 +334,7 @@
     var path = medianLog.map(function (y) { return { age: y.age, balance: y.totalBal }; });
     var incomeByYear = medianLog.filter(function (y) { return y.age >= m.retireAge; }).map(function (y) {
       return { age: y.age, ss: y.ssIncome || 0, pension: y.pensionIncome || 0, other: y.partTimeIncome || 0,
+        wages: y.wages || 0,
         portfolio: (y.rmd || 0) + (y.wdTaxable || 0) + (y.wdPreTax || 0) + (y.wdRoth || 0), need: y.spending || 0 };
     });
     var allocByYear = medianLog.map(function (y) {

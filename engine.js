@@ -1733,6 +1733,7 @@
                 let depletionAge = null;
                 let pathLog = [];
                 let totalTaxPaid = 0;
+                let magiHistory = [];  // V18.11 (item 4): per-year MAGI, feeds the 2-year IRMAA lookback
 
                 // Guardrail tracking variables
                 let previousYearBalance = userPreTax + userRoth + spousePreTax + spouseRoth + taxable;
@@ -1792,9 +1793,11 @@
                     let spouseRothContrib = 0;
 
                     if (userWorking && userSalary > 0) {
-                        let userLimit = LIMIT_401K;
-                        if (currentYearAge >= 50) userLimit += CATCHUP_401K;
-                        if (currentYearAge >= 60 && currentYearAge <= 63) userLimit = LIMIT_401K + SUPER_CATCHUP_401K;
+                        // V18.11 (item 6): contribution caps grow with inflation (same multiplier salary uses),
+                        // so a saver's future contributions aren't frozen at today's dollars across the projection.
+                        let userLimit = LIMIT_401K * inflation;
+                        if (currentYearAge >= 50) userLimit += CATCHUP_401K * inflation;
+                        if (currentYearAge >= 60 && currentYearAge <= 63) userLimit = (LIMIT_401K + SUPER_CATCHUP_401K) * inflation;
 
                         let userContrib = userSalary * params.userSavingsRate;
                         userContrib = Math.min(userContrib, userLimit);
@@ -1808,9 +1811,9 @@
                     }
 
                     if (spouseWorking && spouseSalary > 0) {
-                        let spouseLimit = LIMIT_401K;
-                        if (spouseCurrentAge >= 50) spouseLimit += CATCHUP_401K;
-                        if (spouseCurrentAge >= 60 && spouseCurrentAge <= 63) spouseLimit = LIMIT_401K + SUPER_CATCHUP_401K;
+                        let spouseLimit = LIMIT_401K * inflation;
+                        if (spouseCurrentAge >= 50) spouseLimit += CATCHUP_401K * inflation;
+                        if (spouseCurrentAge >= 60 && spouseCurrentAge <= 63) spouseLimit = (LIMIT_401K + SUPER_CATCHUP_401K) * inflation;
 
                         let spouseContrib = spouseSalary * params.spouseSavingsRate;
                         spouseContrib = Math.min(spouseContrib, spouseLimit);
@@ -1836,10 +1839,10 @@
                     if (params.enablePartTime && currentYearAge >= params.partTimeStartAge && currentYearAge <= params.partTimeEndAge) ptIncome = params.partTimeIncome * inflation;
 
                     // Calculate individual SS benefits
-                    let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, ptIncome, SS_EARNINGS_LIMIT);
+                    let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, ptIncome, SS_EARNINGS_LIMIT * inflation);
                     let spouseSSBenefit = 0;
                     if (params.spouseAge > 0) {
-                        spouseSSBenefit = calculateSSBenefit(params.spouseSS, params.spouseClaimAge, spouseCurrentAge, FRA, SS_COLA, 0, SS_EARNINGS_LIMIT);
+                        spouseSSBenefit = calculateSSBenefit(params.spouseSS, params.spouseClaimAge, spouseCurrentAge, FRA, SS_COLA, 0, SS_EARNINGS_LIMIT * inflation);
                     }
 
                     // Apply spousal benefit if enabled
@@ -2004,10 +2007,16 @@
                         const taxableSS = calculateTaxableSS(ssIncome, currentOrdIncome + taxableGains_this_pass, filingStatus);
                         currentOrdIncome += taxableSS;
 
-                        // 5d. Calculate IRMAA (depends on MAGI)
+                        // 5d. Calculate IRMAA — per Medicare-covered person, on a 2-year MAGI lookback.
+                        // V18.11 (item 4): charged for EACH covered partner (× medicareCount), and based on
+                        // MAGI from 2 years prior (the real Medicare rule). The first two simulated years have
+                        // no prior MAGI on record, so they fall back to the current year's MAGI (documented
+                        // init rule — the engine has no pre-retirement income history to look back to).
                         if (medicareCount > 0) {
-                            const estimatedMAGI = currentOrdIncome + taxableGains_this_pass;
-                            irmaa = calculateIRMAA(estimatedMAGI, filingStatus, inflation);
+                            const lookbackMAGI = (i >= 2 && magiHistory[i - 2] != null)
+                                ? magiHistory[i - 2]
+                                : (currentOrdIncome + taxableGains_this_pass);
+                            irmaa = calculateIRMAA(lookbackMAGI, filingStatus, inflation) * medicareCount;
                         }
 
                         // 5e. Calculate New Total Tax
@@ -2039,12 +2048,19 @@
                         totalNeed = baseSpending + irmaa;
                     } // End Tax Convergence Loop
 
+                    // V18.11 (item 4): record this year's converged MAGI so a future year can look it back.
+                    magiHistory[i] = finalOrdIncome + finalTaxableGains;
+
                     // 6. Update Permanent Balances based on converged withdrawals
-                    userPreTax = userPreTax_startOfYear - userRmd - withdrawals_converged.userPreTax;
-                    spousePreTax = spousePreTax_startOfYear - spouseRmd - withdrawals_converged.spousePreTax;
+                    // V18.11: add this year's contributions back so they PERSIST. The start-of-year
+                    // snapshot above was taken BEFORE contributions (which are added later in the loop),
+                    // so resetting from it silently discarded every working year's savings — no future
+                    // contributions ever accumulated. The contrib vars are 0 in non-working years.
+                    userPreTax = userPreTax_startOfYear - userRmd - withdrawals_converged.userPreTax + userPreTaxContrib;
+                    spousePreTax = spousePreTax_startOfYear - spouseRmd - withdrawals_converged.spousePreTax + spousePreTaxContrib;
                     taxable = taxable_startOfYear - withdrawals_converged.taxable;
-                    userRoth = userRoth_startOfYear - withdrawals_converged.userRoth;
-                    spouseRoth = spouseRoth_startOfYear - withdrawals_converged.spouseRoth;
+                    userRoth = userRoth_startOfYear - withdrawals_converged.userRoth + userRothContrib;
+                    spouseRoth = spouseRoth_startOfYear - withdrawals_converged.spouseRoth + spouseRothContrib;
 
                     // Apply Roth Conversion (must happen after withdrawals, before log/solvency check)
                     if (rothConversion > 0) {
@@ -2083,6 +2099,7 @@
                         ssIncome: ssIncome,
                         pensionIncome: otherIncome,
                         partTimeIncome: ptIncome,
+                        wages: userNetSalary + spouseNetSalary,   // V18.11 (item 7): net take-home wages (for the paycheck reconciliation)
                         discretionaryWithdrawal: Math.max(0, totalWithdrawal - totalRmd),
                         // Detailed withdrawal breakdown by account type
                         // Note: RMDs are withdrawn separately from discretionary pre-tax withdrawals

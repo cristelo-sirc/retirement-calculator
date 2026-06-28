@@ -28,7 +28,7 @@ window.cvStyles = cvStyles;
 const cvKicker = { fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.22em',
   textTransform: 'uppercase', color: cvStyles.ink50 };
 
-// V18.10: the headline metric counts a path as success only if it stays solvent AND
+// V18.10/V18.11: the headline metric counts a path as success only if it stays solvent AND
 // finishes at/above the legacy goal. When a goal is set, "never running out" alone would
 // mislead (the score can drop while the money never runs out), so the label discloses the
 // goal. At goal 0 the wording is unchanged, preserving the original copy.
@@ -55,7 +55,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '18.10', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '18.11', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -86,7 +86,7 @@ window.CompassIO = {
     var keys = Object.keys(DEF), hit = 0;
     for (var i = 0; i < keys.length; i++) if (raw[keys[i]] !== undefined) hit++;
     if (hit === 0) return { ok: false, error: 'No recognizable plan settings in that file.' };
-    // Validate + clamp through the engine's normalizer (V18.10) so an out-of-range or
+    // Validate + clamp through the engine's normalizer (V18.10+) so an out-of-range or
     // wrong-typed file can never reach the simulation; missing fields fall back to DEFAULTS.
     var norm = ME.normalizeParams ? ME.normalizeParams(raw)
       : { params: Object.assign({}, DEF, raw), changed: false };
@@ -206,7 +206,7 @@ function CoverDesktop(props) {
               accent={vc} big />
             <CoverLine kicker="Your Paycheck, Explained"
               title={`${fmt(results.paycheck.total)} a month`}
-              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.params.retireAge}.`} />
+              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.paycheck.atAge}.`} />
             <CoverLine kicker="Inside"
               title="Three moves that buy better odds"
               body="Small, specific changes — and exactly how many points each is worth." />
@@ -332,7 +332,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.10</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.11</div>
         </div>
       </section>
     </div>
@@ -357,6 +357,7 @@ function CoverPaycheck({ paycheck }) {
   const segs = [
     { key: 'ss', label: 'Social Security', val: paycheck.ss, bg: cvStyles.sage, fg: cvStyles.paper },
     { key: 'pension', label: 'Pension & other', val: paycheck.pension, bg: cvStyles.amber, fg: cvStyles.paper },
+    { key: 'wages', label: 'Wages', val: paycheck.wages, bg: cvStyles.clay, fg: cvStyles.paper },
     { key: 'port', label: 'Portfolio', val: paycheck.portfolio, bg: cvStyles.paperWarm, fg: cvStyles.ink },
   ].filter(s => s.val > 0.5);
   return (
@@ -373,6 +374,11 @@ function CoverPaycheck({ paycheck }) {
         letterSpacing: '0.08em', textTransform: 'uppercase', color: cvStyles.ink70, flexWrap: 'wrap', gap: 8 }}>
         {segs.map(s => <span key={s.key}>{s.label} {Math.round((s.val / total) * 100)}%</span>)}
       </div>
+      {paycheck.taxes > 0.5 && (
+        <div style={{ fontSize: 11, color: cvStyles.ink50, marginTop: 8 }}>
+          Total includes {fmt(paycheck.taxes)}/mo for taxes; {fmt(paycheck.spending)}/mo is what you actually spend.
+        </div>
+      )}
     </div>
   );
 }

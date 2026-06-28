@@ -96,6 +96,7 @@ function IncomeSourceChart({ results, theme: th, width = 860, height = 300 }) {
     return <path key={key} d={up + lo + 'Z'} fill={fill} />;
   };
   const hasGuar = data.some(d => d.pension + d.other > 0);
+  const hasWages = data.some(d => (d.wages || 0) > 0);
   const Legend = ({ c, label, hatch }) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: th.ink70 }}>
       <span style={{ width: 12, height: 12, background: hatch ? th.paper : c,
@@ -116,7 +117,8 @@ function IncomeSourceChart({ results, theme: th, width = 860, height = 300 }) {
         </defs>
         {layer(() => 0, d => d.ss, th.sage, 'ss')}
         {layer(d => d.ss, d => d.ss + d.pension + d.other, th.amber, 'pen')}
-        {layer(d => d.ss + d.pension + d.other, d => d.need, 'url(#rc-port-hatch)', 'port')}
+        {layer(d => d.ss + d.pension + d.other, d => Math.min(d.need, d.ss + d.pension + d.other + (d.wages || 0)), th.clay, 'wage')}
+        {layer(d => Math.min(d.need, d.ss + d.pension + d.other + (d.wages || 0)), d => d.need, 'url(#rc-port-hatch)', 'port')}
         {[0, 0.5, 1].map(f => {
           const v = maxNeed * f;
           return (
@@ -135,6 +137,7 @@ function IncomeSourceChart({ results, theme: th, width = 860, height = 300 }) {
       <div style={{ display: 'flex', gap: 22, marginTop: 12, fontFamily: th.body, flexWrap: 'wrap' }}>
         <Legend c={th.sage} label="Social Security" />
         {hasGuar && <Legend c={th.amber} label="Pension & other income" />}
+        {hasWages && <Legend c={th.clay} label="Wages (still working)" />}
         <Legend hatch label="Drawn from your portfolio" />
       </div>
     </div>
