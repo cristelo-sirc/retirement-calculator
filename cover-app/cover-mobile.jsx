@@ -10,7 +10,8 @@
   const cm = window.cvStyles;
   const ME = window.MockEngine;
   const { InfoTip, FIELD_INFO } = window;
-  const money = v => ME.formatCurrency(v, { compact: true });
+  // Questionnaire values stay exact after entry; compact rounding belongs on summary screens.
+  const money = v => ME.formatCurrency(v);
 
   const mKick = { fontFamily: cm.body, fontSize: 9.5, letterSpacing: '0.2em',
     textTransform: 'uppercase', color: cm.ink50 };
@@ -39,13 +40,14 @@
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
-          <button onClick={() => onChange(Math.max(min, value - step))} style={mStepBtn}>−</button>
-          <span style={{ fontFamily: cm.display, fontSize: 28, color: cm.ink,
-            fontVariantNumeric: 'tabular-nums' }}>{format ? format(value) : value}{suffix || ''}</span>
-          <button onClick={() => onChange(Math.min(max, value + step))} style={mStepBtn}>+</button>
-        </div>
+        <window.NumericStepper label={label} value={value} onChange={onChange} min={min} max={max}
+          step={step} suffix={suffix} format={format} buttonStyle={mStepBtn}
+          rowStyle={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}
+          inputStyle={{ width: '100%', minWidth: 0, margin: '0 10px', padding: '3px 4px', border: 'none',
+            borderRadius: 2, textAlign: 'center', fontFamily: cm.display, fontSize: 28, color: cm.ink,
+            fontVariantNumeric: 'tabular-nums', cursor: 'text' }}
+          errorStyle={{ marginTop: 7, color: cm.clay, fontSize: 11, lineHeight: 1.35 }} />
       </div>
     );
   }

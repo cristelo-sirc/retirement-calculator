@@ -1,5 +1,6 @@
 # Planning and internal docs — kept local only
 *.md
+!CHANGELOG.md
 *.txt
 CLAUDE.md
 

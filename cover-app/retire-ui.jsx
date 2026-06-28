@@ -174,4 +174,108 @@ function DiffChip({ from, to, onReset, theme }) {
   );
 }
 
-Object.assign(window, { FIELD_INFO, InfoTip, DiffChip });
+// Editable number with optional step buttons. Typing commits only on Enter or
+// blur, so incomplete text never reaches the retirement calculations.
+function NumericStepper({ label, value, onChange, min = 0, max = 9999999, step = 1,
+  suffix, format, rowStyle, buttonStyle, inputStyle, errorStyle }) {
+  const precision = window.NumericEntry.stepPrecision(step);
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(String(value));
+  const [error, setError] = React.useState('');
+  const ignoreBlurRef = React.useRef(false);
+  const errorId = React.useId();
+
+  const errorMessage = (reason) => {
+    if (reason === 'precision') return precision === 0
+      ? 'Use a whole number. Your previous value was kept.'
+      : `Use no more than ${precision} decimal place${precision === 1 ? '' : 's'}. Your previous value was kept.`;
+    return `Enter a value from ${min.toLocaleString()} to ${max.toLocaleString()}. Your previous value was kept.`;
+  };
+
+  const commit = () => {
+    const parsed = window.NumericEntry.validateDraft(draft, { min, max, precision });
+    setEditing(false);
+    if (!parsed.ok) {
+      setDraft(String(value));
+      setError(errorMessage(parsed.reason));
+      return;
+    }
+    setError('');
+    setDraft(String(parsed.value));
+    if (parsed.value !== value) onChange(parsed.value);
+  };
+
+  const adjust = (direction) => {
+    const parsed = editing
+      ? window.NumericEntry.validateDraft(draft, { min, max, precision })
+      : { ok: true, value };
+    const base = parsed.ok ? parsed.value : value;
+    const next = window.NumericEntry.adjustedValue(base, direction * step, { min, max, precision });
+    setEditing(false);
+    setDraft(String(next));
+    setError('');
+    if (next !== value) onChange(next);
+  };
+
+  const beginEditing = (input) => {
+    if (editing) return;
+    ignoreBlurRef.current = false;
+    setEditing(true);
+    setDraft(String(value));
+    setError('');
+    window.requestAnimationFrame(() => input.select());
+  };
+
+  const shown = editing ? draft : `${format ? format(value) : value}${suffix || ''}`;
+  return (
+    <div>
+      <div style={rowStyle}>
+        <button type="button" aria-label={`Decrease ${label}`} onClick={() => adjust(-1)} style={buttonStyle}>−</button>
+        <input
+          type="text"
+          inputMode={precision > 0 ? 'decimal' : 'numeric'}
+          aria-label={`${label}, type an exact value`}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
+          title="Click or tap to type an exact value"
+          value={shown}
+          onFocus={(e) => beginEditing(e.currentTarget)}
+          onClick={(e) => beginEditing(e.currentTarget)}
+          onChange={(e) => {
+            setEditing(true);
+            setDraft(e.target.value);
+            setError('');
+          }}
+          onBlur={() => {
+            if (ignoreBlurRef.current) {
+              ignoreBlurRef.current = false;
+              return;
+            }
+            commit();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              ignoreBlurRef.current = true;
+              commit();
+              e.currentTarget.blur();
+            }
+            if (e.key === 'Escape') {
+              ignoreBlurRef.current = true;
+              setEditing(false);
+              setDraft(String(value));
+              setError('');
+              e.currentTarget.blur();
+            }
+          }}
+          style={{ ...inputStyle, outline: editing ? '1px solid currentColor' : 'none',
+            background: editing ? 'rgba(26,24,21,0.045)' : 'transparent' }}
+        />
+        <button type="button" aria-label={`Increase ${label}`} onClick={() => adjust(1)} style={buttonStyle}>+</button>
+      </div>
+      {error && <div id={errorId} role="alert" style={errorStyle}>{error}</div>}
+    </div>
+  );
+}
+
+Object.assign(window, { FIELD_INFO, InfoTip, DiffChip, NumericStepper });

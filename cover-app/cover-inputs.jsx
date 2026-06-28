@@ -13,7 +13,7 @@ const cvi = window.cvStyles;
 const cviKicker = { fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.22em',
   textTransform: 'uppercase', color: cvi.ink50 };
 
-// Stepper field with helper line + info icon.
+// Editable field with optional step buttons, helper line + info icon.
 function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 1, suffix, format, theme }) {
   const info = field && window.FIELD_INFO[field];
   return (
@@ -25,13 +25,14 @@ function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
         textWrap: 'pretty' }}>{info.help}</div>}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: `1px solid ${cvi.ink}`, paddingBottom: 6 }}>
-        <button onClick={() => onChange(Math.max(min, value - step))} style={cviStepBtn}>−</button>
-        <span style={{ fontFamily: cvi.display, fontSize: 26, color: cvi.ink,
-          fontVariantNumeric: 'tabular-nums' }}>{format ? format(value) : value}{suffix || ''}</span>
-        <button onClick={() => onChange(Math.min(max, value + step))} style={cviStepBtn}>+</button>
-      </div>
+      <window.NumericStepper label={label} value={value} onChange={onChange} min={min} max={max}
+        step={step} suffix={suffix} format={format} buttonStyle={cviStepBtn}
+        rowStyle={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          borderBottom: `1px solid ${cvi.ink}`, paddingBottom: 6 }}
+        inputStyle={{ width: '100%', minWidth: 0, margin: '0 8px', padding: '2px 4px', border: 'none',
+          borderRadius: 2, textAlign: 'center', fontFamily: cvi.display, fontSize: 26, color: cvi.ink,
+          fontVariantNumeric: 'tabular-nums', cursor: 'text' }}
+        errorStyle={{ marginTop: 6, color: cvi.clay, fontSize: 10.5, lineHeight: 1.35 }} />
     </div>
   );
 }
@@ -181,7 +182,8 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const vc = results.verdict === 'green' ? cvi.sage : results.verdict === 'yellow' ? cvi.amber : cvi.clay;
   const theme = window.cvTheme(vc);
   const partner = params.hasPartner;
-  const money = v => fmt(v, { compact: true });
+  // Questionnaire values stay exact after entry; compact rounding belongs on summary screens.
+  const money = v => fmt(v);
   const detailed = mode === 'detailed';
 
   return (
