@@ -5,13 +5,15 @@
 Browser-based retirement planning calculator with Monte Carlo simulations. As of **V18.0** the
 front end is a React "Compass" app: `index.html` / `cover.html` are thin shells that load the
 components in `cover-app/`, backed by the **real Monte Carlo engine** (`engine.js`) through the
-`real-engine.js` adapter. `engine.js` is reused **unchanged** as a pure math library &mdash; only
-its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
+`real-engine.js` adapter. `engine.js` is reused as a pure math library &mdash; only its DOM init is
+bypassed. **Note:** V18.11 is the first release that intentionally modifies `engine.js` math
+(contribution accumulation fix, IRMAA per-person + 2yr lookback, growing contribution caps).
+See the V18.0 / V18.1 sections below for detail.
 
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.10
+**Current Version:** 18.11
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -491,3 +493,49 @@ cannot recur.
 **Cache-buster:** `engine.js?v=18.10` + `?v=18.10` on all `cover-app/*` includes in both shells; all version
 strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.10.
 **`engine.js` math is UNCHANGED** (item 5 is comments only).
+
+---
+
+## V18.11 &mdash; Audit Pass 2: engine-math fixes + contribution accumulation bug
+
+Pass 2 of the 2026-06-27 audit batch. **`engine.js` IS changed in this release** &mdash; the first intentional
+math modification since the engine was written. Every change is in `engine.js` or the adapter (`real-engine.js`).
+Zero UI changes; zero changes to `compass-cover.jsx`, `cover-inputs.jsx`, `cover-mobile.jsx`, `retire-charts.jsx`,
+or `retire-ui.jsx` (beyond the version kicker).
+
+**Critical pre-existing bug fixed: contributions were discarded every year.** This is the most impactful accuracy
+correction in the app's history. The year-end balance reset used `userPreTax_startOfYear` (snapshotted *before*
+contributions were added), so every year's employer/employee contributions were silently lost. A zero-starting
+saver with a 50% savings rate accumulated $0 instead of ~$1.8M by age 64. Fix: the five reset lines now add
+back `+ userPreTaxContrib`, `+ userRothContrib`, etc. after subtracting withdrawals. Impact on default score:
+**41 &rarr; 61** (10 working years of contributions now count). Mid-career saver (age 45, 15% rate): **39 &rarr; 84**.
+Already-retired plans (no contributions left): **unchanged** (correct).
+
+**Item 4 (audit) &mdash; IRMAA per-person + 2-year lookback.** IRMAA was charged once per household regardless
+of how many Medicare-eligible members there are. Fixed: `irmaa = calculateIRMAA(...) * medicareCount` where
+`medicareCount` is the number of partners &ge; 65. The lookback now uses `magiHistory[i-2]` (the MAGI from two
+years prior, per the SSA rule) rather than current-year MAGI. A `magiHistory[]` array is built across the year
+loop and indexed per year.
+
+**Item 6 (audit) &mdash; Contribution caps grow with inflation.** The 401(k) limits (`LIMIT_401K`,
+`CATCHUP_401K`, `SUPER_CATCHUP_401K`) and the SS earnings limit were previously frozen in nominal dollars.
+Now multiplied by `inflation` so real-dollar limits stay constant over the simulation. Effect only meaningful
+now that contributions are no longer discarded (validated: savings rate 25% vs 50% produces same balance because
+the cap binds at 25% &mdash; item 6 working correctly).
+
+**Item 7 (audit) &mdash; Wages added to pathLog + paycheck reconciliation.** `wages: userNetSalary +
+spouseNetSalary` added to every `pathLog` entry. The adapter paycheck now uses the household's fully-retired
+year (max of user and spouse retirement indices) and includes wages as a segment. The paycheck total reconciles
+to spending + taxes exactly: sources (SS + pension + wages + portfolio) + taxes = spending + taxes = total.
+Verified to within $0.30/month rounding on the default scenario.
+
+**Score disclosure.** The default DEFAULTS score rises from **42 (V18.10) to 61 (V18.11)** due to the
+contribution fix. Any user whose plan includes working years will see a higher (more accurate) score on first
+load. Plans with no remaining working years (already retired) are unchanged.
+
+**Input Units note (carried forward).** All income inputs remain ANNUAL. `mortgagePayment` and `monthlyRent`
+remain MONTHLY (adapter &times; 12). Unchanged from prior versions; documented here for cross-reference.
+
+**Cache-buster:** `engine.js?v=18.11` + `?v=18.11` (or `?v=18.11b` for `compass-cover.jsx` after a
+mid-deploy kicker fix) on all `cover-app/*` includes in both shells; all version strings (both HTML titles,
+`real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.11. `engine.js` math IS changed.
