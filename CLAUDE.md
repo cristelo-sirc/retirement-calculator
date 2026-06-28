@@ -11,7 +11,7 @@ its DOM init is bypassed. See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.8
+**Current Version:** 18.9
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -397,3 +397,32 @@ value is still within the new range). Version is only a label; the loader still 
 **Cache-buster:** `engine.js?v=18.8` + `?v=18.8` on all `cover-app/*` includes in both shells; all version
 strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.8. The
 V18.7 provenance comment in `real-engine.js` is left as-is per convention.
+
+---
+
+## V18.9 &mdash; Hotfix: Projection no longer blanks at high path counts
+
+**`engine.js` is UNCHANGED.** A single rendering-helper fix in `retire-charts.jsx`. No engine math, no
+displayed numbers, no visual change &mdash; purely how one chart finds its vertical scale.
+
+**Bug (regression exposed by V18.8).** `BalanceFanChart` (the Projection balance fan) computed its y-axis
+ceiling with `Math.max(...results.paths.flatMap(p =&gt; p.path.map(pt =&gt; pt.balance)), 1)` &mdash; *spreading*
+every path&rsquo;s every year into one function call. At the old 1,500-path default that was ~60k arguments,
+just under the JS engine&rsquo;s argument/spread limit, so it worked. V18.8&rsquo;s 5,000 default &mdash; and a
+10,000 setting &mdash; pushes it to ~200k&ndash;400k arguments, throwing `RangeError: Maximum call stack size
+exceeded` *during render*. React then unmounts the whole tree, so the entire app goes blank when Projection is
+opened. Latent bug, surfaced by raising the path count; the V18.8 live test missed it because the Projection
+screen itself was never opened (the audit only exercised the engine and the questionnaire).
+
+**Fix.** Replaced the spread with a plain scan that holds only one running maximum:
+`let maxBal = 1; results.paths.forEach(p =&gt; p.path.forEach(pt =&gt; { if (pt.balance &gt; maxBal) maxBal =
+pt.balance; }));`. Identical result (the largest balance, floored at 1), O(n), no giant argument list &mdash;
+works at any path count. Chart is visually and numerically unchanged. The file&rsquo;s only other
+`Math.max(...spread)` (`maxNeed`, over the per-year income array &asymp;40 values) is bounded and left as-is.
+
+**Validation.** Deployed, then opened EVERY screen (Cover, Projection, Income &amp; Odds, Rework, Questionnaire)
+at 1,500 / 5,000 / 10,000 paths on desktop and mobile with the console open &mdash; Projection renders at all
+counts, no `RangeError`, no other regressions.
+
+**Cache-buster:** `engine.js?v=18.9` + `?v=18.9` on all `cover-app/*` includes in both shells; all version
+strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.9.

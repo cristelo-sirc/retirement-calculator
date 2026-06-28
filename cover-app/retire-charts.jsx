@@ -19,7 +19,10 @@ function BalanceFanChart({ results, theme: th, width = 860, height = 320 }) {
   if (!path || !path.length) return null;
   const W = width, H = height, pad = { l: 62, r: 20, t: 18, b: 36 };
   const ages = path.map(p => p.age);
-  const maxBal = Math.max(...results.paths.flatMap(p => p.path.map(pt => pt.balance)), 1);
+  // Tallest balance across all paths, found by scanning (NOT Math.max(...spread) — spreading
+  // hundreds of thousands of values at high path counts overflows the call stack and blanks the app).
+  let maxBal = 1;
+  results.paths.forEach(p => p.path.forEach(pt => { if (pt.balance > maxBal) maxBal = pt.balance; }));
   const minAge = ages[0], maxAge = ages[ages.length - 1];
   const xs = a => pad.l + ((a - minAge) / (maxAge - minAge)) * (W - pad.l - pad.r);
   const ys = b => pad.t + (1 - b / maxBal) * (H - pad.t - pad.b);
