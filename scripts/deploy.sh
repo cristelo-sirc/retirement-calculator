@@ -56,6 +56,7 @@ echo "==> Syncing files from the project folder..."
 rsync -a --delete \
   --exclude '.git/' --exclude '_archive/' --exclude 'data/' \
   --exclude '.claude/' --exclude '.DS_Store' --exclude '.fuse_hidden*' \
+  --exclude 'node_modules/' \
   "$SRC"/ ./
 
 git add -A

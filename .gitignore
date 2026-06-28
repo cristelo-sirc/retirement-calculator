@@ -22,3 +22,6 @@ Retirement_Calculator_v*.html
 # Deploy token (private; never commit)
 *token*.txt
 deploy-token*
+
+# Node tooling (local-only; used for JSX syntax checks, never deployed)
+node_modules/
