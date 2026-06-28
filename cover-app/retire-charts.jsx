@@ -13,53 +13,69 @@ function rcVerdictColor(rate, th) {
   return rate >= 90 ? th.sage : rate >= 70 ? th.amber : th.clay;
 }
 
-// ── Balance over time, with confidence band ──────────────────────────────
+// Linear-interpolated percentile of an ASCENDING-sorted array.
+function rcPercentile(sortedAsc, p) {
+  const n = sortedAsc.length;
+  if (!n) return 0;
+  const idx = (n - 1) * p, lo = Math.floor(idx), hi = Math.ceil(idx);
+  return lo === hi ? sortedAsc[lo] : sortedAsc[lo] + (sortedAsc[hi] - sortedAsc[lo]) * (idx - lo);
+}
+
+// ── Balance over time, with a P10–P90 band and the P50 (median) line ──────
 function BalanceFanChart({ results, theme: th, width = 860, height = 320 }) {
   const path = results.path;
   if (!path || !path.length) return null;
   const W = width, H = height, pad = { l: 62, r: 20, t: 18, b: 36 };
   const ages = path.map(p => p.age);
-  // Tallest balance across all paths, found by scanning (NOT Math.max(...spread) — spreading
-  // hundreds of thousands of values at high path counts overflows the call stack and blanks the app).
+  // True per-year percentiles across ALL paths: collect each age's balances, sort, then
+  // read P10/P50/P90. Built by scanning + per-age sort (NOT Math.max(...spread), which
+  // overflows the call stack at high path counts and blanks the app).
+  const byAge = {};
+  results.paths.forEach(p => p.path.forEach(pt => { (byAge[pt.age] || (byAge[pt.age] = [])).push(pt.balance); }));
+  ages.forEach(a => { if (byAge[a]) byAge[a].sort((x, y) => x - y); });
+  const p10 = {}, p50 = {}, p90 = {};
+  ages.forEach(a => { const arr = byAge[a] || [0]; p10[a] = rcPercentile(arr, 0.10); p50[a] = rcPercentile(arr, 0.50); p90[a] = rcPercentile(arr, 0.90); });
+  // Scale to the 90th percentile (not the absolute max) so rare extreme paths don't flatten the chart.
   let maxBal = 1;
-  results.paths.forEach(p => p.path.forEach(pt => { if (pt.balance > maxBal) maxBal = pt.balance; }));
+  ages.forEach(a => { if (p90[a] > maxBal) maxBal = p90[a]; });
   const minAge = ages[0], maxAge = ages[ages.length - 1];
   const xs = a => pad.l + ((a - minAge) / (maxAge - minAge)) * (W - pad.l - pad.r);
-  const ys = b => pad.t + (1 - b / maxBal) * (H - pad.t - pad.b);
-  const minByAge = {}, maxByAge = {};
-  results.paths.forEach(p => p.path.forEach(pt => {
-    if (minByAge[pt.age] == null || pt.balance < minByAge[pt.age]) minByAge[pt.age] = pt.balance;
-    if (maxByAge[pt.age] == null || pt.balance > maxByAge[pt.age]) maxByAge[pt.age] = pt.balance;
-  }));
+  const ys = b => pad.t + (1 - Math.min(b, maxBal) / maxBal) * (H - pad.t - pad.b);
   let upper = '', lower = '';
-  ages.forEach((a, i) => { upper += (i === 0 ? 'M' : 'L') + xs(a) + ',' + ys(maxByAge[a]) + ' '; });
-  for (let i = ages.length - 1; i >= 0; i--) lower += 'L' + xs(ages[i]) + ',' + ys(minByAge[ages[i]]) + ' ';
+  ages.forEach((a, i) => { upper += (i === 0 ? 'M' : 'L') + xs(a) + ',' + ys(p90[a]) + ' '; });
+  for (let i = ages.length - 1; i >= 0; i--) lower += 'L' + xs(ages[i]) + ',' + ys(p10[ages[i]]) + ' ';
   let med = '';
-  path.forEach((p, i) => { med += (i === 0 ? 'M' : 'L') + xs(p.age) + ',' + ys(p.balance) + ' '; });
+  ages.forEach((a, i) => { med += (i === 0 ? 'M' : 'L') + xs(a) + ',' + ys(p50[a]) + ' '; });
   const retireX = xs(results.params.retireAge);
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', background: th.paper,
-      border: `1px solid ${th.ink}` }}>
-      <path d={upper + lower + 'Z'} fill={th.sageSoft} opacity="0.6" />
-      <path d={med} fill="none" stroke={th.ink} strokeWidth="2.5" />
-      <line x1={retireX} x2={retireX} y1={pad.t} y2={H - pad.b} stroke={th.clay}
-        strokeDasharray="5 4" strokeWidth="1.5" />
-      <text x={retireX + 7} y={pad.t + 13} fontSize="11" fill={th.clay} fontFamily={th.display}>Retirement</text>
-      {[0, 0.5, 1].map(f => {
-        const v = maxBal * f;
-        return (
-          <g key={f}>
-            <line x1={pad.l} x2={W - pad.r} y1={ys(v)} y2={ys(v)} stroke={th.rule} />
-            <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="10.5" fill={th.ink50}
-              fontFamily={th.body}>${Math.round(v / 1000)}k</text>
-          </g>
-        );
-      })}
-      {[minAge, results.params.retireAge, results.params.endAge].map(a => (
-        <text key={a} x={xs(a)} y={H - 13} textAnchor="middle" fontSize="10.5" fill={th.ink70}
-          fontFamily={th.body}>Age {a}</text>
-      ))}
-    </svg>
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', background: th.paper,
+        border: `1px solid ${th.ink}` }}>
+        <path d={upper + lower + 'Z'} fill={th.sageSoft} opacity="0.6" />
+        <path d={med} fill="none" stroke={th.ink} strokeWidth="2.5" />
+        <line x1={retireX} x2={retireX} y1={pad.t} y2={H - pad.b} stroke={th.clay}
+          strokeDasharray="5 4" strokeWidth="1.5" />
+        <text x={retireX + 7} y={pad.t + 13} fontSize="11" fill={th.clay} fontFamily={th.display}>Retirement</text>
+        {[0, 0.5, 1].map(f => {
+          const v = maxBal * f;
+          return (
+            <g key={f}>
+              <line x1={pad.l} x2={W - pad.r} y1={ys(v)} y2={ys(v)} stroke={th.rule} />
+              <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="10.5" fill={th.ink50}
+                fontFamily={th.body}>${Math.round(v / 1000)}k</text>
+            </g>
+          );
+        })}
+        {[minAge, results.params.retireAge, results.params.endAge].map(a => (
+          <text key={a} x={xs(a)} y={H - 13} textAnchor="middle" fontSize="10.5" fill={th.ink70}
+            fontFamily={th.body}>Age {a}</text>
+        ))}
+      </svg>
+      <div style={{ fontSize: 11, color: th.ink50, marginTop: 8, fontFamily: th.body, lineHeight: 1.5 }}>
+        Bold line = median (P50) balance at each age. Shaded band = 10th–90th percentile across {(results.paths.length || 0).toLocaleString()} paths;
+        four in five futures land inside it. The axis tops out at the 90th percentile, so rarer high outcomes run off the top.
+      </div>
+    </div>
   );
 }
 

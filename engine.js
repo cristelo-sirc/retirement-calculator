@@ -1257,6 +1257,11 @@
             // --- Tax and RMD Calculation Logic ---
 
             // RMD Calculation (Uniform Lifetime Table - Simplified Approximation)
+            // DESIGN DECISION (2026-06-27, per Cris): RMD start age is fixed at 75 (SECURE 2.0,
+            // born 1960+) and is intentionally NOT made cohort-dependent (age 73 for pre-1960).
+            // People born before 1960 are already at/past RMD age and are not this tool's planning
+            // audience, so the simplification is acceptable. Revisit only if the product targets
+            // users who reach RMDs before 2033.
             function getDistributionPeriod(age) {
                 if (age < 75) return 0; // SECURE 2.0 Act: RMDs begin at age 75 for those born 1960+
                 const table = {
@@ -1737,6 +1742,10 @@
                 const filingStatus = params.spouseAge > 0 ? 'MFJ' : 'Single';
                 const yearsToRun = params.endAge - params.currentAge;
                 const FRA = 67; // Full Retirement Age (SSA)
+                // DESIGN DECISION (2026-06-27, per Cris): FRA is fixed at 67 for everyone (and for
+                // both spouses) and intentionally NOT derived from birth year (pre-1960 cohorts have
+                // FRA 66-67). Those cohorts aren't planning retirement now, so this is a conscious
+                // simplification, not an oversight. Revisit only if the audience expands to older births.
 
                 for (let i = 0; i <= yearsToRun; i++) {
                     const currentYearAge = params.currentAge + i;

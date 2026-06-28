@@ -156,7 +156,7 @@
               fontFamily: cm.body, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
               Sample · not your numbers yet</div>
           )}
-          <div style={{ ...mKick, marginBottom: 4 }}>Chance of never running out</div>
+          <div style={{ ...mKick, marginBottom: 4 }}>{window.cvChanceLabel ? window.cvChanceLabel(params) : 'Chance of never running out'}</div>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
             <span style={{ fontFamily: cm.display, fontSize: 150, lineHeight: 0.84, color: cm.ink,
               letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', transition: 'color 300ms' }}>{results.successRate}</span>

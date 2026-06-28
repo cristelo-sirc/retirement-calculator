@@ -1,4 +1,4 @@
-// real-engine.js — V18.9 adapter
+// real-engine.js — V18.10 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.9';
+      s.src = 'engine.js?v=18.10';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -59,6 +59,68 @@
 
     numPaths: 5000            // Monte Carlo paths — SINGLE SOURCE for every screen's odds (user-editable in Advanced)
   };
+
+  // ---- Validation / normalization (V18.10) -------------------------------------
+  // Defends every entry point (loaded files, localStorage, live params) against bad
+  // types, out-of-range values, contradictory ages, and a runaway path count that
+  // could freeze the browser. Coerces each known field by its DEFAULT's type, clamps
+  // numerics (RANGES where an upper bound matters), validates string enums, and fixes
+  // age ordering. Unknown keys are dropped. Idempotent: in-range params pass through
+  // unchanged, so an untouched DEFAULTS plan reproduces the prior baseline exactly.
+  var RANGES = {
+    currentAge: [18, 100], retireAge: [19, 101], endAge: [20, 110],
+    spouseAge: [0, 100], spouseRetireAge: [0, 101],
+    ssClaimAge: [62, 70], spouseClaimAge: [62, 70],
+    pensionStartAge: [40, 100], spousePensionStartAge: [40, 100],
+    partTimeStartAge: [40, 100], partTimeEndAge: [40, 110],
+    windfallAge: [0, 110], rothConversionStartAge: [0, 110], rothConversionEndAge: [0, 110],
+    spendingReductionAge: [0, 110], mortgageLastAge: [0, 110],
+    inflation: [0, 20], healthcareInflation: [0, 30],
+    savingsRate: [0, 100], spouseSavingsRate: [0, 100],
+    stockAllocation: [0, 100], glidePathEndStock: [0, 100],
+    stockReturn: [0, 30], bondReturn: [0, 30], stockVol: [0, 60], bondVol: [0, 40],
+    bracketGrowth: [0, 20], stateTaxRate: [0, 60], taxableGainRatio: [0, 100],
+    guardrailCeiling: [0, 30], guardrailFloor: [0, 30], guardrailAdjustment: [0, 100],
+    spendingReductionPercent: [0, 100], numPaths: [500, 10000]
+  };
+  var ENUMS = {
+    savingsDest: ['pretax', 'roth', 'split'], spouseSavingsDest: ['pretax', 'roth', 'split'],
+    housingType: ['own', 'rent']
+  };
+  function normalizeParams(raw) {
+    raw = (raw && typeof raw === 'object') ? raw : {};
+    var out = {}, notes = [];
+    Object.keys(DEFAULTS).forEach(function (k) {
+      var dv = DEFAULTS[k], v = raw[k];
+      if (v === undefined) { out[k] = dv; return; }
+      if (typeof dv === 'number') {
+        var n = Number(v);
+        if (!isFinite(n)) { out[k] = dv; notes.push(k); return; }
+        if (n < 0) { n = 0; notes.push(k); }
+        var r = RANGES[k];
+        if (r) {
+          if (n < r[0]) { n = r[0]; notes.push(k); }
+          else if (n > r[1]) { n = r[1]; notes.push(k); }
+        }
+        out[k] = n;
+      } else if (typeof dv === 'boolean') {
+        out[k] = (v === true || v === 'true' || v === 1 || v === '1');
+      } else if (typeof dv === 'string') {
+        var allowed = ENUMS[k];
+        if (allowed && allowed.indexOf(v) === -1) { out[k] = dv; notes.push(k); }
+        else out[k] = String(v);
+      } else { out[k] = dv; }
+    });
+    // Cross-field rules: ages must strictly increase.
+    if (out.retireAge <= out.currentAge) { out.retireAge = Math.min(101, out.currentAge + 1); notes.push('retireAge'); }
+    if (out.endAge <= out.retireAge) { out.endAge = Math.min(110, out.retireAge + 1); notes.push('endAge'); }
+    if (out.hasPartner) {
+      if (out.spouseAge < 18) { out.spouseAge = 18; notes.push('spouseAge'); }
+      if (out.spouseRetireAge <= out.spouseAge) { out.spouseRetireAge = Math.min(101, out.spouseAge + 1); notes.push('spouseRetireAge'); }
+    }
+    out.numPaths = Math.round(out.numPaths);   // hard path-count ceiling lives in RANGES above
+    return { params: out, changed: notes.length > 0, notes: notes };
+  }
 
   // ---- Map mockup params -> real engine params (collectInputs() shape) ----------
   // Real engine stores rates/allocations as FRACTIONS and income as ANNUAL dollars.
@@ -170,7 +232,7 @@
   // Income & Odds what-if base equals the cover's headline. Reads the single numPaths source.
   function quickSuccess(m) {
     if (!window.simulatePath) return 0;
-    var mm = Object.assign({}, DEFAULTS, m || {});
+    var mm = normalizeParams(m).params;
     return successOf(runPaths(mapToReal(mm, mm.numPaths || 5000)), mm.legacyGoal || 0);
   }
 
@@ -208,7 +270,7 @@
   }
 
   function compute(params) {
-    var m = Object.assign({}, DEFAULTS, params || {});
+    var m = normalizeParams(params).params;   // validate + clamp every entry point (incl. numPaths)
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
       return { params: m, successRate: 0, numPaths: m.numPaths || 5000, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
         levers: [], medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
@@ -300,7 +362,7 @@
   }
 
   window.MockEngine = {
-    DEFAULTS: DEFAULTS, compute: compute, quickSuccess: quickSuccess,
+    DEFAULTS: DEFAULTS, compute: compute, quickSuccess: quickSuccess, normalizeParams: normalizeParams,
     formatCurrency: formatCurrency, formatPct: formatPct, clone: clone, ssFactor: ssFactor
   };
 })();

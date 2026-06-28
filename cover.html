@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Compass &middot; The Retirement Issue &middot; V18.9</title>
+  <title>Compass &middot; The Retirement Issue &middot; V18.10</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,17 +19,17 @@
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
   <!-- Real engine adapter: defines window.MockEngine and loads engine.js (math) after DOMContentLoaded -->
-  <script src="cover-app/real-engine.js?v=18.9"></script>
+  <script src="cover-app/real-engine.js?v=18.10"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- The mockup design components (the exact handoff UI) -->
-  <script type="text/babel" src="cover-app/retire-ui.jsx?v=18.9"></script>
-  <script type="text/babel" src="cover-app/retire-charts.jsx?v=18.9"></script>
-  <script type="text/babel" src="cover-app/compass-cover.jsx?v=18.9"></script>
-  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=18.9"></script>
-  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=18.9"></script>
+  <script type="text/babel" src="cover-app/retire-ui.jsx?v=18.10"></script>
+  <script type="text/babel" src="cover-app/retire-charts.jsx?v=18.10"></script>
+  <script type="text/babel" src="cover-app/compass-cover.jsx?v=18.10"></script>
+  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=18.10"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=18.10"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
@@ -39,7 +39,7 @@
     function App() {
       const [screen, setScreen] = useState('cover');
       const [params, setParams] = useState(() => {
-        try { var s = localStorage.getItem(SAVE_KEY); if (s) return Object.assign({}, window.MockEngine.DEFAULTS, JSON.parse(s)); } catch (e) {}
+        try { var s = localStorage.getItem(SAVE_KEY); if (s) return window.MockEngine.normalizeParams(JSON.parse(s)).params; } catch (e) {}
         return window.MockEngine.DEFAULTS;
       });
       // Welcome launch screen shows on every load. hasSession = a personalized
@@ -49,7 +49,7 @@
         try {
           var s = localStorage.getItem(SAVE_KEY);
           if (!s) return false;
-          var saved = Object.assign({}, window.MockEngine.DEFAULTS, JSON.parse(s));
+          var saved = window.MockEngine.normalizeParams(JSON.parse(s)).params;
           return JSON.stringify(saved) !== JSON.stringify(window.MockEngine.DEFAULTS);
         } catch (e) { return false; }
       });

@@ -1,0 +1,534 @@
+RETIREMENT CALCULATOR AUDIT: FINDINGS AND RECOMMENDATIONS
+Date: June 27, 2026
+
+PURPOSE
+=======
+
+This report summarizes a read-only review of the current application, with special
+attention to:
+
+1. Issues that can meaningfully affect projection accuracy.
+2. Latency when changing inputs in Rework or applying suggested adjustments.
+3. Reliability, accessibility, maintainability, and production readiness.
+
+No existing application files were changed as part of the audit.
+
+
+EXECUTIVE SUMMARY
+=================
+
+The application is a strong and unusually polished prototype. Its editorial design,
+plain-language guidance, deterministic simulations, and Rework draft/publish model are
+all good product decisions.
+
+The Monte Carlo engine does not appear fundamentally broken. For a typical younger
+household using ordinary assumptions, its results are likely directionally useful.
+However, precise results should not yet be treated as production-grade financial
+projections. Several issues can materially affect particular users, especially older
+households, high-income Medicare couples, maximum retirement-plan savers, and plans
+whose success score is close to a decision threshold.
+
+The latency problem has a clear cause: every small input change performs report-grade
+work on the browser's main thread. At the default 5,000-path setting, one full compute
+performs approximately 15,165 lifetime simulations and builds large chart datasets,
+even when Rework needs only a success score and verdict.
+
+
+PART 1: PROJECTION-ACCURACY FINDINGS
+====================================
+
+1. RMD START AGE IS ALWAYS 75
+-----------------------------
+
+Severity: High for older users; low for the default 55-year-old example.
+
+The engine begins required minimum distributions at age 75 for everyone. Current law
+is cohort-dependent: age 73 generally applies to people who reach 73 before 2033, while
+age 75 applies to later cohorts. The UI permits older users, so this is not merely a
+theoretical edge case.
+
+Possible effect:
+
+- Pre-tax balances may remain invested too long.
+- Taxable income and Medicare surcharges may be understated or shifted to later years.
+- Roth-conversion opportunities may be overstated.
+- Account balances and success rates may be distorted for affected cohorts.
+
+Recommendation:
+
+- Add a projection start year or derive it from the current calendar year.
+- Infer birth year from current age, preferably with an explicit birth-year input.
+- Determine the applicable RMD age by cohort.
+- Add tests for users reaching RMD age at 73 and at 75.
+
+Official reference:
+https://www.irs.gov/irb/2026-06_IRB
+
+
+2. SOCIAL SECURITY FULL RETIREMENT AGE IS ALWAYS 67
+----------------------------------------------------
+
+Severity: High for older cohorts; low for people born in 1960 or later.
+
+The engine uses age 67 as full retirement age for every user and spouse. Actual full
+retirement age varies by birth year for people born before 1960.
+
+Possible effect:
+
+- Early-claiming reductions can be wrong.
+- Delayed-retirement credits can be wrong.
+- Spousal-benefit comparisons can be wrong.
+- Suggested claiming changes can show inaccurate impacts.
+
+Recommendation:
+
+- Calculate full retirement age separately for each partner from birth year.
+- Use month-level ages if Social Security precision is an important product goal.
+- Add golden tests for birth years 1954, 1957, 1959, and 1960.
+
+Official reference:
+https://www.ssa.gov/oact/progdata/nra.html
+
+
+3. COUPLE IRMAA SURCHARGES APPEAR TO BE CHARGED ONLY ONCE
+---------------------------------------------------------
+
+Severity: Potentially high for higher-income Medicare couples.
+
+The simulation counts how many partners are on Medicare, but the resulting IRMAA
+surcharge is added only once rather than multiplied or calculated per covered person.
+The calculation also uses current-year income rather than the normal two-year MAGI
+lookback.
+
+Possible effect:
+
+- Retirement expenses and portfolio withdrawals may be understated.
+- Roth conversions can look more attractive than they really are.
+- Success rates can be overstated for households near IRMAA thresholds.
+
+Recommendation:
+
+- Calculate IRMAA separately for each Medicare-covered partner.
+- Model the two-year income lookback, including a documented initialization rule for
+  the first two simulated years.
+- Version thresholds and surcharge amounts by calendar year.
+- Test threshold crossings caused by RMDs and Roth conversions.
+
+
+4. TAX AND CONTRIBUTION ASSUMPTIONS ARE STILL BASED ON 2025
+-----------------------------------------------------------
+
+Severity: Medium generally; higher for maximum savers and tax-sensitive strategies.
+
+The app is labeled May 2026, but the simulation starts in 2025 and uses 2025 base tax
+brackets, Social Security limits, IRMAA values, and retirement-plan contribution limits.
+Some bracket values are grown by an inflation assumption, which gets reasonably close
+to 2026 values, but it is not the same as using enacted annual values.
+
+The 401(k) limit is particularly important because it remains fixed throughout the
+projection. High savers can therefore have future contributions and balances
+understated.
+
+The optional higher-future-tax-rates setting still uses pre-TCJA brackets, although the
+lower TCJA rates were made permanent in 2025. It may remain useful as a stress scenario,
+but it should not be presented as a scheduled-law sunset.
+
+Recommendation:
+
+- Create a versioned assumptions table keyed by calendar year.
+- Use enacted values for known years and a clearly documented growth rule afterward.
+- Update the current-year 401(k), catch-up, Social Security earnings-test, tax, and
+  IRMAA values.
+- Rename the tax toggle as an explicit stress test, such as "Model higher future tax
+  rates," and document exactly which schedule it applies.
+- Display an "Assumptions updated through" date in the product.
+
+Official references:
+https://www.irs.gov/newsroom/irs-releases-tax-inflation-adjustments-for-tax-year-2026-including-amendments-from-the-one-big-beautiful-bill
+https://www.irs.gov/newsroom/401k-limit-increases-to-24500-for-2026-ira-limit-increases-to-7500
+https://www.ssa.gov/cola/factsheets/2026.html
+
+
+5. INPUTS ARE NOT FULLY VALIDATED OR NORMALIZED
+------------------------------------------------
+
+Severity: High when malformed or contradictory data is present.
+
+The visible controls have minimums and maximums, but related values are not normalized
+together. Loaded JSON and localStorage data are merged into defaults without complete
+type, range, or relationship validation.
+
+Examples:
+
+- Current age can become equal to or greater than retirement age.
+- Retirement age can exceed the plan end age.
+- A partner's retirement age can conflict with the partner's current age.
+- String values and string booleans can be interpreted incorrectly.
+- A malformed or extremely large numPaths value can freeze the browser.
+- Suggested moves can produce values outside the sliders' supported ranges.
+
+Recommendation:
+
+- Define one schema for all parameters, including type, minimum, maximum, enum values,
+  and cross-field rules.
+- Validate defaults, localStorage, imported files, and every committed update through
+  the same schema.
+- Reject invalid files with specific messages rather than silently coercing values.
+- Clamp or update dependent ages together.
+- Enforce a hard numPaths ceiling inside the engine, not only in the UI.
+
+
+6. SOCIAL SECURITY SUGGESTIONS ARE INCONSISTENT ACROSS SCREENS
+--------------------------------------------------------------
+
+Severity: Medium for projection decisions; does not corrupt the filed base plan.
+
+The Cover and Income & Odds calculations change both partners to age 70. Rework changes
+only the primary user's claiming age.
+
+Using the default plan:
+
+- Filed plan: 42/100
+- Rework's user-only change: 44/100
+- Both partners changed, as used elsewhere: 46/100
+
+The spending suggestion also shows +21 points on the Cover but +20 using the full path
+count. Suggested moves are hard-coded in Rework and can be offered even when a change,
+especially delaying Social Security over a short horizon, reduces success.
+
+Recommendation:
+
+- Define each scenario once as a reusable parameter patch.
+- Use that same scenario definition and cached result everywhere.
+- State clearly whether a claiming recommendation applies to one or both partners.
+- Rank and display only moves that actually improve the current plan.
+- Label low-sample deltas as estimates, or calculate all displayed deltas with the same
+  authoritative path count.
+
+
+7. PAYCHECK AND INCOME-SOURCE DISPLAYS DO NOT RECONCILE
+-------------------------------------------------------
+
+Severity: High for user interpretation; the core success score still includes spouse
+salary internally.
+
+The paycheck display uses the primary user's first retirement year. If a younger spouse
+is still working, the spouse's salary is omitted from the displayed source breakdown.
+The chart receives actual portfolio withdrawals but visually fills the entire gap
+between guaranteed income and spending as portfolio funding.
+
+In the default plan, the app states a need of about $12,267 per month but displays only
+about $4,931 per month of sources, or 40% of the need.
+
+Recommendation:
+
+- Decide whether the featured year is the primary user's retirement or the household's
+  fully retired year.
+- Include wages whenever either partner is still working.
+- Reconcile displayed sources to uses, including taxes and Medicare surcharges.
+- Add a visible "taxes" segment if withdrawals include money used to pay taxes.
+- Add an invariant test asserting that displayed sources and uses reconcile within a
+  small rounding tolerance.
+
+
+8. THE PROJECTION CHARTS OVERSTATE THEIR STATISTICAL MEANING
+------------------------------------------------------------
+
+Severity: Medium; mostly a communication and decision-quality issue.
+
+The bold balance line is one simulated path selected because its final balance is near
+the median. It is not the median balance at every age. The surrounding band uses the
+absolute minimum and maximum among all paths, not a conventional confidence or
+percentile interval. Extreme Gaussian outcomes can dominate the chart scale.
+
+Recommendation:
+
+- Calculate per-year percentiles such as P10, P25, P50, P75, and P90.
+- Draw P50 as the median line and P10-P90 or P25-P75 as labeled bands.
+- Avoid calling a single median-ending path "most likely."
+- State the percentile definition directly below the chart.
+
+
+9. THE SUCCESS LABEL DOES NOT DISCLOSE THE LEGACY-GOAL TEST
+-----------------------------------------------------------
+
+Severity: Medium when a legacy goal is entered.
+
+The displayed metric says "Chance of never running out," but a path is counted as a
+success only when it remains solvent and finishes above the legacy goal. The score can
+therefore fall even though the portfolio never runs out.
+
+Recommendation:
+
+- When legacyGoal is zero, use "Chance of never running out."
+- When it is positive, use language such as "Chance of funding retirement and leaving
+  at least $X."
+- Consider displaying solvency probability and legacy-goal probability separately.
+
+
+10. IMPORTANT MODEL LIMITATIONS SHOULD BE DISCLOSED
+---------------------------------------------------
+
+Severity: Product-scope dependent.
+
+The engine uses fixed inflation, normally distributed annual returns, a fixed
+stock/bond correlation, and a fixed household filing status. It does not appear to model
+mortality, survivor transitions, long-term care events, investment fees, or detailed
+state-specific tax rules. These can matter more than small tax-bracket differences.
+
+Recommendation:
+
+- Publish a concise methodology and limitations page.
+- Avoid presenting a whole-number score as actuarial certainty.
+- Add sensitivity or stress scenarios for longevity, inflation, fees, and healthcare.
+- Consider mortality/survivor modeling if the product is intended for planning beyond
+  simple deterministic household horizons.
+
+
+PART 2: LATENCY FINDINGS
+========================
+
+MEASURED BEHAVIOR
+-----------------
+
+On the reviewed machine:
+
+- Opening Rework took approximately 960 milliseconds.
+- A warm full 5,000-path compute took approximately 263-384 milliseconds.
+- A 10,000-path compute took approximately 495-581 milliseconds.
+- A 5,000-path score-only quickSuccess took approximately 73-123 milliseconds.
+- Suggested adjustments and slider interactions completed in approximately 340
+  milliseconds to one second, depending on warm-up and rendering.
+
+
+ROOT CAUSE
+----------
+
+At 5,000 configured paths, a full compute performs approximately:
+
+- 5,000 paths for the headline result.
+- 7,497 paths across nine sustainable-spending bisection rounds.
+- 2,668 paths for the base and three suggested moves.
+- Total: approximately 15,165 lifetime path simulations per change.
+
+It also:
+
+- Builds yearly logs even for calculations that need only final solvency.
+- Sorts full results.
+- Materializes roughly 190,000 chart point objects.
+- Calculates sustainable spending and suggested moves on screens that do not use them.
+- Performs this work synchronously on the browser's main thread.
+
+Opening Rework calculates both the filed and proposed plans, roughly doubling this work.
+Publishing also causes both values to be recalculated. Returning to another screen
+recomputes unchanged results because there is no shared application-level cache.
+
+
+RECOMMENDED PERFORMANCE ARCHITECTURE
+====================================
+
+1. SPLIT THE ENGINE INTO PURPOSE-SPECIFIC MODES
+-----------------------------------------------
+
+Create separate conceptual APIs:
+
+- computeScore(params, options): success count/rate and verdict only.
+- computeSummary(params, options): score plus median summary and paycheck.
+- computeReport(params, options): full logs, charts, sustainable spending, and levers.
+
+Rework should use computeScore. Projection screens should request computeReport only
+when opened. The questionnaire can use a fast score preview and request a full report
+after the user pauses or leaves the page.
+
+
+2. MAKE PATH LOGGING OPTIONAL
+-----------------------------
+
+The score, sustainable-spending search, and lever tests need final solvency and final
+balance, not a yearly log for every path.
+
+Recommended shape:
+
+- simulateOutcome(..., captureLog=false) for score-only work.
+- Capture logs only for the authoritative report paths used by charts.
+
+This should reduce allocations, garbage collection, and computation time substantially.
+
+
+3. USE A TWO-STAGE LIVE RESULT
+------------------------------
+
+During a drag or rapid series of changes:
+
+- Calculate a 500-1,000-path preview.
+- Debounce requests by approximately 100-150 milliseconds.
+- Mark the value as "estimating" if necessary.
+
+After pointer release, keyboard pause, idle time, or Publish:
+
+- Calculate the authoritative 5,000-path result.
+- Replace the preview when complete.
+
+Because the engine already uses deterministic path seeds, previews can use the first N
+paths of the same sequence and refine predictably.
+
+
+4. MOVE MONTE CARLO WORK OFF THE MAIN THREAD
+---------------------------------------------
+
+Run simulation work in a Web Worker so controls, animations, and text updates remain
+responsive. Assign each request an incrementing ID and ignore stale responses when a
+newer input arrives.
+
+Debouncing alone reduces the number of freezes but does not eliminate each freeze.
+React transitions also do not move CPU-heavy JavaScript off the main thread.
+
+
+5. CACHE DETERMINISTIC RESULTS
+------------------------------
+
+The fixed path seeds make memoization safe.
+
+- Normalize validated parameters into a stable cache key.
+- Include calculation mode and path count in the key.
+- Store the filed-plan result at the app-shell level.
+- Reuse it across Cover, Rework, Projection, and Income & Odds.
+- Cache common suggested scenarios and share them across screens.
+- Apply a bounded least-recently-used policy so the cache cannot grow indefinitely.
+
+This will make Rework open immediately when the filed plan has already been calculated
+and will eliminate cross-screen score drift.
+
+
+6. REMOVE DUPLICATE CALCULATIONS
+--------------------------------
+
+- Reuse the filed headline sample when calculating lever baselines.
+- Do not calculate sustainable spending on Rework.
+- Do not rebuild full chart arrays until a chart screen needs them.
+- Do not calculate the same base success score again inside Income & Odds.
+- Consider pre-generating deterministic market shocks and reusing them across scenarios.
+
+
+7. SHIP A PRODUCTION BUILD
+--------------------------
+
+The app currently loads React development builds and compiles JSX in the browser with
+Babel. This is not the main Monte Carlo bottleneck, but it increases startup work,
+render overhead, dependency risk, and production complexity.
+
+Recommendation:
+
+- Precompile JSX.
+- Use production React.
+- Bundle and minify application code.
+- Keep dependency versions locked.
+- Extract the pure calculation engine from the legacy DOM-oriented engine file.
+
+
+PART 3: RELIABILITY, ACCESSIBILITY, AND MAINTAINABILITY
+======================================================
+
+1. There is no automated test suite, build configuration, type checking, or continuous
+   integration visible in the project.
+
+2. The current app loads a large legacy engine after DOMContentLoaded specifically so
+   the engine's legacy DOM listeners do not run. This works but is brittle. A pure engine
+   module would be easier to test, run in a worker, and reuse safely.
+
+3. index.html and cover.html are currently identical. Maintaining two entry files
+   creates unnecessary drift risk.
+
+4. Navigation uses clickable spans rather than semantic links or buttons. Sliders do
+   not have field-specific accessible names, and repeated plus/minus buttons are
+   ambiguous to screen readers.
+
+5. Much of the small secondary text uses approximately 3.29:1 contrast, below the usual
+   4.5:1 target for small text.
+
+6. The mobile design is visually strong but exposes only Cover and Questionnaire.
+   Rework, Projection, and Income & Odds are unavailable on mobile.
+
+7. Engine-load failure resolves into placeholder results rather than a clear blocking
+   error, so a failed dependency could look like an extremely poor retirement plan.
+
+
+PART 4: RECOMMENDED IMPLEMENTATION ORDER
+========================================
+
+PHASE 1: PROTECT ACCURACY
+-------------------------
+
+1. Add centralized schema validation and cross-field validation.
+2. Add golden tests for known household projections.
+3. Correct cohort-specific RMD and Social Security ages.
+4. Correct couple IRMAA and its two-year lookback.
+5. Introduce versioned 2026 statutory assumptions.
+6. Unify scenario definitions across every screen.
+7. Correct paycheck and income-source reconciliation.
+8. Replace chart extrema and median-ending-path displays with per-year percentiles.
+
+
+PHASE 2: REMOVE INTERACTION LATENCY
+-----------------------------------
+
+1. Add score-only, summary, and report calculation modes.
+2. Disable path logs for score-only work.
+3. Cache the filed-plan result and scenario results.
+4. Add 500-1,000-path debounced previews.
+5. Move calculations into a Web Worker.
+6. Run the full 5,000-path calculation after idle/release/publish.
+
+
+PHASE 3: PRODUCTION HARDENING
+-----------------------------
+
+1. Extract the pure engine from legacy DOM code.
+2. Add a production build and remove browser-side Babel.
+3. Add CI for tests, formatting, and static checks.
+4. Improve accessibility semantics, labels, keyboard support, and contrast.
+5. Add mobile access to all major screens or explain intentional mobile limitations.
+6. Add methodology, limitations, and assumptions-update disclosures.
+
+
+PART 5: MINIMUM VALIDATION SUITE
+===============================
+
+Before treating scores as production-grade, add at least these tests:
+
+- Determinism: identical inputs produce identical results.
+- Monotonicity: increasing spending cannot improve success when other inputs are fixed.
+- Monotonicity: adding assets cannot reduce success when other inputs are fixed.
+- Cross-screen consistency: the same scenario produces the same score everywhere.
+- Couple reconciliation: income sources, taxes, and spending reconcile by year.
+- RMD cohort tests for ages 73 and 75.
+- Social Security FRA tests by birth year.
+- IRMAA tests below, at, and above each threshold for one and two partners.
+- Contribution-limit tests for 2025, 2026, and projected future years.
+- Invalid-input and malicious-plan-file tests.
+- Legacy-goal tests separating solvency from goal achievement.
+- Regression fixtures checked against an independent spreadsheet or trusted planning
+  calculation for a small set of representative households.
+
+
+WHAT SHOULD BE PRESERVED
+========================
+
+- The magazine-like visual identity and strong information hierarchy.
+- The Rework draft/publish mental model.
+- Deterministic common random paths for fair scenario comparisons.
+- Plain-language input explanations and progressive advanced settings.
+- A single shared parameter state across screens.
+- Local-only plan storage and portable JSON saves, after validation is strengthened.
+
+
+BOTTOM LINE
+===========
+
+The best next move is not to tune the existing full compute loop. First separate quick
+exploration from full-report calculation. In parallel, correct the cohort, IRMAA,
+current-law, validation, and cross-screen consistency issues and lock them down with
+golden tests.
+
+After those changes, the application can preserve its current experience while becoming
+both substantially faster and much easier to trust.

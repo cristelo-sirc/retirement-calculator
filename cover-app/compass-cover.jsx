@@ -28,6 +28,17 @@ window.cvStyles = cvStyles;
 const cvKicker = { fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.22em',
   textTransform: 'uppercase', color: cvStyles.ink50 };
 
+// V18.10: the headline metric counts a path as success only if it stays solvent AND
+// finishes at/above the legacy goal. When a goal is set, "never running out" alone would
+// mislead (the score can drop while the money never runs out), so the label discloses the
+// goal. At goal 0 the wording is unchanged, preserving the original copy.
+function cvChanceLabel(params) {
+  var g = (params && params.legacyGoal) || 0;
+  if (g > 0) return 'Chance of leaving ' + window.MockEngine.formatCurrency(g, { compact: true }) + ' or more';
+  return 'Chance of never running out';
+}
+window.cvChanceLabel = cvChanceLabel;
+
 function cvVerdictColor(v) {
   return v === 'green' ? cvStyles.sage : v === 'yellow' ? cvStyles.amber : cvStyles.clay;
 }
@@ -44,7 +55,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '18.9', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '18.10', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -63,7 +74,8 @@ window.CompassIO = {
     } catch (e) { return { ok: false, error: 'Could not save: ' + e }; }
   },
   parsePlan: function (text) {
-    var DEF = (window.MockEngine && window.MockEngine.DEFAULTS) || {};
+    var ME = window.MockEngine || {};
+    var DEF = ME.DEFAULTS || {};
     var obj;
     try { obj = JSON.parse(text); }
     catch (e) { return { ok: false, error: 'That file isn’t valid JSON.' }; }
@@ -71,13 +83,16 @@ window.CompassIO = {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       return { ok: false, error: 'That doesn’t look like a Compass plan file.' };
     }
-    var merged = Object.assign({}, DEF);
     var keys = Object.keys(DEF), hit = 0;
-    for (var i = 0; i < keys.length; i++) {
-      if (raw[keys[i]] !== undefined) { merged[keys[i]] = raw[keys[i]]; hit++; }
-    }
+    for (var i = 0; i < keys.length; i++) if (raw[keys[i]] !== undefined) hit++;
     if (hit === 0) return { ok: false, error: 'No recognizable plan settings in that file.' };
-    return { ok: true, params: merged };
+    // Validate + clamp through the engine's normalizer (V18.10) so an out-of-range or
+    // wrong-typed file can never reach the simulation; missing fields fall back to DEFAULTS.
+    var norm = ME.normalizeParams ? ME.normalizeParams(raw)
+      : { params: Object.assign({}, DEF, raw), changed: false };
+    var res = { ok: true, params: norm.params };
+    if (norm.changed) res.note = 'Plan loaded. Some values were out of range and were adjusted to safe limits.';
+    return res;
   },
   pickPlanFile: function (onResult) {
     try {
@@ -105,7 +120,7 @@ function CoverSaveLoad({ params, setParams, align }) {
     color: cvStyles.ink70, textDecoration: 'underline', textUnderlineOffset: 3 };
   const save = () => { const r = window.CompassIO.savePlan(params); setMsg(r.ok ? 'Plan saved to your downloads.' : r.error); };
   const load = () => { setMsg(''); window.CompassIO.pickPlanFile(r => {
-    if (r && r.ok) { setParams(r.params); setMsg('Plan loaded.'); } else { setMsg((r && r.error) || 'Could not load that file.'); }
+    if (r && r.ok) { setParams(r.params); setMsg(r.note || 'Plan loaded.'); } else { setMsg((r && r.error) || 'Could not load that file.'); }
   }); };
   return (
     <div style={{ textAlign: align || 'center' }}>
@@ -127,7 +142,7 @@ function CoverSaveLoadCallout({ params, setParams, prompt, primary, compact }) {
   const [msg, setMsg] = React.useState(null); // { text, ok }
   const save = () => { const r = window.CompassIO.savePlan(params); setMsg({ text: r.ok ? 'Saved to your downloads.' : (r.error || 'Could not save.'), ok: r.ok }); };
   const load = () => { setMsg(null); window.CompassIO.pickPlanFile(r => {
-    if (r && r.ok) { setParams(r.params); setMsg({ text: 'Plan loaded.', ok: true }); }
+    if (r && r.ok) { setParams(r.params); setMsg({ text: r.note || 'Plan loaded.', ok: true }); }
     else { setMsg({ text: (r && r.error) || 'Could not load that file.', ok: false }); }
   }); };
   const loadPrimary = primary !== 'save';
@@ -211,7 +226,7 @@ function CoverDesktop(props) {
                 fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
                 Sample plan · not your numbers yet</div>
             )}
-            <div style={{ ...cvKicker, marginBottom: -6 }}>Chance of never running out</div>
+            <div style={{ ...cvKicker, marginBottom: -6 }}>{cvChanceLabel(params)}</div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ fontFamily: cvStyles.display, fontSize: 360, lineHeight: 0.82,
                 color: cvStyles.ink, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
@@ -254,7 +269,7 @@ function CoverDesktop(props) {
             paddingBottom: 56, borderBottom: `1px solid ${cvStyles.rule}`, marginBottom: 56 }}>
             <CoverReason big={`${results.successRate}%`}
               head="of futures succeed"
-              body={`Across ${(results.numPaths || 0).toLocaleString()} simulated histories, ${results.successRate}% finish with money still in the account at ${results.params.endAge}.`} />
+              body={`Across ${(results.numPaths || 0).toLocaleString()} simulated histories, ${results.successRate}% ${(params.legacyGoal || 0) > 0 ? `finish with at least ${fmt(params.legacyGoal, { compact: true })} left` : 'finish with money still in the account'} at ${results.params.endAge}.`} />
             <CoverReason big={fmt(results.medianLegacy, { compact: true })}
               head="median legacy"
               body="The middle outcome leaves this for heirs or late-life care — more in fair markets, less in foul." />
@@ -317,7 +332,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.9</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.10</div>
         </div>
       </section>
     </div>
@@ -453,7 +468,7 @@ function CoverAdjust(props) {
   props = props || {}; const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
   const base = React.useMemo(() => window.MockEngine.compute(params), [params]);
   // scenario (uncommitted) overrides
-  const [sc, setSc] = React.useState({ retireAge: params.retireAge, spending: params.spending, ssClaimAge: params.ssClaimAge });
+  const [sc, setSc] = React.useState({ retireAge: params.retireAge, spending: params.spending, ssClaimAge: params.ssClaimAge, spouseClaimAge: params.spouseClaimAge });
   const proposed = React.useMemo(() => window.MockEngine.compute({ ...params, ...sc }), [params, sc]);
   const fmt = window.MockEngine.formatCurrency;
   const delta = proposed.successRate - base.successRate;
@@ -461,15 +476,17 @@ function CoverAdjust(props) {
   const theme = cvTheme(vc);
   const setField = (k, v) => setSc(s => ({ ...s, [k]: v }));
   const resetField = (k) => setSc(s => ({ ...s, [k]: params[k] }));
-  const resetAll = () => setSc({ retireAge: params.retireAge, spending: params.spending, ssClaimAge: params.ssClaimAge });
+  const resetAll = () => setSc({ retireAge: params.retireAge, spending: params.spending, ssClaimAge: params.ssClaimAge, spouseClaimAge: params.spouseClaimAge });
   const commit = () => setParams(p => ({ ...p, ...sc }));
-  const anyChange = sc.retireAge !== params.retireAge || sc.spending !== params.spending || sc.ssClaimAge !== params.ssClaimAge;
+  const anyChange = sc.retireAge !== params.retireAge || sc.spending !== params.spending || sc.ssClaimAge !== params.ssClaimAge || sc.spouseClaimAge !== params.spouseClaimAge;
 
   // Idempotent lever targets — pressing again just re-sets the same value.
   const levers = [
     { id: 'delay', title: 'Retire 2 years later', apply: () => setField('retireAge', Math.min(80, params.retireAge + 2)), active: sc.retireAge === Math.min(80, params.retireAge + 2) },
     { id: 'spend', title: 'Spend 10% less', apply: () => setField('spending', Math.round(params.spending * 0.9 / 1000) * 1000), active: sc.spending === Math.round(params.spending * 0.9 / 1000) * 1000 },
-    { id: 'ss', title: 'Claim SS at 70', apply: () => setField('ssClaimAge', 70), active: sc.ssClaimAge === 70 },
+    { id: 'ss', title: params.hasPartner ? 'Claim SS at 70 (both of you)' : 'Claim SS at 70',
+      apply: () => setSc(s => ({ ...s, ssClaimAge: 70, ...(params.hasPartner ? { spouseClaimAge: 70 } : {}) })),
+      active: sc.ssClaimAge === 70 && (!params.hasPartner || sc.spouseClaimAge === 70) },
   ];
 
   const Chip = ({ k, fromTxt, toTxt }) => (sc[k] !== params[k]
@@ -521,9 +538,15 @@ function CoverAdjust(props) {
                 min={40000} max={250000} step={5000} display={fmt(sc.spending)} accent={vc} />
               <Chip k="spending" fromTxt={fmt(params.spending)} toTxt={fmt(sc.spending)} />
               <div style={{ height: 16 }} />
-              <CoverSlider label="Claim SS at" value={sc.ssClaimAge} onChange={v => setField('ssClaimAge', v)}
-                min={62} max={70} display={sc.ssClaimAge} accent={vc} last />
+              <CoverSlider label={params.hasPartner ? 'You claim SS at' : 'Claim SS at'} value={sc.ssClaimAge} onChange={v => setField('ssClaimAge', v)}
+                min={62} max={70} display={sc.ssClaimAge} accent={vc} last={!params.hasPartner} />
               <Chip k="ssClaimAge" fromTxt={params.ssClaimAge} toTxt={sc.ssClaimAge} />
+              {params.hasPartner && <>
+                <div style={{ height: 16 }} />
+                <CoverSlider label="Spouse claims SS at" value={sc.spouseClaimAge} onChange={v => setField('spouseClaimAge', v)}
+                  min={62} max={70} display={sc.spouseClaimAge} accent={vc} last />
+                <Chip k="spouseClaimAge" fromTxt={params.spouseClaimAge} toTxt={sc.spouseClaimAge} />
+              </>}
               <button onClick={commit} disabled={!anyChange} style={{ width: '100%', marginTop: 22, padding: '14px',
                 background: anyChange ? cvStyles.ink : cvStyles.ink20, color: cvStyles.paper, border: 'none',
                 fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase',
@@ -566,8 +589,8 @@ function CoverCharts(props) {
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 52, margin: '0 0 8px',
           letterSpacing: '-0.01em', lineHeight: 1.05 }}>Where the money goes,<br />year by year.</h1>
         <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 600, margin: '0 0 32px' }}>
-          The bold line is the most likely path. The band around it is the distance between fortune
-          and misfortune in the markets you might actually live through.
+          The bold line is the median outcome — half of futures finish above it, half below. The band
+          around it spans the 10th to 90th percentile: a lucky run of markets versus an unlucky one.
         </p>
         <BalanceFanChart results={results} theme={theme} width={960} height={360} />
 
@@ -705,7 +728,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.9</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.10</div>
       </div>
     </div>
   );

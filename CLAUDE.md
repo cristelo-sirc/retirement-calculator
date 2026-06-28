@@ -421,8 +421,10 @@ works at any path count. Chart is visually and numerically unchanged. The file&r
 `Math.max(...spread)` (`maxNeed`, over the per-year income array &asymp;40 values) is bounded and left as-is.
 
 **Validation.** Deployed, then opened EVERY screen (Cover, Projection, Income &amp; Odds, Rework, Questionnaire)
-at 1,500 / 5,000 / 10,000 paths on desktop and mobile with the console open &mdash; Projection renders at all
-counts, no `RangeError`, no other regressions.
+against the **10,000-path** session &mdash; the exact count that was crashing &mdash; with the console open.
+All five render (Projection&rsquo;s balance fan chart intact, desktop confirmed by screenshot), zero console
+errors, no `RangeError`. The fix removes the array-spread entirely, so it is path-count-independent; 10,000 is
+the worst case, so 5,000 and 1,500 pass trivially.
 
 **Cache-buster:** `engine.js?v=18.9` + `?v=18.9` on all `cover-app/*` includes in both shells; all version
 strings (both HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.9.
