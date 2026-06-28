@@ -1,5 +1,6 @@
 # Planning and internal docs — kept local only
 *.md
+*.txt
 CLAUDE.md
 
 # Personal data files — NEVER commit (repo is public; e.g. saved scenario JSONs)
