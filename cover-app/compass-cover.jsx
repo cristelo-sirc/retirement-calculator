@@ -55,7 +55,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '18.12', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '18.13', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -319,7 +319,7 @@ function CoverDesktop(props) {
               <CoverSlider label="Retire at" value={params.retireAge}
                 onChange={v => update('retireAge', v)} min={params.currentAge + 1} max={80}
                 display={params.retireAge} accent={vc} />
-              <CoverSlider label="Spending / yr" value={params.spending}
+              <CoverSlider label="Other spending / yr" value={params.spending}
                 onChange={v => update('spending', v)} min={40000} max={250000} step={5000}
                 display={fmt(params.spending)} accent={vc} />
               <CoverSlider label="Claim SS at" value={params.ssClaimAge}
@@ -332,7 +332,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.12</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V18.13</div>
         </div>
       </section>
     </div>
@@ -540,7 +540,7 @@ function CoverAdjust(props) {
                 min={params.currentAge + 1} max={80} display={sc.retireAge} accent={vc} />
               <Chip k="retireAge" fromTxt={params.retireAge} toTxt={sc.retireAge} />
               <div style={{ height: 16 }} />
-              <CoverSlider label="Spending / yr" value={sc.spending} onChange={v => setField('spending', v)}
+              <CoverSlider label="Other spending / yr" value={sc.spending} onChange={v => setField('spending', v)}
                 min={40000} max={250000} step={5000} display={fmt(sc.spending)} accent={vc} />
               <Chip k="spending" fromTxt={fmt(params.spending)} toTxt={fmt(sc.spending)} />
               <div style={{ height: 16 }} />
@@ -734,7 +734,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.12</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V18.13</div>
       </div>
     </div>
   );

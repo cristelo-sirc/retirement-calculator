@@ -272,7 +272,7 @@
         </MGroup>
 
         <MGroup title="What goes out">
-          <MStep field="spending" label="Spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} />
+          <MStep field="spending" label="Other spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} />
           <MStep field="healthcare" label="Healthcare / yr to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} />
           <MStep field="healthcare65" label="Healthcare / yr from 65" value={params.healthcare65} step={1000} min={0} max={60000} onChange={v => update('healthcare65', v)} format={money} />
           <MStep field="healthcareInflation" label="Healthcare inflation" value={params.healthcareInflation} step={0.5} min={0} max={12} onChange={v => update('healthcareInflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
@@ -304,9 +304,9 @@
         <MGroup title="Your home">
           <MSelect field="housingType" label="In retirement you" value={params.housingType} onChange={v => update('housingType', v)}
             options={[{ v: 'own', label: 'Own your home' }, { v: 'rent', label: 'Rent' }]} />
-          {params.housingType === 'own' && <MStep field="mortgagePayment" label="Mortgage / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} />}
+          {params.housingType === 'own' && <MStep field="mortgagePayment" label="Mortgage P&I / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} />}
           {params.housingType === 'own' && params.mortgagePayment > 0 && <MStep field="mortgageLastAge" label="Mortgage paid off at" value={params.mortgageLastAge} min={params.currentAge} max={params.endAge} onChange={v => update('mortgageLastAge', v)} />}
-          {params.housingType === 'own' && <MStep field="propertyTax" label="Property tax / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} />}
+          {params.housingType === 'own' && <MStep field="propertyTax" label="Tax + home insurance / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} />}
           {params.housingType === 'rent' && <MStep field="monthlyRent" label="Rent / mo" value={params.monthlyRent} step={250} min={0} max={20000} onChange={v => update('monthlyRent', v)} format={v => '$' + v.toLocaleString()} />}
         </MGroup>
 

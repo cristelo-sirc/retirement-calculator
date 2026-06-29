@@ -26,7 +26,7 @@ const FIELD_INFO = {
   spouseSalary: { help: 'Your partner’s gross annual pay.', detail: 'Combined with their savings rate to model their yearly contributions.' },
   spouseSavingsRate: { help: 'The share of pay your partner saves.', detail: 'Your partner’s own contributions plus any employer match.' },
 
-  spending: { help: 'What you’ll spend per year in retirement.', detail: 'Your target annual budget in today’s dollars — housing, food, travel, everything. This is the single biggest lever on whether the plan holds.' },
+  spending: { help: 'Retirement spending other than housing and healthcare.', detail: 'Your annual budget in today’s dollars for food, utilities, travel, and other everyday spending. Enter mortgage or rent, property tax and insurance, and healthcare separately so the plan can time them correctly.' },
   healthcare: {
     help: 'Extra health costs before Medicare at 65.',
     detail: 'Premiums and out-of-pocket costs to bridge from retirement to Medicare eligibility at 65. Added on top of your spending only for those early years, where coverage is often most expensive.',
@@ -59,10 +59,10 @@ const FIELD_INFO = {
   spendingReductionAge: { help: 'When the step-down begins.', detail: 'From this age, your annual spending drops by the percentage below and stays there for the rest of the plan.' },
   spendingReductionPercent: { help: 'How much spending drops.', detail: 'The permanent reduction applied from the slow-down age — e.g. 20% turns an $80k budget into $64k.' },
 
-  housingType: { help: 'Own your home or rent in retirement.', detail: 'Owning models a mortgage payment (until it’s paid off) plus property tax; renting models monthly rent that grows with inflation. Pick one — only its fields apply.' },
-  mortgagePayment: { help: 'Your monthly mortgage payment.', detail: 'Principal and interest per month, applied until the payoff age you set. Property tax is entered separately because it continues after the mortgage ends.' },
+  housingType: { help: 'Own your home or rent in retirement.', detail: 'Owning models fixed mortgage principal and interest until payoff, plus property tax and homeowners insurance for as long as you own. Renting models monthly rent that grows with inflation.' },
+  mortgagePayment: { help: 'Monthly mortgage principal and interest only.', detail: 'Enter the principal-and-interest portion, not the full escrowed payment. It stays fixed through the payoff age. Property tax and homeowners insurance are entered separately because they continue after payoff.' },
   mortgageLastAge: { help: 'Age the mortgage is paid off.', detail: 'After this age the mortgage payment drops out of your budget. Required once a payment is entered.' },
-  propertyTax: { help: 'Property tax per year.', detail: 'Annual property tax in today’s dollars. It continues for as long as you own the home and grows with inflation.' },
+  propertyTax: { help: 'Property tax plus homeowners insurance per year.', detail: 'Enter their combined annual cost in today’s dollars. Both continue after the mortgage is paid off and grow with general inflation.' },
   monthlyRent: { help: 'Your monthly rent.', detail: 'Rent per month in today’s dollars; the plan grows it with inflation across retirement.' },
 
   windfall: { help: 'A one-time lump sum you expect.', detail: 'An inheritance, home sale, or other one-off amount. It lands in your taxable account in the single year you choose.' },

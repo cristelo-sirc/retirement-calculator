@@ -1783,6 +1783,11 @@
                     // 2. Work Income & Contributions (pre-tax deducted before tax convergence)
                     const userWorking = currentYearAge < params.retireAge;
                     const spouseWorking = params.spouseAge > 0 && spouseCurrentAge < params.spouseRetireAge;
+                    // Retirement spending is an input for the retirement phase, not today's
+                    // household budget. While both partners are still working, the savings-rate
+                    // inputs already define what leaves paychecks for the portfolio, so charging
+                    // retirement spending here would silently withdraw money during accumulation.
+                    const retirementStarted = !userWorking || (params.spouseAge > 0 && !spouseWorking);
                     let userSalary = userWorking ? params.currentSalary * inflation : 0;
                     let spouseSalary = spouseWorking ? params.spouseCurrentSalary * inflation : 0;
                     const totalSalary = userSalary + spouseSalary;
@@ -1918,13 +1923,15 @@
                         }
                     }
 
-                    let lifestyle = baseLifestyle * inflation * guardrailSpendingMultiplier;
+                    let lifestyle = retirementStarted ? baseLifestyle * inflation * guardrailSpendingMultiplier : 0;
 
                     let housing = 0;
-                    if (params.housingType === 'own') {
-                        if (currentYearAge <= params.mortgageLastAge) housing += (params.mortgagePrincipal * 12) * inflation;
-                        housing += params.propertyTax * Math.pow(1 + params.lifestyleInflation, i); // Property tax often tracks CPI
-                    } else { housing += (params.monthlyRent * 12) * inflation; }
+                    if (retirementStarted && params.housingType === 'own') {
+                        // mortgagePrincipal is the fixed monthly principal-and-interest payment.
+                        // Property tax + homeowners insurance continue after payoff and grow with CPI.
+                        if (currentYearAge <= params.mortgageLastAge) housing += params.mortgagePrincipal * 12;
+                        housing += params.propertyTax * Math.pow(1 + params.lifestyleInflation, i);
+                    } else if (retirementStarted) { housing += (params.monthlyRent * 12) * inflation; }
 
                     let medicareCount = 0;
                     if (currentYearAge >= 65) medicareCount++;
@@ -1935,11 +1942,13 @@
                     const userRetired = currentYearAge >= params.retireAge;
                     const spouseRetired = params.spouseAge > 0 && spouseCurrentAge >= params.spouseRetireAge;
 
-                    if (currentYearAge >= 65) { health += params.healthcare65 * healthInfl; }
-                    else if (userRetired) { health += params.healthcarePre65 * healthInfl; }
+                    if (userRetired) {
+                        health += (currentYearAge >= 65 ? params.healthcare65 : params.healthcarePre65) * healthInfl;
+                    }
 
-                    if (spouseCurrentAge >= 65) { health += params.healthcare65 * healthInfl; }
-                    else if (spouseRetired && spouseCurrentAge > 0) { health += params.healthcarePre65 * healthInfl; }
+                    if (spouseRetired && spouseCurrentAge > 0) {
+                        health += (spouseCurrentAge >= 65 ? params.healthcare65 : params.healthcarePre65) * healthInfl;
+                    }
 
                     const baseSpending = lifestyle + housing + health;
 
@@ -6774,4 +6783,3 @@
                     }
                 });
             };
-

@@ -13,7 +13,7 @@ See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.11
+**Current Version:** 18.13
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -539,3 +539,34 @@ remain MONTHLY (adapter &times; 12). Unchanged from prior versions; documented h
 **Cache-buster:** `engine.js?v=18.11` + `?v=18.11` (or `?v=18.11b` for `compass-cover.jsx` after a
 mid-deploy kicker fix) on all `cover-app/*` includes in both shells; all version strings (both HTML titles,
 `real-engine.js` header, saved-plan stamp, cover kickers) reconciled to 18.11. `engine.js` math IS changed.
+
+---
+
+## V18.12 &mdash; Exact questionnaire entry
+
+All numerical questionnaire values are directly editable on desktop and mobile while retaining the plus/minus
+controls. Exact typed values no longer snap to the button increment. Shared parsing, validation, precision rules,
+and automated tests live in `cover-app/numeric-entry.js` and `tests/numeric-entry.test.js`.
+
+---
+
+## V18.13 &mdash; V17 spending contract restoration + accumulation protection
+
+The V18 interface had changed the meaning of two legacy inputs without changing the engine: it described annual
+spending as including housing even though the engine adds housing separately, and it relabeled V17's combined
+property-tax-and-homeowners-insurance amount as property tax alone. The questionnaire now restores the verified
+V17 contract: `spending` excludes housing and healthcare; `mortgagePayment` is fixed monthly principal and
+interest only; `propertyTax` stores combined annual property tax and homeowners insurance and continues after
+payoff with general inflation.
+
+Two unambiguous inherited engine issues are also corrected. Everyday spending and housing are no longer charged
+while every household member is still working, and retirement healthcare waits until the covered person retires,
+so these costs cannot silently draw from the portfolio during accumulation. Fixed mortgage principal and interest
+no longer grows with inflation; rent and property tax plus insurance still do.
+
+Executable regression coverage in `tests/financial-engine.test.js` verifies contribution persistence and growth,
+no hidden working-year withdrawals, fixed mortgage payments, mortgage payoff, and continuing inflation-adjusted
+property tax plus insurance.
+
+The age-label/return-period convention and the single savings-rate/employer-match input remain unchanged pending a
+separate whole-model decision; they were not silently redefined in this repair.

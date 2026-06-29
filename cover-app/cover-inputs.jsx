@@ -268,7 +268,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             params.enableSpendingReduction && <CField key="sra" field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} theme={theme} />,
             params.enableSpendingReduction && <CField key="srp" field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" theme={theme} />,
           ].filter(Boolean)}>
-          <CField field="spending" label="Spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} theme={theme} />
+          <CField field="spending" label="Other spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} theme={theme} />
         </CGroup>
 
         {/* Guaranteed income */}
@@ -296,9 +296,9 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         <CGroup title="Your home" mode={mode}>
           <CSelect field="housingType" label="In retirement you" value={params.housingType} onChange={v => update('housingType', v)} theme={theme}
             options={[{ v: 'own', label: 'Own your home' }, { v: 'rent', label: 'Rent' }]} />
-          {params.housingType === 'own' && <CField field="mortgagePayment" label="Mortgage / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
+          {params.housingType === 'own' && <CField field="mortgagePayment" label="Mortgage P&I / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
           {params.housingType === 'own' && params.mortgagePayment > 0 && <CField field="mortgageLastAge" label="Mortgage paid off at" value={params.mortgageLastAge} min={params.currentAge} max={params.endAge} onChange={v => update('mortgageLastAge', v)} theme={theme} />}
-          {params.housingType === 'own' && <CField field="propertyTax" label="Property tax / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
+          {params.housingType === 'own' && <CField field="propertyTax" label="Tax + home insurance / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
           {params.housingType === 'rent' && <CField field="monthlyRent" label="Rent / mo" value={params.monthlyRent} step={250} min={0} max={20000} onChange={v => update('monthlyRent', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
         </CGroup>
 
