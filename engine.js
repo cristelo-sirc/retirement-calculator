@@ -1671,12 +1671,16 @@
                     currentSalary: getNumberValue('currentSalary'),
                     userSavingsRate: getNumberValue('userSavingsRate') / 100,
                     userEmployerContributionRate: getNumberValue('userEmployerContributionRate') / 100,
+                    userPriorYearWages: getNumberValue('userPriorYearWages') || getNumberValue('currentSalary'),
                     userSavingsDest: document.getElementById('userSavingsDest').value,
+                    userEmployerContributionDest: (document.getElementById('userEmployerContributionDest') || {}).value || 'pretax',
 
                     spouseCurrentSalary: getNumberValue('spouseCurrentSalary'),
                     spouseSavingsRate: getNumberValue('spouseSavingsRate') / 100,
                     spouseEmployerContributionRate: getNumberValue('spouseEmployerContributionRate') / 100,
+                    spousePriorYearWages: getNumberValue('spousePriorYearWages') || getNumberValue('spouseCurrentSalary'),
                     spouseSavingsDest: document.getElementById('spouseSavingsDest').value,
+                    spouseEmployerContributionDest: (document.getElementById('spouseEmployerContributionDest') || {}).value || 'pretax',
 
                     pension: getNumberValue('pension'),
                     pensionAge: getNumberValue('pensionAge'),
@@ -1725,7 +1729,7 @@
                 };
             }
 
-            function calculateWorkplaceContributions(salary, age, employeeRate, employerRate, savingsDest, inflationMult) {
+            function calculateWorkplaceContributions(salary, age, employeeRate, employerRate, savingsDest, employerDest, inflationMult, priorYearWages) {
                 const regularLimit = LIMIT_401K * inflationMult;
                 let catchupLimit = 0;
                 if (age >= 60 && age <= 63) catchupLimit = SUPER_CATCHUP_401K * inflationMult;
@@ -1739,9 +1743,8 @@
                 );
 
                 const catchupAmount = Math.max(0, employeeTotal - regularLimit);
-                // The model has annual salary, not prior-year W-2 wages. Current nominal
-                // salary is the closest available proxy for the 2026 Roth catch-up test.
-                const forcedRothCatchup = age >= 50 && salary > ROTH_CATCHUP_WAGE_THRESHOLD * inflationMult
+                const rothCatchupWages = Number.isFinite(priorYearWages) ? priorYearWages : salary;
+                const forcedRothCatchup = age >= 50 && rothCatchupWages > ROTH_CATCHUP_WAGE_THRESHOLD * inflationMult
                     ? catchupAmount : 0;
                 const employeeByElection = employeeTotal - forcedRothCatchup;
 
@@ -1757,17 +1760,20 @@
                 const annualAdditionsLimit = Math.min(TOTAL_PLAN_LIMIT * inflationMult, eligibleCompensation);
                 const nonCatchupEmployee = Math.min(employeeTotal, regularLimit);
                 const employerRoom = Math.max(0, annualAdditionsLimit - nonCatchupEmployee);
-                const employerPreTax = Math.min(
+                const employerTotal = Math.min(
                     Math.max(0, eligibleCompensation * (employerRate || 0)),
                     employerRoom
                 );
+                const employerRoth = employerDest === 'roth' ? employerTotal : 0;
+                const employerPreTax = employerDest === 'roth' ? 0 : employerTotal;
 
                 return {
                     employeePreTax: employeePreTax,
                     employeeRoth: employeeRoth,
                     employerPreTax: employerPreTax,
+                    employerRoth: employerRoth,
                     employeeTotal: employeeTotal,
-                    employerTotal: employerPreTax,
+                    employerTotal: employerTotal,
                     forcedRothCatchup: forcedRothCatchup
                 };
             }
@@ -1804,11 +1810,16 @@
                 // FRA 66-67). Those cohorts aren't planning retirement now, so this is a conscious
                 // simplification, not an oversight. Revisit only if the audience expands to older births.
 
-                for (let i = 0; i <= yearsToRun; i++) {
+                // Each iteration is one elapsed year: [currentAge + i, currentAge + i + 1).
+                // Cash flows use currentYearAge; the resulting balance belongs to balanceAge.
+                // This prevents today's age from silently receiving a full year of growth.
+                for (let i = 0; i < yearsToRun; i++) {
                     const currentYearAge = params.currentAge + i;
+                    const balanceAge = currentYearAge + 1;
                     const spouseCurrentAge = params.spouseAge > 0 ? params.spouseAge + i : 0;
                     const inflation = Math.pow(1 + params.lifestyleInflation, i);
                     const bracketMult = Math.pow(1 + params.bracketGrowth, i);
+                    const startingTotalBalance = userPreTax + userRoth + spousePreTax + spouseRoth + taxable;
 
                     // 1. Market Returns (correlated via Cholesky decomposition)
                     const STOCK_BOND_CORR = -0.3; // Historical stock-bond correlation
@@ -1858,12 +1869,16 @@
                     let spouseEmployerContrib = 0;
 
                     if (userWorking && userSalary > 0) {
+                        const userPriorYearWages = i === 0
+                            ? params.userPriorYearWages
+                            : params.currentSalary * Math.pow(1 + params.lifestyleInflation, i - 1);
                         const userContributions = calculateWorkplaceContributions(
                             userSalary, currentYearAge, params.userSavingsRate,
-                            params.userEmployerContributionRate || 0, params.userSavingsDest, inflation
+                            params.userEmployerContributionRate || 0, params.userSavingsDest,
+                            params.userEmployerContributionDest || 'pretax', inflation, userPriorYearWages
                         );
                         userPreTaxContrib = userContributions.employeePreTax + userContributions.employerPreTax;
-                        userRothContrib = userContributions.employeeRoth;
+                        userRothContrib = userContributions.employeeRoth + userContributions.employerRoth;
                         userEmployeeContrib = userContributions.employeeTotal;
                         userEmployerContrib = userContributions.employerTotal;
 
@@ -1872,12 +1887,16 @@
                     }
 
                     if (spouseWorking && spouseSalary > 0) {
+                        const spousePriorYearWages = i === 0
+                            ? params.spousePriorYearWages
+                            : params.spouseCurrentSalary * Math.pow(1 + params.lifestyleInflation, i - 1);
                         const spouseContributions = calculateWorkplaceContributions(
                             spouseSalary, spouseCurrentAge, params.spouseSavingsRate,
-                            params.spouseEmployerContributionRate || 0, params.spouseSavingsDest, inflation
+                            params.spouseEmployerContributionRate || 0, params.spouseSavingsDest,
+                            params.spouseEmployerContributionDest || 'pretax', inflation, spousePriorYearWages
                         );
                         spousePreTaxContrib = spouseContributions.employeePreTax + spouseContributions.employerPreTax;
-                        spouseRothContrib = spouseContributions.employeeRoth;
+                        spouseRothContrib = spouseContributions.employeeRoth + spouseContributions.employerRoth;
                         spouseEmployeeContrib = spouseContributions.employeeTotal;
                         spouseEmployerContrib = spouseContributions.employerTotal;
 
@@ -2146,12 +2165,14 @@
 
                     if (totalBal < 1 && isSolvent) {
                         isSolvent = false;
-                        depletionAge = currentYearAge;
+                        depletionAge = balanceAge;
                         userPreTax = 0; spousePreTax = 0; userRoth = 0; spouseRoth = 0; taxable = 0; // zero out balances
                     }
 
                     pathLog.push({
                         age: currentYearAge,
+                        balanceAge: balanceAge,
+                        startingBalance: startingTotalBalance,
                         totalBal: totalBal,
                         rmd: totalRmd,
                         totalWithdrawal: totalWithdrawal,

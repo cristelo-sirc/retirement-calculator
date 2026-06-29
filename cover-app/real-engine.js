@@ -1,4 +1,4 @@
-// real-engine.js — V18.14 adapter
+// real-engine.js — V19.0 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.14';
+      s.src = 'engine.js?v=19.0';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -30,8 +30,10 @@
 
     userPreTax: 520000, userRoth: 120000, spousePreTax: 180000, spouseRoth: 40000, taxable: 90000,
 
-    salary: 145000, savingsRate: 12, employerContributionRate: 0, savingsDest: 'pretax',
-    spouseSalary: 78000, spouseSavingsRate: 6, spouseEmployerContributionRate: 0, spouseSavingsDest: 'pretax',
+    salary: 145000, priorYearWages: 145000, savingsRate: 12, employerContributionRate: 0,
+    savingsDest: 'pretax', employerContributionDest: 'pretax',
+    spouseSalary: 78000, spousePriorYearWages: 78000, spouseSavingsRate: 6, spouseEmployerContributionRate: 0,
+    spouseSavingsDest: 'pretax', spouseEmployerContributionDest: 'pretax',
 
     spending: 115000, inflation: 2.5, legacyGoal: 0,
     healthcare: 8000, healthcare65: 0, healthcareInflation: 5.0,            // healthcare = pre-65, annual/person
@@ -78,6 +80,7 @@
     inflation: [0, 20], healthcareInflation: [0, 30],
     savingsRate: [0, 100], employerContributionRate: [0, 100],
     spouseSavingsRate: [0, 100], spouseEmployerContributionRate: [0, 100],
+    priorYearWages: [0, 1000000], spousePriorYearWages: [0, 1000000],
     stockAllocation: [0, 100], glidePathEndStock: [0, 100],
     stockReturn: [0, 30], bondReturn: [0, 30], stockVol: [0, 60], bondVol: [0, 40],
     bracketGrowth: [0, 20], stateTaxRate: [0, 60], taxableGainRatio: [0, 100],
@@ -86,6 +89,7 @@
   };
   var ENUMS = {
     savingsDest: ['pretax', 'roth', 'split'], spouseSavingsDest: ['pretax', 'roth', 'split'],
+    employerContributionDest: ['pretax', 'roth'], spouseEmployerContributionDest: ['pretax', 'roth'],
     housingType: ['own', 'rent']
   };
   function normalizeParams(raw) {
@@ -119,6 +123,10 @@
       if (out.spouseAge < 18) { out.spouseAge = 18; notes.push('spouseAge'); }
       if (out.spouseRetireAge <= out.spouseAge) { out.spouseRetireAge = Math.min(101, out.spouseAge + 1); notes.push('spouseRetireAge'); }
     }
+    // Older plans predate explicit prior-year wages. Preserve their former behavior
+    // by starting these new visible fields from each saved current salary.
+    if (raw.priorYearWages === undefined) out.priorYearWages = out.salary;
+    if (raw.spousePriorYearWages === undefined) out.spousePriorYearWages = out.spouseSalary;
     out.numPaths = Math.round(out.numPaths);   // hard path-count ceiling lives in RANGES above
     return { params: out, changed: notes.length > 0, notes: notes };
   }
@@ -155,11 +163,15 @@
 
       currentSalary: m.salary || 0, userSavingsRate: (m.savingsRate || 0) / 100,
       userEmployerContributionRate: (m.employerContributionRate || 0) / 100,
+      userPriorYearWages: m.priorYearWages || 0,
       userSavingsDest: m.savingsDest || 'pretax',
+      userEmployerContributionDest: m.employerContributionDest || 'pretax',
       spouseCurrentSalary: partner ? (m.spouseSalary || 0) : 0,
       spouseSavingsRate: partner ? (m.spouseSavingsRate || 0) / 100 : 0,
       spouseEmployerContributionRate: partner ? (m.spouseEmployerContributionRate || 0) / 100 : 0,
+      spousePriorYearWages: partner ? (m.spousePriorYearWages || 0) : 0,
       spouseSavingsDest: partner ? (m.spouseSavingsDest || 'pretax') : 'pretax',
+      spouseEmployerContributionDest: partner ? (m.spouseEmployerContributionDest || 'pretax') : 'pretax',
 
       pension: m.pension || 0, pensionAge: m.pensionStartAge || 65,
       enablePensionCOLA: !!m.enablePensionCOLA,
@@ -272,6 +284,18 @@
     return levers.sort(function (a, b) { return b.delta - a.delta; }).filter(function (l) { return l.delta >= 0; }).slice(0, 3);
   }
 
+  function initialPortfolioBalance(m) {
+    return (m.userPreTax || 0) + (m.userRoth || 0)
+      + (m.hasPartner ? (m.spousePreTax || 0) + (m.spouseRoth || 0) : 0)
+      + (m.taxable || 0);
+  }
+
+  function buildBalancePath(log, m) {
+    return [{ age: m.currentAge, balance: initialPortfolioBalance(m) }].concat(
+      log.map(function (y) { return { age: y.balanceAge, balance: y.totalBal }; })
+    );
+  }
+
   function compute(params) {
     var m = normalizeParams(params).params;   // validate + clamp every entry point (incl. numPaths)
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
@@ -334,7 +358,7 @@
     sustainableSpending = Math.round(lo / 1000) * 1000;
 
     // Per-year series from the median path
-    var path = medianLog.map(function (y) { return { age: y.age, balance: y.totalBal }; });
+    var path = buildBalancePath(medianLog, m);
     var incomeByYear = medianLog.filter(function (y) { return y.age >= m.retireAge; }).map(function (y) {
       return { age: y.age, ss: y.ssIncome || 0, pension: y.pensionIncome || 0, other: y.partTimeIncome || 0,
         wages: y.wages || 0,
@@ -344,10 +368,13 @@
       var stock = Math.round((y.stockAlloc != null ? y.stockAlloc : real.stockAllocation) * 100);
       return { age: y.age, stock: stock, bond: 100 - stock };
     });
-    var paths = results.map(function (r) { return { path: r.log.map(function (y) { return { age: y.age, balance: y.totalBal }; }) }; });
+    if (allocByYear.length) {
+      var endStock = m.enableGlidePath ? Math.round(m.glidePathEndStock) : allocByYear[allocByYear.length - 1].stock;
+      allocByYear.push({ age: m.endAge, stock: endStock, bond: 100 - endStock });
+    }
+    var paths = results.map(function (r) { return { path: buildBalancePath(r.log, m) }; });
 
-    var totalSavings = (m.userPreTax || 0) + (m.userRoth || 0)
-      + (m.hasPartner ? (m.spousePreTax || 0) + (m.spouseRoth || 0) : 0) + (m.taxable || 0);
+    var totalSavings = initialPortfolioBalance(m);
 
     var v = verdictFor(successRate);
     return Object.assign({
