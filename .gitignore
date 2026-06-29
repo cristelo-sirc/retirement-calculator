@@ -1,8 +1,10 @@
-# Planning and internal docs — kept local only
+# Internal planning docs stay local; public project docs are explicit exceptions.
 *.md
+!README.md
 !CHANGELOG.md
+!CLAUDE.md
+!CLAUDE-legacy.md
 *.txt
-CLAUDE.md
 
 # Personal data files — NEVER commit (repo is public; e.g. saved scenario JSONs)
 *.json
