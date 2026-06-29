@@ -83,7 +83,7 @@ The solver uses a deterministic RNG (`mulberry32` seeded PRNG) so identical mark
 
 ### pathLog Fields (per year per simulation)
 
-**Core:** `age`, `totalBal`, `rmd`, `totalWithdrawal`, `ordIncome`, `taxBill`, `effRate`, `spending`, `stockAlloc`, `inflation`, `isSolvent`
+**Core:** `age`, `totalBal`, `rmd`, `totalWithdrawal`, `ordIncome`, `taxBill`, `effRate`, `spending`, `stockAlloc`, `inflation`, `isSolvent`, `employeeContribution`, `employerContribution`
 
 **Income sources:** `ssIncome`, `pensionIncome`, `partTimeIncome`
 
@@ -570,3 +570,23 @@ property tax plus insurance.
 
 The age-label/return-period convention and the single savings-rate/employer-match input remain unchanged pending a
 separate whole-model decision; they were not silently redefined in this repair.
+
+---
+
+## V18.14 &mdash; Employee/employer split + 2026 statutory baselines
+
+Employee and employer retirement contributions are now separate inputs for each person. Employee contributions
+reduce take-home pay and receive pre-tax or Roth treatment according to the selected destination. Employer
+contributions are modeled as traditional pre-tax money, grow the portfolio, and never reduce take-home pay.
+
+The engine applies the 2026 workplace-plan limits independently: $24,500 employee deferral, $8,000 age-50
+catch-up, $11,250 higher catch-up at ages 60&ndash;63, $72,000 annual additions excluding catch-up, and the
+$360,000 eligible-compensation limit. The mandatory Roth catch-up rule above the $150,000 wage threshold uses
+current annual salary as the available proxy because the questionnaire does not collect prior-year W-2 wages.
+
+Federal ordinary-income and capital-gains brackets, standard deductions, the Social Security earnings-test
+limit, and Medicare Part B plus Part D IRMAA thresholds/surcharges now use official 2026 baselines. Future
+indexed tax thresholds use the questionnaire's tax-bracket growth assumption.
+
+Executable tests verify employee/employer paycheck and portfolio effects, every contribution limit, high-earner
+Roth catch-up treatment, exact tax and benefit thresholds, adapter propagation, and old saved-plan defaults.

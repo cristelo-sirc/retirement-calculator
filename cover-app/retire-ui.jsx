@@ -22,9 +22,11 @@ const FIELD_INFO = {
   },
 
   salary: { help: 'Your gross pay per year, before tax.', detail: 'Drives how much you add to savings each year between now and retirement.' },
-  savingsRate: { help: 'The share of pay you save each year.', detail: 'Includes your own contributions plus any employer match. A higher rate builds the portfolio faster.' },
+  savingsRate: { help: 'The share of pay you contribute yourself.', detail: 'This comes out of your pay. Pre-tax contributions lower current taxable income; Roth contributions do not.' },
+  employerContributionRate: { help: 'The share of pay your employer adds.', detail: 'Enter the employer match or other employer contribution as a percent of salary. It does not reduce your take-home pay and is modeled as traditional pre-tax money, subject to workplace-plan limits.' },
   spouseSalary: { help: 'Your partner’s gross annual pay.', detail: 'Combined with their savings rate to model their yearly contributions.' },
-  spouseSavingsRate: { help: 'The share of pay your partner saves.', detail: 'Your partner’s own contributions plus any employer match.' },
+  spouseSavingsRate: { help: 'The share of pay your partner contributes.', detail: 'This is the employee contribution taken from your partner’s pay; employer money is entered separately.' },
+  spouseEmployerContributionRate: { help: 'The share of pay your partner’s employer adds.', detail: 'Enter the match or other employer contribution as a percent of salary. It is modeled as traditional pre-tax money and does not reduce take-home pay.' },
 
   spending: { help: 'Retirement spending other than housing and healthcare.', detail: 'Your annual budget in today’s dollars for food, utilities, travel, and other everyday spending. Enter mortgage or rent, property tax and insurance, and healthcare separately so the plan can time them correctly.' },
   healthcare: {

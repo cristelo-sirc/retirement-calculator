@@ -1,5 +1,14 @@
 # Change log
 
+## 18.14.0 — 2026-06-28
+
+- Split each person's employee contribution rate from the employer contribution rate.
+- Employer contributions now grow the pre-tax portfolio without reducing take-home pay or receiving an employee tax deduction.
+- Added the separate 2026 employee, catch-up, employer-plus-employee, and compensation limits.
+- Applied the 2026 Roth catch-up rule for higher earners using current annual salary as the available wage proxy.
+- Updated 2026 federal brackets, standard deductions, capital-gains brackets, Social Security earnings limit, and Medicare Part B plus Part D IRMAA surcharges.
+- Added exact financial invariants for contribution flows, limits, taxes, Social Security, Medicare, and saved-plan compatibility.
+
 ## 18.13.0 — 2026-06-28
 
 - Restored V17's intended input contract: everyday spending excludes housing and healthcare.

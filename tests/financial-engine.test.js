@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-function loadSimulatePath() {
+function loadFinancialEngine() {
   const source = fs.readFileSync(path.join(__dirname, '..', 'engine.js'), 'utf8');
   const emptyList = [];
   const document = {
@@ -35,19 +35,27 @@ function loadSimulatePath() {
   };
   context.globalThis = context;
   vm.createContext(context);
-  vm.runInContext(`${source}\n;globalThis.__simulatePath = simulatePath;`, context, { timeout: 10000 });
-  return context.__simulatePath;
+  vm.runInContext(`${source}\n;globalThis.__financialEngine = {
+    simulatePath, calculateWorkplaceContributions, calculateFederalOrdinaryTax,
+    calculateCapGainsTax, calculateIRMAA, calculateSSBenefit
+  };`, context, { timeout: 10000 });
+  return context.__financialEngine;
 }
 
-const simulatePath = loadSimulatePath();
+const {
+  simulatePath, calculateWorkplaceContributions, calculateFederalOrdinaryTax,
+  calculateCapGainsTax, calculateIRMAA, calculateSSBenefit
+} = loadFinancialEngine();
 
 function baseParams(overrides = {}) {
   return {
     currentAge: 50, retireAge: 53, endAge: 53, spouseAge: 0, spouseRetireAge: 0,
     userPreTaxBalance: 100000, userRothBalance: 0,
     spousePreTaxBalance: 0, spouseRothBalance: 0, taxableBalance: 0,
-    currentSalary: 100000, userSavingsRate: 0.10, userSavingsDest: 'pretax',
-    spouseCurrentSalary: 0, spouseSavingsRate: 0, spouseSavingsDest: 'pretax',
+    currentSalary: 100000, userSavingsRate: 0.10,
+    userEmployerContributionRate: 0, userSavingsDest: 'pretax',
+    spouseCurrentSalary: 0, spouseSavingsRate: 0,
+    spouseEmployerContributionRate: 0, spouseSavingsDest: 'pretax',
     userSS: 0, userClaimAge: 70, spouseSS: 0, spouseClaimAge: 70,
     enableSpousalBenefit: false,
     pension: 0, pensionAge: 65, enablePensionCOLA: false,
@@ -83,6 +91,66 @@ test('pre-tax contributions persist and compound with annual returns', () => {
     assertClose(year.totalBal, expected[index], `balance at age ${year.age}`);
     assert.equal(year.totalWithdrawal, 0);
   });
+});
+
+test('employee and employer contributions have separate paycheck and portfolio effects', () => {
+  const result = simulatePath(baseParams({
+    currentAge: 40, retireAge: 41, endAge: 40,
+    userPreTaxBalance: 0, stockReturn: 0,
+    userSavingsRate: 0.10, userEmployerContributionRate: 0.05
+  }), 0);
+  const year = result.log[0];
+
+  assertClose(year.employeeContribution, 10000, 'employee contribution');
+  assertClose(year.employerContribution, 5000, 'employer contribution');
+  assertClose(year.totalBal, 15000, 'portfolio receives both contributions');
+  assertClose(year.wages, 90000, 'only employee contribution reduces take-home wages');
+  assertClose(year.ordIncome, 90000, 'only employee pre-tax contribution reduces taxable wages');
+});
+
+test('2026 workplace limits separate employee, catch-up, employer, and compensation caps', () => {
+  const under50 = calculateWorkplaceContributions(400000, 40, 1, 1, 'pretax', 1);
+  assertClose(under50.employeeTotal, 24500, 'under-50 employee limit');
+  assertClose(under50.employerTotal, 47500, 'employer room under overall limit');
+  assertClose(under50.employeeTotal + under50.employerTotal, 72000, 'overall annual additions limit');
+
+  const age55 = calculateWorkplaceContributions(100000, 55, 1, 1, 'pretax', 1);
+  assertClose(age55.employeeTotal, 32500, 'age-50 catch-up limit');
+  assertClose(age55.employerTotal, 47500, 'catch-up excluded from employer plan room');
+  assertClose(age55.employeeTotal + age55.employerTotal, 80000, 'overall limit plus catch-up');
+
+  const age61 = calculateWorkplaceContributions(100000, 61, 1, 1, 'pretax', 1);
+  assertClose(age61.employeeTotal, 35750, 'age-60-to-63 higher catch-up limit');
+  assertClose(age61.employeeTotal + age61.employerTotal, 83250, 'overall limit plus higher catch-up');
+
+  const highSalary = calculateWorkplaceContributions(1000000, 40, 0, 0.10, 'pretax', 1);
+  assertClose(highSalary.employerTotal, 36000, 'employer rate uses capped eligible compensation');
+});
+
+test('2026 high-earner catch-up is directed to Roth', () => {
+  const contribution = calculateWorkplaceContributions(200000, 55, 1, 0, 'pretax', 1);
+  assertClose(contribution.employeePreTax, 24500, 'regular deferral remains pre-tax');
+  assertClose(contribution.employeeRoth, 8000, 'catch-up is Roth');
+  assertClose(contribution.forcedRothCatchup, 8000, 'forced Roth portion');
+});
+
+test('2026 tax, capital-gains, Medicare, and Social Security baselines are exact', () => {
+  assertClose(calculateFederalOrdinaryTax(16100, 'Single', 1, 1), 0, 'single standard deduction');
+  assertClose(calculateFederalOrdinaryTax(28500, 'Single', 1, 1), 1240, 'single first bracket');
+  assertClose(calculateFederalOrdinaryTax(32200, 'MFJ', 1, 1), 0, 'joint standard deduction');
+  assertClose(calculateFederalOrdinaryTax(57000, 'MFJ', 1, 1), 2480, 'joint first bracket');
+
+  assertClose(calculateCapGainsTax(98900, 0, 'MFJ', 1, 1), 0, 'joint zero-rate capital gains ceiling');
+  assertClose(calculateCapGainsTax(99000, 0, 'MFJ', 1, 1), 15, 'capital gains above zero-rate ceiling');
+
+  assertClose(calculateIRMAA(218000, 'MFJ', 1), 0, 'IRMAA joint base tier');
+  assertClose(calculateIRMAA(218001, 'MFJ', 1), 95.70 * 12, 'IRMAA first joint surcharge');
+  assertClose(calculateIRMAA(500000, 'Single', 1), 578 * 12, 'IRMAA top single boundary');
+
+  const ssAtLimit = calculateSSBenefit(10000, 62, 62, 67, 0.028, 24480, 24480);
+  const ssOverLimit = calculateSSBenefit(10000, 62, 62, 67, 0.028, 24482, 24480);
+  assertClose(ssAtLimit, 7000, 'Social Security earnings limit');
+  assertClose(ssOverLimit, 6999, 'Social Security withholding above limit');
 });
 
 test('retirement spending does not cause hidden withdrawals while everyone is working', () => {

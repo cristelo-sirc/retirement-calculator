@@ -1,4 +1,4 @@
-// real-engine.js — V18.13 adapter
+// real-engine.js — V18.14 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=18.13';
+      s.src = 'engine.js?v=18.14';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -30,8 +30,8 @@
 
     userPreTax: 520000, userRoth: 120000, spousePreTax: 180000, spouseRoth: 40000, taxable: 90000,
 
-    salary: 145000, savingsRate: 12, savingsDest: 'pretax',
-    spouseSalary: 78000, spouseSavingsRate: 6, spouseSavingsDest: 'pretax',
+    salary: 145000, savingsRate: 12, employerContributionRate: 0, savingsDest: 'pretax',
+    spouseSalary: 78000, spouseSavingsRate: 6, spouseEmployerContributionRate: 0, spouseSavingsDest: 'pretax',
 
     spending: 115000, inflation: 2.5, legacyGoal: 0,
     healthcare: 8000, healthcare65: 0, healthcareInflation: 5.0,            // healthcare = pre-65, annual/person
@@ -76,7 +76,8 @@
     windfallAge: [0, 110], rothConversionStartAge: [0, 110], rothConversionEndAge: [0, 110],
     spendingReductionAge: [0, 110], mortgageLastAge: [0, 110],
     inflation: [0, 20], healthcareInflation: [0, 30],
-    savingsRate: [0, 100], spouseSavingsRate: [0, 100],
+    savingsRate: [0, 100], employerContributionRate: [0, 100],
+    spouseSavingsRate: [0, 100], spouseEmployerContributionRate: [0, 100],
     stockAllocation: [0, 100], glidePathEndStock: [0, 100],
     stockReturn: [0, 30], bondReturn: [0, 30], stockVol: [0, 60], bondVol: [0, 40],
     bracketGrowth: [0, 20], stateTaxRate: [0, 60], taxableGainRatio: [0, 100],
@@ -153,9 +154,11 @@
       taxableBalance: m.taxable || 0,
 
       currentSalary: m.salary || 0, userSavingsRate: (m.savingsRate || 0) / 100,
+      userEmployerContributionRate: (m.employerContributionRate || 0) / 100,
       userSavingsDest: m.savingsDest || 'pretax',
       spouseCurrentSalary: partner ? (m.spouseSalary || 0) : 0,
       spouseSavingsRate: partner ? (m.spouseSavingsRate || 0) / 100 : 0,
+      spouseEmployerContributionRate: partner ? (m.spouseEmployerContributionRate || 0) / 100 : 0,
       spouseSavingsDest: partner ? (m.spouseSavingsDest || 'pretax') : 'pretax',
 
       pension: m.pension || 0, pensionAge: m.pensionStartAge || 65,

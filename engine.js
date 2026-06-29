@@ -1,30 +1,31 @@
-            // --- Constants (2025 IRS Data) ---
-            const STD_DEDUCTION_SINGLE = 15750;
-            const STD_DEDUCTION_MFJ = 31500;
+            // --- Constants (2026 federal baselines) ---
+            const MODEL_BASE_YEAR = 2026;
+            const STD_DEDUCTION_SINGLE = 16100;
+            const STD_DEDUCTION_MFJ = 32200;
 
             // Pre-TCJA Standard Deductions (for 2026+ if sunset enabled)
             const STD_DEDUCTION_SINGLE_PRE_TCJA = 7850;  // Approx 2017 adjusted
             const STD_DEDUCTION_MFJ_PRE_TCJA = 15700;    // Approx 2017 adjusted
 
-            // 2025 Brackets (Single)
+            // 2026 Brackets (Single)
             const BRACKETS_SINGLE = [
-                { cap: 11925, rate: 0.10 },
-                { cap: 48475, rate: 0.12 },
-                { cap: 103350, rate: 0.22 },
-                { cap: 197300, rate: 0.24 },
-                { cap: 250525, rate: 0.32 },
-                { cap: 626350, rate: 0.35 },
+                { cap: 12400, rate: 0.10 },
+                { cap: 50400, rate: 0.12 },
+                { cap: 105700, rate: 0.22 },
+                { cap: 201775, rate: 0.24 },
+                { cap: 256225, rate: 0.32 },
+                { cap: 640600, rate: 0.35 },
                 { cap: Infinity, rate: 0.37 }
             ];
 
-            // 2025 Brackets (MFJ)
+            // 2026 Brackets (MFJ)
             const BRACKETS_MFJ = [
-                { cap: 23850, rate: 0.10 },
-                { cap: 96950, rate: 0.12 },
-                { cap: 206700, rate: 0.22 },
-                { cap: 394600, rate: 0.24 },
-                { cap: 501050, rate: 0.32 },
-                { cap: 751600, rate: 0.35 },
+                { cap: 24800, rate: 0.10 },
+                { cap: 100800, rate: 0.12 },
+                { cap: 211400, rate: 0.22 },
+                { cap: 403550, rate: 0.24 },
+                { cap: 512450, rate: 0.32 },
+                { cap: 768700, rate: 0.35 },
                 { cap: Infinity, rate: 0.37 }
             ];
 
@@ -50,26 +51,30 @@
                 { cap: Infinity, rate: 0.396 }
             ];
 
-            // Capital Gains Thresholds (MFJ / Single) - 2025
-            const CAP_GAINS_0_MFJ = 96700;
-            const CAP_GAINS_15_MFJ = 600050;
-            const CAP_GAINS_0_SINGLE = 48350;
-            const CAP_GAINS_15_SINGLE = 533400;
+            // Capital Gains Thresholds (MFJ / Single) - 2026
+            const CAP_GAINS_0_MFJ = 98900;
+            const CAP_GAINS_15_MFJ = 613700;
+            const CAP_GAINS_0_SINGLE = 49450;
+            const CAP_GAINS_15_SINGLE = 545500;
 
             // NIIT Thresholds
             const NIIT_THRESHOLD_MFJ = 250000;
             const NIIT_THRESHOLD_SINGLE = 200000;
 
-            // Contribution Limits 2025
-            const LIMIT_401K = 23500;
-            const CATCHUP_401K = 7500;
+            // Workplace retirement contribution limits - 2026
+            const LIMIT_401K = 24500;
+            const CATCHUP_401K = 8000;
             const SUPER_CATCHUP_401K = 11250; // Ages 60-63
+            const TOTAL_PLAN_LIMIT = 72000;   // Employee + employer, excluding catch-up
+            const COMPENSATION_LIMIT = 360000;
+            const ROTH_CATCHUP_WAGE_THRESHOLD = 150000;
 
-            // SS Earnings Limit 2025
-            const SS_EARNINGS_LIMIT = 23400;
+            // SS Earnings Limit - 2026 (under full retirement age)
+            const SS_EARNINGS_LIMIT = 24480;
 
-            // SS COLA (average annual Cost of Living Adjustment)
-            const SS_COLA = 0.025; // 2.5% average
+            // Published 2026 COLA. The long-range projection still grows benefits with
+            // the plan's inflation assumption so they remain in today's-dollar terms.
+            const SS_COLA = 0.028;
 
             let simulationResults = [];
             let medianPathData = [];
@@ -1505,20 +1510,22 @@
 
             function calculateIRMAA(magi, filingStatus, inflationMult) {
                 let thresholds, surcharges;
-                // 2025 IRMAA (simplified based on 2024 data adjusted for est. inflation)
+                // 2026 Part B + Part D income-related monthly adjustment amounts.
+                // Base Medicare premiums belong in the user's post-65 healthcare input;
+                // this function adds only the income-related surcharge.
                 if (filingStatus === 'MFJ') {
-                    thresholds = [212000 * inflationMult, 266000 * inflationMult, 332000 * inflationMult, 398000 * inflationMult, 750000 * inflationMult];
-                    surcharges = [0, 70, 175, 280, 385, 420];
+                    thresholds = [218000 * inflationMult, 274000 * inflationMult, 342000 * inflationMult, 410000 * inflationMult, 750000 * inflationMult];
+                    surcharges = [0, 95.70, 240.40, 385.00, 529.60, 578.00];
                 } else {
-                    thresholds = [106000 * inflationMult, 133000 * inflationMult, 166000 * inflationMult, 199000 * inflationMult, 500000 * inflationMult];
-                    surcharges = [0, 70, 175, 280, 385, 420];
+                    thresholds = [109000 * inflationMult, 137000 * inflationMult, 171000 * inflationMult, 205000 * inflationMult, 500000 * inflationMult];
+                    surcharges = [0, 95.70, 240.40, 385.00, 529.60, 578.00];
                 }
                 let monthlyCharge = 0;
                 if (magi <= thresholds[0]) monthlyCharge = surcharges[0];
                 else if (magi <= thresholds[1]) monthlyCharge = surcharges[1];
                 else if (magi <= thresholds[2]) monthlyCharge = surcharges[2];
                 else if (magi <= thresholds[3]) monthlyCharge = surcharges[3];
-                else if (magi <= thresholds[4]) monthlyCharge = surcharges[4];
+                else if (magi < thresholds[4]) monthlyCharge = surcharges[4];
                 else monthlyCharge = surcharges[5];
                 return monthlyCharge * 12;
             }
@@ -1663,10 +1670,12 @@
 
                     currentSalary: getNumberValue('currentSalary'),
                     userSavingsRate: getNumberValue('userSavingsRate') / 100,
+                    userEmployerContributionRate: getNumberValue('userEmployerContributionRate') / 100,
                     userSavingsDest: document.getElementById('userSavingsDest').value,
 
                     spouseCurrentSalary: getNumberValue('spouseCurrentSalary'),
                     spouseSavingsRate: getNumberValue('spouseSavingsRate') / 100,
+                    spouseEmployerContributionRate: getNumberValue('spouseEmployerContributionRate') / 100,
                     spouseSavingsDest: document.getElementById('spouseSavingsDest').value,
 
                     pension: getNumberValue('pension'),
@@ -1713,6 +1722,53 @@
                     enableTCJASunset: document.getElementById('enableTCJASunset').checked,
                     stateTaxRate: getNumberValue('stateTaxRate') / 100,
                     taxableGainRatio: getNumberValue('taxableGainRatio') / 100,
+                };
+            }
+
+            function calculateWorkplaceContributions(salary, age, employeeRate, employerRate, savingsDest, inflationMult) {
+                const regularLimit = LIMIT_401K * inflationMult;
+                let catchupLimit = 0;
+                if (age >= 60 && age <= 63) catchupLimit = SUPER_CATCHUP_401K * inflationMult;
+                else if (age >= 50) catchupLimit = CATCHUP_401K * inflationMult;
+
+                const employeeLimit = regularLimit + catchupLimit;
+                const employeeTotal = Math.min(
+                    Math.max(0, salary * (employeeRate || 0)),
+                    employeeLimit,
+                    salary
+                );
+
+                const catchupAmount = Math.max(0, employeeTotal - regularLimit);
+                // The model has annual salary, not prior-year W-2 wages. Current nominal
+                // salary is the closest available proxy for the 2026 Roth catch-up test.
+                const forcedRothCatchup = age >= 50 && salary > ROTH_CATCHUP_WAGE_THRESHOLD * inflationMult
+                    ? catchupAmount : 0;
+                const employeeByElection = employeeTotal - forcedRothCatchup;
+
+                let employeePreTax = 0;
+                let employeeRoth = forcedRothCatchup;
+                if (savingsDest === 'roth') employeeRoth += employeeByElection;
+                else if (savingsDest === 'split') {
+                    employeePreTax = employeeByElection * 0.5;
+                    employeeRoth += employeeByElection * 0.5;
+                } else employeePreTax = employeeByElection;
+
+                const eligibleCompensation = Math.min(salary, COMPENSATION_LIMIT * inflationMult);
+                const annualAdditionsLimit = Math.min(TOTAL_PLAN_LIMIT * inflationMult, eligibleCompensation);
+                const nonCatchupEmployee = Math.min(employeeTotal, regularLimit);
+                const employerRoom = Math.max(0, annualAdditionsLimit - nonCatchupEmployee);
+                const employerPreTax = Math.min(
+                    Math.max(0, eligibleCompensation * (employerRate || 0)),
+                    employerRoom
+                );
+
+                return {
+                    employeePreTax: employeePreTax,
+                    employeeRoth: employeeRoth,
+                    employerPreTax: employerPreTax,
+                    employeeTotal: employeeTotal,
+                    employerTotal: employerPreTax,
+                    forcedRothCatchup: forcedRothCatchup
                 };
             }
 
@@ -1796,43 +1852,42 @@
                     let spousePreTaxContrib = 0;
                     let userRothContrib = 0;
                     let spouseRothContrib = 0;
+                    let userEmployeeContrib = 0;
+                    let spouseEmployeeContrib = 0;
+                    let userEmployerContrib = 0;
+                    let spouseEmployerContrib = 0;
 
                     if (userWorking && userSalary > 0) {
-                        // V18.11 (item 6): contribution caps grow with inflation (same multiplier salary uses),
-                        // so a saver's future contributions aren't frozen at today's dollars across the projection.
-                        let userLimit = LIMIT_401K * inflation;
-                        if (currentYearAge >= 50) userLimit += CATCHUP_401K * inflation;
-                        if (currentYearAge >= 60 && currentYearAge <= 63) userLimit = (LIMIT_401K + SUPER_CATCHUP_401K) * inflation;
-
-                        let userContrib = userSalary * params.userSavingsRate;
-                        userContrib = Math.min(userContrib, userLimit);
-
-                        if (params.userSavingsDest === 'pretax') userPreTaxContrib = userContrib;
-                        else if (params.userSavingsDest === 'roth') userRothContrib = userContrib;
-                        else { userPreTaxContrib = userContrib * 0.5; userRothContrib = userContrib * 0.5; }
+                        const userContributions = calculateWorkplaceContributions(
+                            userSalary, currentYearAge, params.userSavingsRate,
+                            params.userEmployerContributionRate || 0, params.userSavingsDest, inflation
+                        );
+                        userPreTaxContrib = userContributions.employeePreTax + userContributions.employerPreTax;
+                        userRothContrib = userContributions.employeeRoth;
+                        userEmployeeContrib = userContributions.employeeTotal;
+                        userEmployerContrib = userContributions.employerTotal;
 
                         userPreTax += userPreTaxContrib;
                         userRoth += userRothContrib;
                     }
 
                     if (spouseWorking && spouseSalary > 0) {
-                        let spouseLimit = LIMIT_401K * inflation;
-                        if (spouseCurrentAge >= 50) spouseLimit += CATCHUP_401K * inflation;
-                        if (spouseCurrentAge >= 60 && spouseCurrentAge <= 63) spouseLimit = (LIMIT_401K + SUPER_CATCHUP_401K) * inflation;
-
-                        let spouseContrib = spouseSalary * params.spouseSavingsRate;
-                        spouseContrib = Math.min(spouseContrib, spouseLimit);
-
-                        if (params.spouseSavingsDest === 'pretax') spousePreTaxContrib = spouseContrib;
-                        else if (params.spouseSavingsDest === 'roth') spouseRothContrib = spouseContrib;
-                        else { spousePreTaxContrib = spouseContrib * 0.5; spouseRothContrib = spouseContrib * 0.5; }
+                        const spouseContributions = calculateWorkplaceContributions(
+                            spouseSalary, spouseCurrentAge, params.spouseSavingsRate,
+                            params.spouseEmployerContributionRate || 0, params.spouseSavingsDest, inflation
+                        );
+                        spousePreTaxContrib = spouseContributions.employeePreTax + spouseContributions.employerPreTax;
+                        spouseRothContrib = spouseContributions.employeeRoth;
+                        spouseEmployeeContrib = spouseContributions.employeeTotal;
+                        spouseEmployerContrib = spouseContributions.employerTotal;
 
                         spousePreTax += spousePreTaxContrib;
                         spouseRoth += spouseRothContrib;
                     }
 
-                    const userNetSalary = userSalary - (userPreTaxContrib + userRothContrib);
-                    const spouseNetSalary = spouseSalary - (spousePreTaxContrib + spouseRothContrib);
+                    // Employer money grows the portfolio but never comes out of take-home pay.
+                    const userNetSalary = userSalary - userEmployeeContrib;
+                    const spouseNetSalary = spouseSalary - spouseEmployeeContrib;
 
                     // 3. Guaranteed Income & RMDs
                     let otherIncome = 0;
@@ -2025,18 +2080,18 @@
                             const lookbackMAGI = (i >= 2 && magiHistory[i - 2] != null)
                                 ? magiHistory[i - 2]
                                 : (currentOrdIncome + taxableGains_this_pass);
-                            irmaa = calculateIRMAA(lookbackMAGI, filingStatus, inflation) * medicareCount;
+                            irmaa = calculateIRMAA(lookbackMAGI, filingStatus, bracketMult) * medicareCount;
                         }
 
                         // 5e. Calculate New Total Tax
                         // Determine if TCJA has sunset (2026+)
-                        const currentCalendarYear = 2025 + i;  // Assumes simulation starts in 2025
+                        const currentCalendarYear = MODEL_BASE_YEAR + i;
                         const useTCJASunset = params.enableTCJASunset && currentCalendarYear >= 2026;
 
-                        const federalOrdinaryTax = calculateFederalOrdinaryTax(currentOrdIncome, filingStatus, bracketMult, inflation, useTCJASunset);
-                        const capGainsTax = calculateCapGainsTax(taxableGains_this_pass, currentOrdIncome, filingStatus, bracketMult, inflation);
+                        const federalOrdinaryTax = calculateFederalOrdinaryTax(currentOrdIncome, filingStatus, bracketMult, bracketMult, useTCJASunset);
+                        const capGainsTax = calculateCapGainsTax(taxableGains_this_pass, currentOrdIncome, filingStatus, bracketMult, bracketMult);
                         const niitTax = calculateNIIT(currentOrdIncome, taxableGains_this_pass, filingStatus);
-                        const stateTax = calculateStateTax(currentOrdIncome, taxableGains_this_pass, params.stateTaxRate, filingStatus, inflation);
+                        const stateTax = calculateStateTax(currentOrdIncome, taxableGains_this_pass, params.stateTaxRate, filingStatus, bracketMult);
 
                         let newTax = federalOrdinaryTax + capGainsTax + niitTax + stateTax;
 
@@ -2109,6 +2164,8 @@
                         pensionIncome: otherIncome,
                         partTimeIncome: ptIncome,
                         wages: userNetSalary + spouseNetSalary,   // V18.11 (item 7): net take-home wages (for the paycheck reconciliation)
+                        employeeContribution: userEmployeeContrib + spouseEmployeeContrib,
+                        employerContribution: userEmployerContrib + spouseEmployerContrib,
                         discretionaryWithdrawal: Math.max(0, totalWithdrawal - totalRmd),
                         // Detailed withdrawal breakdown by account type
                         // Note: RMDs are withdrawn separately from discretionary pre-tax withdrawals
