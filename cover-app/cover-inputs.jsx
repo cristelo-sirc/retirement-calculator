@@ -21,7 +21,7 @@ function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={{ fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.13em',
           textTransform: 'uppercase', color: cvi.ink50 }}>{label}</span>
-        {info && <window.InfoTip field={field} theme={theme} />}
+        {info && <window.InfoTip field={field} label={label} theme={theme} />}
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
         textWrap: 'pretty' }}>{info.help}</div>}
@@ -50,11 +50,11 @@ function CToggle({ field, label, value, onChange, theme }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={{ fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.13em',
           textTransform: 'uppercase', color: cvi.ink50 }}>{label}</span>
-        {info && <window.InfoTip field={field} theme={theme} />}
+        {info && <window.InfoTip field={field} label={label} theme={theme} />}
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
         textWrap: 'pretty' }}>{info.help}</div>}
-      <button onClick={() => onChange(!value)} style={{ display: 'flex', alignItems: 'center', gap: 10,
+      <button onClick={() => onChange(!value)} aria-label={label} aria-pressed={value} style={{ display: 'flex', alignItems: 'center', gap: 10,
         background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
         <span style={{ width: 40, height: 22, borderRadius: 99, background: value ? cvi.sage : cvi.ink20,
           position: 'relative', transition: 'background 180ms', flex: '0 0 auto' }}>
@@ -117,12 +117,12 @@ function CSelect({ field, label, value, onChange, options, theme }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={{ fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.13em',
           textTransform: 'uppercase', color: cvi.ink50 }}>{label}</span>
-        {info && <window.InfoTip field={field} theme={theme} />}
+        {info && <window.InfoTip field={field} label={label} theme={theme} />}
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
         textWrap: 'pretty' }}>{info.help}</div>}
       <div style={{ position: 'relative', borderBottom: `1px solid ${cvi.ink}`, paddingBottom: 6 }}>
-        <select value={value} onChange={e => onChange(e.target.value)} style={{
+        <select aria-label={label} value={value} onChange={e => onChange(e.target.value)} style={{
           width: '100%', fontFamily: cvi.display, fontSize: 19, color: cvi.ink, background: 'transparent',
           border: 'none', outline: 'none', cursor: 'pointer', WebkitAppearance: 'none',
           appearance: 'none', padding: '2px 18px 2px 0' }}>
@@ -216,7 +216,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         {/* The people */}
         <CGroup title="The people" mode={mode}
           advanced={[
-            partner && <CField key="sret" field="retireAge" label="Partner retires at" value={params.spouseRetireAge}
+            partner && <CField key="sret" field="spouseRetireAge" label="Partner retires at" value={params.spouseRetireAge}
               onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} theme={theme} />,
           ].filter(Boolean)}>
           <CField field="currentAge" label="Your age" value={params.currentAge} onChange={v => update('currentAge', v)} min={20} max={85} theme={theme} />
@@ -246,14 +246,20 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         <CGroup title="What comes in" mode={mode}
           advanced={[
             <CField key="sav" field="savingsRate" label="Your contribution rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" theme={theme} />,
+            params.currentAge >= 50 && <CField key="pyw" field="priorYearWages" label="Your prior-year W-2 wages" value={params.priorYearWages} step={5000} min={0} max={1000000} onChange={v => update('priorYearWages', v)} format={money} theme={theme} />,
             <CField key="emp" field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" theme={theme} />,
             <CSelect key="dest" field="savingsDest" label="Your contributions go to" value={params.savingsDest} onChange={v => update('savingsDest', v)} theme={theme}
               options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />,
+            params.employerContributionRate > 0 && <CSelect key="edest" field="employerContributionDest" label="Your employer contributions go to" value={params.employerContributionDest} onChange={v => update('employerContributionDest', v)} theme={theme}
+              options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />,
             partner && <CField key="ssal" field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} theme={theme} />,
             partner && <CField key="ssav" field="spouseSavingsRate" label="Partner's contribution rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" theme={theme} />,
+            partner && params.spouseAge >= 50 && <CField key="spyw" field="spousePriorYearWages" label="Partner's prior-year W-2 wages" value={params.spousePriorYearWages} step={5000} min={0} max={1000000} onChange={v => update('spousePriorYearWages', v)} format={money} theme={theme} />,
             partner && <CField key="semp" field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" theme={theme} />,
-            partner && <CSelect key="sdest" field="savingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)} theme={theme}
+            partner && <CSelect key="sdest" field="spouseSavingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)} theme={theme}
               options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />,
+            partner && params.spouseEmployerContributionRate > 0 && <CSelect key="sedest" field="spouseEmployerContributionDest" label="Partner's employer contributions go to" value={params.spouseEmployerContributionDest} onChange={v => update('spouseEmployerContributionDest', v)} theme={theme}
+              options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />,
           ].filter(Boolean)}>
           <CField field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} theme={theme} />
         </CGroup>
@@ -308,7 +314,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         <CGroup title="Investments" mode={mode} last
           advanced={[
             <CToggle key="gp" field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} theme={theme} />,
-            params.enableGlidePath && <CField key="gpe" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" theme={theme} />,
+            params.enableGlidePath && <CField key="gpe" field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" theme={theme} />,
             <CToggle key="rc" field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} theme={theme} />,
             params.enableRothConversion && <CField key="rca" field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
             params.enableRothConversion && <CField key="rcs" field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} theme={theme} />,

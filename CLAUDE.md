@@ -13,7 +13,7 @@ See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 18.13
+**Current Version:** 19.0
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -83,7 +83,7 @@ The solver uses a deterministic RNG (`mulberry32` seeded PRNG) so identical mark
 
 ### pathLog Fields (per year per simulation)
 
-**Core:** `age`, `totalBal`, `rmd`, `totalWithdrawal`, `ordIncome`, `taxBill`, `effRate`, `spending`, `stockAlloc`, `inflation`, `isSolvent`, `employeeContribution`, `employerContribution`
+**Core:** `age` (cash-flow period), `balanceAge` (ending-balance birthday), `startingBalance`, `totalBal`, `rmd`, `totalWithdrawal`, `ordIncome`, `taxBill`, `effRate`, `spending`, `stockAlloc`, `inflation`, `isSolvent`, `employeeContribution`, `employerContribution`
 
 **Income sources:** `ssIncome`, `pensionIncome`, `partTimeIncome`
 
@@ -590,3 +590,28 @@ indexed tax thresholds use the questionnaire's tax-bracket growth assumption.
 
 Executable tests verify employee/employer paycheck and portfolio effects, every contribution limit, high-earner
 Roth catch-up treatment, exact tax and benefit thresholds, adapter propagation, and old saved-plan defaults.
+
+---
+
+## V19.0 &mdash; Explicit elapsed-year timeline + complete input coverage
+
+The projection now distinguishes **cash-flow age** from **balance age**. Each engine row represents one annual
+period `[age, age + 1)`: salary, contributions, retirement spending, Social Security, Medicare, pensions, RMDs,
+housing, and conversions use `age`; the resulting portfolio uses `balanceAge = age + 1`. The loop runs
+`endAge - currentAge` periods, not one extra inclusive period. The adapter prepends the exact entered portfolio
+at `currentAge`, then charts each annual ending balance through `endAge`.
+
+This fixes the inherited off-by-one convention: a plan from age 50 to 53 receives three returns, not four, and
+today&rsquo;s displayed balance is not silently grown before it appears. Retirement cash flow begins in the period
+whose starting age equals `retireAge`; Social Security, Medicare, RMDs, pension, mortgage payoff, and other age
+events retain their named starting ages. `depletionAge` is the birthday whose ending balance reaches zero.
+
+V19 also removes the remaining contribution-input shortcuts. `priorYearWages` and `spousePriorYearWages`
+collect W-2 Box 3 wages for the first-year Roth catch-up test; later years use the prior modeled salary.
+`employerContributionDest` and its spouse equivalent allow traditional pre-tax or Roth employer contributions.
+Roth employer contributions do not reduce take-home pay but are included in current ordinary income.
+
+`tests/input-coverage.test.js` enforces the user-input contract: every key in `MockEngine.DEFAULTS` must have an
+editable control in both desktop and mobile questionnaires, and every rendered field must have a plain-English
+help line plus a deeper tooltip in `FIELD_INFO`. Timeline invariants in `tests/financial-engine.test.js` verify
+exact period counts and every important age boundary.

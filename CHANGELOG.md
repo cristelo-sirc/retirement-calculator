@@ -1,5 +1,17 @@
 # Change log
 
+## 19.0.0 — 2026-06-29
+
+- Rebuilt the age timeline as exact elapsed years: today’s balance is shown unchanged at today’s age, and each later balance belongs to the following birthday.
+- Removed the extra return and extra ending-age spending period from every projection.
+- Kept retirement, Social Security, Medicare, RMD, pension, housing, and other cash flows attached to the age when they occur.
+- Added explicit prior-year W-2 wage fields for the 2026 Roth catch-up test instead of silently substituting current salary.
+- Added pre-tax/Roth destination fields for employer contributions and applied the correct current-year tax treatment.
+- Added executable coverage checks proving every saved-plan setting has an editable desktop and mobile field and every rendered field has both help text and a tooltip.
+- Made selects, toggles, and tooltips keyboard/screen-reader accessible, and fixed tap-to-open tooltip behavior.
+- Strengthened the coverage check so missing or incorrectly connected field explanations fail automatically.
+- Added timeline boundary checks for contribution years, retirement, Social Security, Medicare, RMDs, mortgage payoff, and depletion age.
+
 ## 18.14.0 — 2026-06-28
 
 - Split each person's employee contribution rate from the employer contribution rate.

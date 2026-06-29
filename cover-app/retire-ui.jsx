@@ -9,9 +9,10 @@ const FIELD_INFO = {
     help: 'Plan for one person or two.',
     detail: 'A couple is modeled jointly — two salaries, two pots of savings, and two Social Security benefits that may start at different ages.',
   },
-  currentAge: { help: 'How old you are today.', detail: 'Sets the starting point of the projection. Everything before your retirement age is treated as years you’re still saving.' },
-  retireAge: { help: 'The age you stop working for pay.', detail: 'Saving stops and withdrawals begin here. Retiring later usually helps a lot: more saving, fewer years to fund, and a bigger Social Security check.' },
-  endAge: { help: 'How long the money has to last.', detail: 'The age the plan must fund you through — your planning horizon. Many couples use the mid-90s to stay safe, since one of you may live longer than average.' },
+  currentAge: { help: 'How old you are today.', detail: 'Today’s age is the starting snapshot: the chart shows exactly the balances you enter, with no growth added yet. The first projected year runs from this age to your next birthday.' },
+  retireAge: { help: 'The age you stop working for pay.', detail: 'Salary and saving continue through the year before this age. Retirement spending and withdrawals begin in the year that starts at this age.' },
+  spouseRetireAge: { help: 'The age your partner stops working for pay.', detail: 'Your partner’s salary and contributions continue through the year before this age, then stop in the yearly period that starts at this age.' },
+  endAge: { help: 'The birthday your plan must reach.', detail: 'The ending balance is measured when you reach this age. For example, a plan from age 50 to 90 contains 40 yearly periods and funds spending through the year that begins at 89.' },
   spouseAge: { help: 'Your partner’s age today.', detail: 'Used to time your partner’s retirement and Social Security separately from yours.' },
 
   preTax: { help: 'Retirement accounts taxed when you withdraw.', detail: 'Traditional 401(k), 403(b), and IRA balances. You got a tax break going in, so withdrawals are taxed as ordinary income — and required minimum distributions start at 73–75.' },
@@ -23,10 +24,15 @@ const FIELD_INFO = {
 
   salary: { help: 'Your gross pay per year, before tax.', detail: 'Drives how much you add to savings each year between now and retirement.' },
   savingsRate: { help: 'The share of pay you contribute yourself.', detail: 'This comes out of your pay. Pre-tax contributions lower current taxable income; Roth contributions do not.' },
-  employerContributionRate: { help: 'The share of pay your employer adds.', detail: 'Enter the employer match or other employer contribution as a percent of salary. It does not reduce your take-home pay and is modeled as traditional pre-tax money, subject to workplace-plan limits.' },
-  spouseSalary: { help: 'Your partner’s gross annual pay.', detail: 'Combined with their savings rate to model their yearly contributions.' },
+  priorYearWages: { help: 'Last year’s wages from this employer.', detail: 'If you are 50 or older, enter Social Security wages from W-2 Box 3 for the employer sponsoring this plan. The 2026 Roth catch-up rule uses this figure—not your current salary—to decide whether catch-up contributions must be Roth.' },
+  employerContributionRate: { help: 'The share of pay your employer adds.', detail: 'Enter the actual match or other employer contribution as a percent of salary. It grows your retirement account without reducing take-home pay and is subject to the separate employee-plus-employer limit.' },
+  employerContributionDest: { help: 'Where your employer’s contribution lands.', detail: 'Most employer contributions are traditional pre-tax money. Choose Roth only if your plan specifically lets you designate employer matching or nonelective contributions as Roth; Roth employer money is taxable in the contribution year.' },
+  spouseSalary: { help: 'Your partner’s gross annual pay.', detail: 'Combined with their employee and employer contribution rates to model yearly additions before retirement.' },
+  spousePriorYearWages: { help: 'Your partner’s wages from this employer last year.', detail: 'For a partner age 50 or older, enter W-2 Box 3 Social Security wages from the employer sponsoring the plan. This controls whether 2026 catch-up contributions must be Roth.' },
   spouseSavingsRate: { help: 'The share of pay your partner contributes.', detail: 'This is the employee contribution taken from your partner’s pay; employer money is entered separately.' },
-  spouseEmployerContributionRate: { help: 'The share of pay your partner’s employer adds.', detail: 'Enter the match or other employer contribution as a percent of salary. It is modeled as traditional pre-tax money and does not reduce take-home pay.' },
+  spouseSavingsDest: { help: 'Where your partner’s contributions land.', detail: 'Pre-tax contributions lower current taxes but are taxed on withdrawal; Roth contributions are taxed now but generally tax-free later. Split puts half in each.' },
+  spouseEmployerContributionRate: { help: 'The share of pay your partner’s employer adds.', detail: 'Enter the actual match or other employer contribution as a percent of salary. It does not reduce take-home pay and is subject to workplace-plan limits.' },
+  spouseEmployerContributionDest: { help: 'Where your partner’s employer contribution lands.', detail: 'Choose traditional pre-tax unless the plan specifically permits Roth employer matching or nonelective contributions. Roth employer money is taxable in the contribution year.' },
 
   spending: { help: 'Retirement spending other than housing and healthcare.', detail: 'Your annual budget in today’s dollars for food, utilities, travel, and other everyday spending. Enter mortgage or rent, property tax and insurance, and healthcare separately so the plan can time them correctly.' },
   healthcare: {
@@ -40,9 +46,9 @@ const FIELD_INFO = {
     help: 'Your annual Social Security at full age (67).',
     detail: 'Your estimated yearly benefit at full retirement age (67) — take the monthly figure on your Social Security statement at ssa.gov and multiply by 12. Claiming earlier reduces it; waiting until 70 increases it about 8% per year.',
   },
-  ssClaimAge: { help: 'The age you start Social Security.', detail: 'You can claim anywhere from 62 to 70. Each year you wait past 67 adds roughly 8% to your check — a guaranteed, inflation-protected raise for life.' },
+  ssClaimAge: { help: 'The age you start Social Security.', detail: 'Benefits begin in the yearly period that starts at this age. You can claim from 62 to 70; waiting past 67 increases the annual benefit.' },
   spouseSS: { help: 'Your partner’s annual benefit at age 67.', detail: 'Your partner’s estimated yearly Social Security at their full retirement age. Couples can stagger claim ages to balance income and survivor benefits.' },
-  spouseClaimAge: { help: 'The age your partner starts Social Security.', detail: 'Set independently from yours — it’s often worth having the higher earner wait until 70 for the larger survivor benefit.' },
+  spouseClaimAge: { help: 'The age your partner starts Social Security.', detail: 'Benefits begin in the yearly period that starts at this age. Set it independently from yours; delaying the higher earner can improve the survivor benefit.' },
   enableSpousalBenefit: { help: 'Pay the spousal Social Security benefit.', detail: 'When on, the lower earner can receive up to half of the higher earner’s full benefit if that exceeds their own. Worth enabling when one partner earned much more than the other.' },
 
   pension: { help: 'Your annual pension, if you have one.', detail: 'Guaranteed yearly income from an employer or government pension (monthly amount × 12). Counts alongside Social Security as income you don’t have to draw from savings.' },
@@ -77,6 +83,7 @@ const FIELD_INFO = {
 
   stockAllocation: { help: 'Share of the portfolio in stocks.', detail: 'The rest sits in bonds. More stock means higher expected growth but bigger swings — the balance between reward and the risk of a bad sequence early in retirement.' },
   glidePath: { help: 'Shift toward bonds as you age.', detail: 'Automatically dials stock exposure down over retirement, reducing the chance a market crash hits while you’re drawing heavily. Trades some growth for stability.' },
+  glidePathEndStock: { help: 'Stock share at the planning age.', detail: 'The glide path moves gradually from today’s stock allocation to this percentage at your ending age. The rest is held in bonds.' },
 
   // ── Advanced assumptions ──
   stateTaxRate: { help: 'Your state income tax rate.', detail: 'A single flat rate applied to income and capital gains in retirement. It does not apply state-specific exemptions (some states don’t tax Social Security or pensions) — enter an effective rate that reflects your situation, or 0 for no-income-tax states.' },
@@ -84,7 +91,7 @@ const FIELD_INFO = {
   bracketGrowth: { help: 'How fast tax brackets rise.', detail: 'Tax brackets are indexed to inflation each year. The default tracks long-run inflation; it’s separate from your price-inflation figure so you can stress-test bracket creep.' },
   tcjaSunset: { help: 'Model higher, pre-2017 tax rates.', detail: 'The 2017 tax cuts (TCJA) were made permanent by the 2025 budget law (Public Law 119-21), so they are no longer scheduled to expire. Turn this on only to stress-test a future policy reversal: the model reverts to the higher pre-2017 brackets and lower standard deduction, raising projected taxes.' },
   numPaths: { help: 'How many market scenarios to simulate.', detail: 'Each path is one possible future. More paths give a more precise, steadier estimate of your odds but take longer to calculate. 5,000 is plenty for most plans; raise it toward 10,000 for a touch more precision, lower it for speed. This is the single setting that drives the odds on every screen.' },
-  pensionStartAge: { help: 'When pension payments begin.', detail: 'Many pensions start at a set age that may differ from when you retire. Income needed before this age has to come from savings or Social Security.' },
+  pensionStartAge: { help: 'When pension payments begin.', detail: 'Payments begin in the yearly period that starts at this age. Many pensions start at a different age from retirement.' },
   stockReturn: { help: 'Expected long-run stock return.', detail: 'The average yearly growth assumed for the stock portion, before inflation. The default reflects a broadly diversified equity portfolio; lowering it makes for a more conservative plan.' },
   bondReturn: { help: 'Expected long-run bond return.', detail: 'The average yearly growth assumed for the bond portion, before inflation. Bonds are steadier than stocks but grow more slowly.' },
   stockVol: { help: 'How much stock returns swing.', detail: 'Volatility — the size of the year-to-year ups and downs. Higher volatility widens the range of outcomes and raises the risk of a damaging loss early in retirement.' },
@@ -97,7 +104,7 @@ const FIELD_INFO = {
 
 // Small "i" affordance that reveals a field's deeper explanation on hover,
 // focus, or tap. Theme-aware; popover floats below-right and never blocks input.
-function InfoTip({ field, text, theme }) {
+function InfoTip({ field, label, text, theme }) {
   const t = theme || {};
   const ink = t.ink || '#1a1815';
   const ink50 = t.ink50 || 'rgba(26,24,21,0.5)';
@@ -115,10 +122,10 @@ function InfoTip({ field, text, theme }) {
     >
       <button
         type="button"
-        onClick={(e) => { e.preventDefault(); setOpen(o => !o); }}
+        onClick={(e) => { e.preventDefault(); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        aria-label="More about this input"
+        aria-label={`More about ${label || field || 'this input'}`}
         style={{
           width: 15, height: 15, borderRadius: '50%', border: `1px solid ${ink50}`,
           background: 'transparent', color: ink50, cursor: 'help', padding: 0, lineHeight: 1,

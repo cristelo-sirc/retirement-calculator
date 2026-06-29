@@ -24,7 +24,7 @@
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ fontFamily: cm.body, fontSize: 10.5, letterSpacing: '0.12em',
             textTransform: 'uppercase', color: cm.ink50 }}>{label}</span>
-          {info && <InfoTip field={field} theme={cm} />}
+          {info && <InfoTip field={field} label={label} theme={cm} />}
         </div>
         {info && <div style={{ fontSize: 12, lineHeight: 1.4, color: cm.ink70, marginTop: 3,
           textWrap: 'pretty' }}>{info.help}</div>}
@@ -56,7 +56,7 @@
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
-        <button onClick={() => onChange(!value)} style={{ display: 'flex', alignItems: 'center', gap: 12,
+        <button onClick={() => onChange(!value)} aria-label={label} aria-pressed={value} style={{ display: 'flex', alignItems: 'center', gap: 12,
           background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
           <span style={{ width: 46, height: 26, borderRadius: 99, background: value ? cm.sage : cm.ink20,
             position: 'relative', transition: 'background 180ms', flex: '0 0 auto' }}>
@@ -74,7 +74,7 @@
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
         <div style={{ position: 'relative', borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
-          <select value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%',
+          <select aria-label={label} value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%',
             fontFamily: cm.display, fontSize: 20, color: cm.ink, background: 'transparent', border: 'none',
             outline: 'none', cursor: 'pointer', WebkitAppearance: 'none', appearance: 'none',
             padding: '4px 20px 4px 0' }}>
@@ -246,7 +246,7 @@
           <MStep field="retireAge" label="You retire at" value={params.retireAge} onChange={v => update('retireAge', v)} min={params.currentAge + 1} max={80} />
           <MStep field="endAge" label="Plan to age" value={params.endAge} onChange={v => update('endAge', v)} min={params.retireAge + 1} max={110} />
           {partner && <MStep field="spouseAge" label="Partner's age" value={params.spouseAge} onChange={v => update('spouseAge', v)} min={20} max={85} />}
-          {partner && <MStep field="retireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} />}
+          {partner && <MStep field="spouseRetireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} />}
         </MGroup>
 
         <MGroup title="What you've saved">
@@ -263,14 +263,20 @@
         <MGroup title="What comes in">
           <MStep field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} />
           <MStep field="savingsRate" label="Your contribution rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" />
+          {params.currentAge >= 50 && <MStep field="priorYearWages" label="Your prior-year W-2 wages" value={params.priorYearWages} step={5000} min={0} max={1000000} onChange={v => update('priorYearWages', v)} format={money} />}
           <MStep field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" />
           <MSelect field="savingsDest" label="Your contributions go to" value={params.savingsDest} onChange={v => update('savingsDest', v)}
             options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
+          {params.employerContributionRate > 0 && <MSelect field="employerContributionDest" label="Your employer contributions go to" value={params.employerContributionDest} onChange={v => update('employerContributionDest', v)}
+            options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
           {partner && <MStep field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} />}
           {partner && <MStep field="spouseSavingsRate" label="Partner's contribution rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" />}
+          {partner && params.spouseAge >= 50 && <MStep field="spousePriorYearWages" label="Partner's prior-year W-2 wages" value={params.spousePriorYearWages} step={5000} min={0} max={1000000} onChange={v => update('spousePriorYearWages', v)} format={money} />}
           {partner && <MStep field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" />}
-          {partner && <MSelect field="savingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)}
+          {partner && <MSelect field="spouseSavingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)}
             options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />}
+          {partner && params.spouseEmployerContributionRate > 0 && <MSelect field="spouseEmployerContributionDest" label="Partner's employer contributions go to" value={params.spouseEmployerContributionDest} onChange={v => update('spouseEmployerContributionDest', v)}
+            options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
         </MGroup>
 
         <MGroup title="What goes out">
@@ -315,7 +321,7 @@
         <MGroup title="Investments">
           <MStep field="stockAllocation" label="Stocks now" value={params.stockAllocation} min={0} max={100} onChange={v => update('stockAllocation', v)} suffix="%" />
           <MToggle field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} />
-          {params.enableGlidePath && <MStep label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
+          {params.enableGlidePath && <MStep field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
           <MToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} />
           {params.enableRothConversion && <MStep field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} />}
           {params.enableRothConversion && <MStep field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} />}
