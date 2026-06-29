@@ -20,6 +20,10 @@ behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legac
 **Tech Stack:** HTML5, CSS3, React + Babel (CDN), Chart.js v3.9.1, localStorage (`compassParams`)
 **Encoding:** Use HTML entities (`&mdash;` `&rarr;` `&middot;`) not Unicode to prevent mojibake
 
+**Documentation map:** `README.md` is the short public orientation; `CHANGELOG.md` is the concise release
+record; this file is the technical source of truth; `CLAUDE-legacy.md` preserves the pre-V18 architecture.
+`BACKLOG.md` and audit reports are local working records and are intentionally not published.
+
 ## Working Style
 
 - **User (Cris) does not code** &mdash; handle all implementation, testing, and validation
@@ -56,10 +60,15 @@ Audit thoroughness should align with scope of changes and professional standards
 ## Development Workflow
 1. Propose changes and await approval
 2. Implement after approval
-3. Push to GitHub so GitHub Pages deploys the updated file
-4. Live browser test via Chrome MCP against the deployed URL &mdash; desktop and mobile
-5. Comprehensive audit (pre/post) confirming outcomes, not just implementation
-6. Version increment with systematic updates to ALL version references (incl. the `engine.js?v=` cache-buster in `real-engine.js` &mdash; without it browsers can serve a stale engine against new HTML)
+3. Work on a scoped branch; stage only intended files; commit and publish through a pull request into `main`
+4. Let GitHub Pages deploy the merged `main` checkpoint
+5. Live browser test against the deployed URL &mdash; desktop and mobile
+6. Comprehensive audit (pre/post) confirming outcomes, not just implementation
+7. Version increment with systematic updates to ALL version references (incl. the `engine.js?v=` cache-buster in `real-engine.js` &mdash; without it browsers can serve a stale engine against new HTML)
+
+`scripts/deploy.sh` is an emergency direct-to-`main` fallback, not the standard workflow. It bypasses the
+pull-request review gate and broadly mirrors the local project folder, so use it only with explicit approval
+and a verified clean scope.
 
 ---
 
@@ -342,11 +351,13 @@ HTML titles, `real-engine.js` header, saved-plan stamp, cover kickers) reconcile
 Housekeeping only &mdash; **no app or engine changes** (V18.3 unchanged; `engine.js` untouched; zero Monte Carlo impact).
 
 - **Removed superseded files from the repo** (still recoverable from git history): the pre-V18 monolithic builds `Retirement_Calculator_v15_6/v16_0/v16_1/v16_5.html`; the stale plans `V16_1_Improvement_Plan.md`, `v16.5-plan.md`, `v17-mobile-rewrite-plan.md`; and the `preview/` placeholder mockup (its content lives on in `cover-app/`). Verified the live app references none of these &mdash; `index.html`/`cover.html` load only `cover-app/*` + CDN.
-- **Added `scripts/deploy.sh`** &mdash; the standard deploy path. The project folder is a FUSE mount where git's lock/rename ops fail ("operation not permitted"), so the script does all git work in a writable clone on the sandbox disk and pushes from there. It pins the commit identity to the GitHub no-reply email (`cristelo-sirc@users.noreply.github.com`) so email-privacy (GH007) can't reject the push. Usage: `GITHUB_TOKEN=... bash scripts/deploy.sh "message"`.
+- **Added `scripts/deploy.sh`** &mdash; originally the standard deploy path while the mounted folder's Git locks were broken. It performs Git work in a writable clone and pushes directly to `main`. As of V19.0 the local repository is repaired and aligned, so branch + pull request is standard and this script is fallback-only. It pins the commit identity to the GitHub no-reply email (`cristelo-sirc@users.noreply.github.com`).
 - **Tightened `.gitignore`**: added `_archive/`, `data/`, `Retirement_Calculator_v*.html`, `.fuse_hidden*`.
 - **Local-only tidy** (never on GitHub; `.gitignore` already excludes `*.md`/`*.json`): older version HTMLs, superseded planning docs, and the `handoff-07-cover/` design source moved to a local `_archive/` folder; personal-data JSONs moved to a gitignored `data/` folder.
 
-**Note:** the mounted folder's own `.git` is stale (the FUSE write block left its index "behind"); it is no longer used for committing. All deploys go through `scripts/deploy.sh`, which reads the folder's current file contents and pushes from a clean clone.
+**Update (V19.0):** the local `.git` history was safely reconciled with deployed V18.14, V19 was developed on
+`codex/v19-completion`, merged through PR #1, and local `main` was fast-forwarded to the resulting release
+checkpoint (`3f6b20e`). Local Git is once again the authoritative working copy.
 
 ---
 
@@ -615,3 +626,15 @@ Roth employer contributions do not reduce take-home pay but are included in curr
 editable control in both desktop and mobile questionnaires, and every rendered field must have a plain-English
 help line plus a deeper tooltip in `FIELD_INFO`. Timeline invariants in `tests/financial-engine.test.js` verify
 exact period counts and every important age boundary.
+
+**Lessons from final verification.** The first input-coverage check looked only at controls that already declared
+a `field` attribute, so it could not detect a control that omitted that attribute. Live browser testing caught the
+missing &ldquo;Stocks by end&rdquo; explanation and the partner-retirement control borrowing the primary user&rsquo;s help.
+The final check now parses every rendered input component, requires a help-field connection, and permits shared
+help only through an explicit alias map. General rule: coverage must enumerate the consumer first, then prove its
+mapping; it must not discover consumers only through the mapping being tested.
+
+**Release validation.** V19.0 passed 24 executable checks plus every desktop screen and the phone Cover and
+Questionnaire. Exact entry, tooltip taps, employer Roth selection, chart ages, saved-plan defaults, and browser
+errors were checked locally and again on GitHub Pages. Released through PR #1; production and local `main` both
+point to `3f6b20e`.

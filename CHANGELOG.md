@@ -11,6 +11,7 @@
 - Made selects, toggles, and tooltips keyboard/screen-reader accessible, and fixed tap-to-open tooltip behavior.
 - Strengthened the coverage check so missing or incorrectly connected field explanations fail automatically.
 - Added timeline boundary checks for contribution years, retirement, Social Security, Medicare, RMDs, mortgage payoff, and depletion age.
+- Added a public project guide and reconciled technical, backlog, audit, and release-workflow documentation after deployment.
 
 ## 18.14.0 — 2026-06-28
 
