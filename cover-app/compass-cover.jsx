@@ -39,17 +39,19 @@ function cvChanceLabel(params) {
 }
 window.cvChanceLabel = cvChanceLabel;
 
-// V19.1: results.paycheck.atAge is the age the WHOLE household has stopped working — the
-// later of the two retirement ages for a couple (real-engine.js picks whichever partner
-// retires last), not necessarily params.retireAge. The old copy ("At 67, you'll both
-// need...") never explained where that age came from when partners retire at different
-// ages. This spells it out only when it isn't obvious (couple, different retirement ages).
-function cvPaycheckNote(params) {
-  if (!params || !params.hasPartner) return '';
-  var you = params.retireAge, partner = params.spouseRetireAge || 0;
-  if (partner === you) return '';
-  return partner > you ? ' — that’s when your partner retires, the later of the two'
-    : ' — that’s your own retirement age, the later of the two';
+// V19.1 (fixed post-audit): results.paycheck.atAge is the age the WHOLE household has
+// stopped working — real-engine.js picks whichever partner's retirement lands LATER ON THE
+// CALENDAR, using each partner's own current age as the clock. Two partners can both have
+// "retire at 65" and still produce an atAge later than 65: if the partner is younger, her
+// 65th birthday simply falls in a later calendar year than the user's own. Comparing the
+// two retireAge NUMBERS (as the first cut of this fix did) misses that case entirely —
+// live-tested on the shipped DEFAULTS scenario (65/65, atAge 67) and confirmed the note was
+// silently blank. Comparing atAge itself against the user's own retireAge is what actually
+// tracks the discrepancy, regardless of why it happened.
+function cvPaycheckNote(params, atAge) {
+  if (!params || !params.hasPartner || atAge == null) return '';
+  if (atAge === params.retireAge) return '';
+  return ' — that’s when your partner also stops working, not your own retirement age';
 }
 window.cvPaycheckNote = cvPaycheckNote;
 
@@ -225,7 +227,7 @@ function CoverDesktop(props) {
               accent={vc} big />
             <CoverLine kicker="Your Paycheck, Explained"
               title={`${fmt(results.paycheck.total)} a month`}
-              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.paycheck.atAge}${cvPaycheckNote(params)}.`} />
+              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.paycheck.atAge}${cvPaycheckNote(params, results.paycheck.atAge)}.`} />
             <CoverLine kicker="Inside"
               title="Three moves that buy better odds"
               body="Small, specific changes — and exactly how many points each is worth." />

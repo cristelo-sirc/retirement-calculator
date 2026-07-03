@@ -191,7 +191,7 @@
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
-            At {results.paycheck.atAge}{window.cvPaycheckNote ? window.cvPaycheckNote(params) : ''}, {partner ? "you'll both" : "you'll"} need{' '}
+            At {results.paycheck.atAge}{window.cvPaycheckNote ? window.cvPaycheckNote(params, results.paycheck.atAge) : ''}, {partner ? "you'll both" : "you'll"} need{' '}
             {ME.formatCurrency(results.paycheck.total)}/mo.
           </p>
           <MPaycheck paycheck={results.paycheck} />
