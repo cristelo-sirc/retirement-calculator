@@ -186,11 +186,13 @@ window.CoverSaveLoadCallout = CoverSaveLoadCallout;
 function CoverDesktop(props) {
   props = props || {}; const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
-  const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
-  const reset = () => setParams(window.MockEngine.DEFAULTS);
   const fmt = window.MockEngine.formatCurrency;
   const vc = cvVerdictColor(results.verdict);
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
+  // V19.1: Cover is read-only — tapping a move card opens Rework with that exact move
+  // staged as an unpublished draft (props.onOpenRework, wired in the app shell). Falls
+  // back to a plain nav if the shell didn't wire staging.
+  const openMove = (leverId) => { if (props.onOpenRework) props.onOpenRework(leverId); else if (window._coverNav) window._coverNav('rework'); };
 
   return (
     <div style={{
@@ -301,13 +303,17 @@ function CoverDesktop(props) {
               <div style={{ ...cvKicker, marginBottom: 18 }}>Three Moves, Ranked</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {results.levers.map(l => (
-                  <div key={l.id} style={{
+                  <div key={l.id} role="button" tabIndex={0} onClick={() => openMove(l.id)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMove(l.id); } }}
+                    style={{
                     display: 'grid', gridTemplateColumns: '1fr auto', gap: 18, alignItems: 'center',
-                    background: cvStyles.paper, width: '100%',
+                    background: cvStyles.paper, width: '100%', cursor: 'pointer',
                     border: `1px solid ${cvStyles.ink}`, padding: '16px 20px' }}>
                     <div>
                       <div style={{ fontFamily: cvStyles.display, fontSize: 21, lineHeight: 1.15 }}>{l.title}</div>
                       <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 3 }}>{l.detail}</div>
+                      <div style={{ fontSize: 10.5, color: cvStyles.sage, marginTop: 7, fontWeight: 600,
+                        letterSpacing: '0.08em', textTransform: 'uppercase' }}>Try this on Rework →</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontFamily: cvStyles.display, fontSize: 30, color: cvStyles.sage,
@@ -318,34 +324,26 @@ function CoverDesktop(props) {
                 ))}
               </div>
               <div style={{ fontSize: 12, color: cvStyles.ink50, marginTop: 14 }}>
-                Test any of these on the <strong style={{ color: cvStyles.ink70 }}>Rework</strong> page —
+                Tap a move to draft it on <strong style={{ color: cvStyles.ink70 }}>Rework</strong> —
                 nothing changes here until you choose to publish it.
               </div>
             </div>
             <div style={{ border: `1px solid ${cvStyles.ink}`, padding: '22px 24px',
-              background: cvStyles.paper }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-                marginBottom: 18 }}>
-                <div style={{ ...cvKicker }}>Adjust the Plan</div>
-                {dirty && (
-                  <button onClick={reset} style={{ background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: cvStyles.body, fontSize: 11, color: cvStyles.clay, letterSpacing: '0.04em',
-                    padding: 0, textDecoration: 'underline' }}>Reset to defaults</button>
-                )}
+              background: cvStyles.paper, display: 'flex', flexDirection: 'column',
+              justifyContent: 'center', gap: 14 }}>
+              <div style={{ ...cvKicker }}>Want to try something else?</div>
+              <div style={{ fontFamily: cvStyles.display, fontSize: 22, lineHeight: 1.3 }}>
+                Every dial lives on Rework now.
               </div>
-              <CoverSlider label="Retire at" value={params.retireAge}
-                onChange={v => update('retireAge', v)} min={params.currentAge + 1} max={80}
-                display={params.retireAge} accent={vc} />
-              <CoverSlider label="Other spending / yr" value={params.spending}
-                onChange={v => update('spending', v)} min={40000} max={250000} step={5000}
-                display={fmt(params.spending)} accent={vc} />
-              <CoverSlider label="Claim SS at" value={params.ssClaimAge}
-                onChange={v => update('ssClaimAge', v)} min={62} max={70}
-                display={params.ssClaimAge} accent={vc} last />
-              <div style={{ fontSize: 11, color: cvStyles.ink50, marginTop: 14, lineHeight: 1.5 }}>
-                Drag a dial and the cover number above moves with it. Sliders set a value directly —
-                there's nothing to stack or undo.
+              <div style={{ fontSize: 13, color: cvStyles.ink70, lineHeight: 1.6 }}>
+                This cover only ever shows your filed plan. Head to Rework to draft any change and
+                watch the odds move — nothing counts here until you publish it.
               </div>
+              <button onClick={() => window._coverNav && window._coverNav('rework')}
+                style={{ alignSelf: 'flex-start', padding: '12px 22px', background: cvStyles.ink,
+                  color: cvStyles.paper, border: 'none', cursor: 'pointer', fontFamily: cvStyles.body,
+                  fontSize: 11.5, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
+                Open Rework →</button>
             </div>
           </div>
 
@@ -511,6 +509,18 @@ function CoverAdjust(props) {
       apply: () => setSc(s => ({ ...s, ssClaimAge: 70, ...(params.hasPartner ? { spouseClaimAge: 70 } : {}) })),
       active: sc.ssClaimAge === 70 && (!params.hasPartner || sc.spouseClaimAge === 70) },
   ];
+
+  // V19.1: a move card tapped on Cover arrives here with props.stageLever set to that
+  // card's id. Reuse the exact same "apply" a Rework suggested-move button would run, so
+  // staging is always identical to tapping the button by hand. The parent clears the
+  // one-shot flag afterward so a later visit to Rework doesn't re-stage it.
+  React.useEffect(() => {
+    if (!props.stageLever) return;
+    const match = levers.find(l => l.id === props.stageLever);
+    if (match) match.apply();
+    if (props.onLeverStaged) props.onLeverStaged();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.stageLever]);
 
   const Chip = ({ k, fromTxt, toTxt }) => (sc[k] !== params[k]
     ? <div style={{ marginTop: 8 }}><DiffChip from={fromTxt} to={toTxt} onReset={() => resetField(k)} theme={theme} /></div>

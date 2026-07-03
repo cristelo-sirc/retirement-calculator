@@ -61,6 +61,11 @@
       // from the Questionnaire clears it, so a later return is treated normally.
       const [freshStart, setFreshStart] = useState(false);
       useEffect(() => { window._coverNav = (id) => { setScreen(id); if (id !== 'quiz') setFreshStart(false); }; }, []);
+      // V19.1: Cover is read-only; tapping one of its move cards opens Rework with that
+      // move already staged as an unpublished draft. stageLever is a one-shot id, cleared
+      // by CoverAdjust once it has applied the matching lever.
+      const [stageLever, setStageLever] = useState(null);
+      const openReworkWithLever = (leverId) => { setStageLever(leverId); setScreen('rework'); };
       useEffect(() => {
         const onResize = () => setIsMobile(window.innerWidth < 769);
         window.addEventListener('resize', onResize);
@@ -84,10 +89,10 @@
       const shared = { params, setParams };
       if (isMobile)             return <CoverMobile {...shared} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} freshStart={freshStart} />;
       if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} freshStart={freshStart} />;
-      if (screen === 'rework')  return <CoverAdjust {...shared} />;
+      if (screen === 'rework')  return <CoverAdjust {...shared} stageLever={stageLever} onLeverStaged={() => setStageLever(null)} />;
       if (screen === 'chart')   return <CoverCharts {...shared} />;
       if (screen === 'charts2') return <CoverCharts2 {...shared} />;
-      return <CoverDesktop {...shared} />;
+      return <CoverDesktop {...shared} onOpenRework={openReworkWithLever} />;
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
