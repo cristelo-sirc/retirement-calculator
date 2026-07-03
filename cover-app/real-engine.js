@@ -1,4 +1,4 @@
-// real-engine.js — V19.1 adapter
+// real-engine.js — V19.2 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.1';
+      s.src = 'engine.js?v=19.2';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -296,13 +296,63 @@
     );
   }
 
+  // ---- V19.2: year-by-year table — three "storyline" views over the same plan ----
+  // Average markets: ONE extra run through the untouched engine with stock/bond
+  // volatility set to zero. The engine's random draws are multiplied by the vol
+  // (stockR = stockReturn + stockVol*z), so vol=0 makes them inert and every year
+  // earns exactly the long-run average — fully deterministic, engine.js unchanged.
+  // Rough/Strong markets: ACTUAL simulated paths taken at the 10th / 90th percentile
+  // rank of final outcome (the results array compute() already sorts that way for the
+  // median) — coherent single stories whose rows reconcile, NOT per-year percentile
+  // collages. Deterministic solver RNG => the same plan shows the same rows every time.
+  // Rows carry contributions + stockAlloc (not displayed) so the reconciliation
+  // identity is checkable from the exposed rows alone:
+  //   end = start*(1 + stockAlloc*stockReturn + (1-stockAlloc)*bondReturn)
+  //         + contributions - withdrawals + windfall(that age)     [while solvent]
+  function tableRowsOf(log) {
+    return log.map(function (y) {
+      return {
+        age: y.age, balanceAge: y.balanceAge,
+        startBalance: y.startingBalance,
+        wages: y.wages || 0,
+        ss: y.ssIncome || 0,
+        pensionOther: (y.pensionIncome || 0) + (y.partTimeIncome || 0),
+        // NOTE (verified V19.2): the engine's logged totalWithdrawal is DISCRETIONARY
+        // only — RMDs are withdrawn first and logged separately in `rmd` (same reason
+        // the paycheck sums rmd + wd*). Total portfolio outflow is the sum of both.
+        withdrawals: (y.totalWithdrawal || 0) + (y.rmd || 0),
+        expenses: y.spending || 0,
+        taxes: y.taxBill || 0,
+        endBalance: y.totalBal,
+        inflation: y.inflation || 1,          // cumulative (1+infl)^i for this row's cash flows
+        stockAlloc: y.stockAlloc,
+        contributions: (y.employeeContribution || 0) + (y.employerContribution || 0),
+        solvent: y.isSolvent !== false
+      };
+    });
+  }
+  function tableViewOf(result) {
+    return { rows: tableRowsOf(result.log), depletionAge: result.depletionAge,
+      solvent: !!result.solvent, finalBalance: result.finalBalance };
+  }
+  function buildYearTables(real, sortedResults) {
+    var steadyReal = Object.assign({}, real, { stockVol: 0, bondVol: 0, numPaths: 1 });
+    var steady = window.simulatePath(steadyReal, 0);
+    var n = sortedResults.length;
+    return {
+      average: tableViewOf(steady),
+      rough: tableViewOf(sortedResults[Math.floor(n * 0.10)]),
+      strong: tableViewOf(sortedResults[Math.floor(n * 0.90)])
+    };
+  }
+
   function compute(params) {
     var m = normalizeParams(params).params;   // validate + clamp every entry point (incl. numPaths)
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
       return { params: m, successRate: 0, numPaths: m.numPaths || 5000, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
         levers: [], medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
-        path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0 };
+        path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0, yearTables: null };
     }
     var real = mapToReal(m, m.numPaths || 5000);
     var goal = m.legacyGoal || 0;            // flat future-dollar target the plan must end at/above
@@ -374,6 +424,9 @@
     }
     var paths = results.map(function (r) { return { path: buildBalancePath(r.log, m) }; });
 
+    // V19.2: year-by-year table views (one extra 1-path steady run + two already-simulated paths)
+    var yearTables = buildYearTables(real, results);
+
     var totalSavings = initialPortfolioBalance(m);
 
     var v = verdictFor(successRate);
@@ -381,7 +434,8 @@
       params: m, successRate: successRate, numPaths: real.numPaths,
       sustainableSpending: sustainableSpending, runwayYears: runwayYears, medianLegacy: medianLegacy,
       levers: buildLevers(m, real), paycheck: paycheck,
-      path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings
+      path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
+      yearTables: yearTables
     }, v);
   }
 

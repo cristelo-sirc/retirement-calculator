@@ -242,4 +242,141 @@ function ScenarioCompareChart({ params, theme: th, labelWidth = 168 }) {
   );
 }
 
-Object.assign(window, { BalanceFanChart, IncomeSourceChart, GlidePathChart, ScenarioCompareChart, rcVerdictColor });
+// ── V19.2: Year-by-year table — three coherent "storyline" views ───────────
+// Collapsed by default (an expander at the bottom of the Projection screen).
+// Views come from results.yearTables (adapter): Average = one steady vol=0 run;
+// Rough/Strong = the actual simulated paths at the 10th/90th percentile rank of
+// final outcome. Every row reconciles — this doubles as an engine spot-check.
+function YearByYearTable({ results, theme: th }) {
+  const [open, setOpen] = React.useState(false);
+  const [view, setView] = React.useState('average');
+  const [todays, setTodays] = React.useState(false);
+  const yt = results.yearTables;
+  if (!yt) return null;
+  const params = results.params;
+  const fmt$ = n => (n < 0 ? '-$' : '$') + Math.abs(Math.round(n)).toLocaleString();
+  const VIEWS = [
+    { id: 'average', label: 'Average markets', blurb: 'Markets earn their long-run average every year — the baseline.' },
+    { id: 'rough', label: 'Rough markets', blurb: 'A bad run of luck. Only 1 in 10 futures turns out worse than this.' },
+    { id: 'strong', label: 'Strong markets', blurb: 'A good run of luck. Only 1 in 10 futures turns out better.' }
+  ];
+  const v = yt[view] || yt.average;
+  const rows = v.rows || [];
+  const inflRate = (params.inflation || 0) / 100;
+  // Today's-$ deflators: cash flows and the start balance use the row's own cumulative
+  // inflation; the END balance sits on the NEXT birthday, so it uses the next row's
+  // factor — that keeps "End balance" equal to the next row's "Start balance" in BOTH
+  // dollar modes (the spot-check property must survive the toggle).
+  const endFactor = i => (rows[i + 1] ? rows[i + 1].inflation : rows[i].inflation * (1 + inflRate));
+  const d = (val, f) => (todays ? val / f : val);
+  const segBtn = (active) => ({
+    padding: '9px 14px', cursor: 'pointer', fontFamily: th.body, fontSize: 12,
+    letterSpacing: '0.04em', border: `1px solid ${th.ink}`, marginLeft: -1,
+    background: active ? th.ink : th.paper, color: active ? th.paper : th.ink
+  });
+  const thStyle = {
+    position: 'sticky', top: 0, zIndex: 1, background: th.paper, textAlign: 'right',
+    padding: '8px 10px', fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase',
+    color: th.ink70, borderBottom: `1.5px solid ${th.ink}`, fontFamily: th.body, whiteSpace: 'nowrap'
+  };
+  const tdStyle = {
+    textAlign: 'right', padding: '6px 10px', fontSize: 12.5, color: th.ink,
+    fontVariantNumeric: 'tabular-nums', fontFamily: th.body, whiteSpace: 'nowrap'
+  };
+  const COLS = [
+    { key: 'age', label: 'Age', left: true },
+    { key: 'startBalance', label: 'Start balance' },
+    { key: 'wages', label: 'Wages' },
+    { key: 'ss', label: 'Social Security' },
+    { key: 'pensionOther', label: 'Pension & other' },
+    { key: 'withdrawals', label: 'Portfolio withdrawals' },
+    { key: 'expenses', label: 'Expenses' },
+    { key: 'taxes', label: 'Taxes' },
+    { key: 'endBalance', label: 'End balance' }
+  ];
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{
+        display: 'block', padding: '14px 22px', cursor: 'pointer', background: 'transparent',
+        border: `1px solid ${th.ink}`, color: th.ink, fontFamily: th.body, fontSize: 12.5,
+        letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        See the year-by-year numbers &darr;
+      </button>
+    );
+  }
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ display: 'flex' }}>
+          {VIEWS.map(o => (
+            <button key={o.id} onClick={() => setView(o.id)} style={segBtn(view === o.id)}>{o.label}</button>
+          ))}
+        </div>
+        <div style={{ display: 'flex' }}>
+          {[{ id: false, label: 'Future dollars' }, { id: true, label: "Today's dollars" }].map(o => (
+            <button key={String(o.id)} onClick={() => setTodays(o.id)} style={segBtn(todays === o.id)}>{o.label}</button>
+          ))}
+        </div>
+        <button onClick={() => setOpen(false)} style={{ marginLeft: 'auto', background: 'transparent',
+          border: 'none', cursor: 'pointer', color: th.ink50, fontFamily: th.body, fontSize: 12 }}>
+          Hide table &uarr;
+        </button>
+      </div>
+      <div style={{ fontSize: 13, color: th.ink70, fontFamily: th.body, margin: '0 0 14px', lineHeight: 1.5 }}>
+        {VIEWS.find(o => o.id === view).blurb}
+      </div>
+      {v.depletionAge != null && (
+        <div style={{ padding: '10px 14px', marginBottom: 14, border: `1px solid ${th.clay}`,
+          background: th.claySoft, color: th.clay, fontFamily: th.body, fontSize: 13.5 }}>
+          In this storyline, the money runs out at age {v.depletionAge}.
+        </div>
+      )}
+      <div style={{ maxHeight: 430, overflowY: 'auto', border: `1px solid ${th.ink}`, background: th.paper }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              {COLS.map(c => (
+                <th key={c.key} style={{ ...thStyle, textAlign: c.left ? 'left' : 'right' }}>{c.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => {
+              const broke = !r.solvent;
+              const retireYear = r.age === params.retireAge;
+              const rowBg = broke ? th.claySoft : (i % 2 ? th.paperWarm : th.paper);
+              return (
+                <tr key={r.age} style={{ background: rowBg,
+                  borderTop: retireYear ? `2px solid ${th.ink}` : `1px solid ${th.rule}` }}>
+                  <td style={{ ...tdStyle, textAlign: 'left', fontWeight: retireYear ? 700 : 400 }}>
+                    {r.age}{retireYear ? ' · retire' : ''}
+                  </td>
+                  <td style={tdStyle}>{fmt$(d(r.startBalance, r.inflation))}</td>
+                  <td style={tdStyle}>{r.wages ? fmt$(d(r.wages, r.inflation)) : '—'}</td>
+                  <td style={tdStyle}>{r.ss ? fmt$(d(r.ss, r.inflation)) : '—'}</td>
+                  <td style={tdStyle}>{r.pensionOther ? fmt$(d(r.pensionOther, r.inflation)) : '—'}</td>
+                  <td style={tdStyle}>{r.withdrawals ? fmt$(d(r.withdrawals, r.inflation)) : '—'}</td>
+                  <td style={tdStyle}>{r.expenses ? fmt$(d(r.expenses, r.inflation)) : '—'}</td>
+                  <td style={tdStyle}>{r.taxes ? fmt$(d(r.taxes, r.inflation)) : '—'}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt$(d(r.endBalance, endFactor(i)))}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ fontSize: 11, color: th.ink50, marginTop: 10, fontFamily: th.body, lineHeight: 1.6 }}>
+        Each row covers the year that begins at that age; End balance is measured on the following
+        birthday and matches the next row's Start balance. Wages are take-home pay after retirement
+        contributions. Expenses combine everyday spending, housing, and healthcare. Portfolio
+        withdrawals include required minimum distributions.
+        {view === 'average' && (' The Average view usually finishes above the projection chart’s median line: '
+          + 'a steady ride beats a bumpy one with the same average return when you’re withdrawing.')}
+        {todays && ' Today’s dollars remove assumed inflation so amounts are comparable to your budget now.'}
+        {params.enableWindfall && ` A windfall of ${fmt$(params.windfallAmount)} arrives at age ${params.windfallAge} (it appears in the balance, not as income).`}
+      </div>
+    </div>
+  );
+}
+
+Object.assign(window, { BalanceFanChart, IncomeSourceChart, GlidePathChart, ScenarioCompareChart, YearByYearTable, rcVerdictColor });

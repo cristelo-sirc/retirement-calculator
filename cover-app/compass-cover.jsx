@@ -71,7 +71,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.1', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.2', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -349,7 +349,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.1</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.2</div>
         </div>
       </section>
     </div>
@@ -536,7 +536,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.1">
+    <CoverChrome active="rework" tag="V19.2">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Rework the Cover · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -636,7 +636,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.1">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.2">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Projection · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -672,6 +672,13 @@ function CoverCharts(props) {
           <CoverBigStat big={fmt(results.sustainableSpending, { compact: true })} label="Safe to spend / yr" />
           <CoverBigStat big={`${results.runwayYears}`} unit="yrs" label="Runway in retirement" />
         </div>
+
+        {/* V19.2: year-by-year table — collapsed expander at the bottom (per Cris).
+            Three storyline views (Average / Rough / Strong markets) + dollars toggle. */}
+        <div style={{ marginTop: 48, paddingTop: 36, borderTop: `1px solid ${cvStyles.rule}` }}>
+          <div style={{ ...cvKicker, marginBottom: 14 }}>The year-by-year numbers</div>
+          <YearByYearTable results={results} theme={theme} />
+        </div>
       </div>
     </CoverChrome>
   );
@@ -687,7 +694,7 @@ function CoverCharts2(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework/Projection.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="charts2" tag="V19.1">
+    <CoverChrome active="charts2" tag="V19.2">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>How your mix shifts</div>
         {!dirty && (
@@ -795,7 +802,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.1</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.2</div>
       </div>
     </div>
   );
