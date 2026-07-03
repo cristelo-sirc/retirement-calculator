@@ -69,7 +69,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.0', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.1', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
