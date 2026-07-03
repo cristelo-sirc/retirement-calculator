@@ -1,8 +1,8 @@
 // cover-mobile.jsx — 07 · Cover · Mobile
-// Phone view of the magazine-cover concept. Two tabs:
-//   • Cover        — the hero success number, verdict, paycheck, and the moves.
-//   • Questionnaire — the "everything shown" intake, single-column, with an
-//                     Advanced toggle for the assumption-level dials.
+// Phone view of the magazine-cover concept. Two tabs (renamed V19.3 to match desktop):
+//   • Results    — the hero success number, verdict, paycheck, and the moves.
+//   • Input Data — the "everything shown" intake, single-column, with an
+//                  Advanced toggle for the assumption-level dials.
 // Reuses window.cvStyles / window.FIELD_INFO / window.InfoTip / window.MockEngine
 // and window.CVI_STATES. Loaded after compass-cover.jsx + cover-inputs.jsx.
 
@@ -154,6 +154,10 @@
 
   // ── The two views ─────────────────────────────────────────────────────────
   function CoverView({ results, vc, partner, dirty, goQuiz, params, setParams }) {
+    // V19.3: exact move deltas at the FULL path count, from the same computeMoves
+    // source the desktop Results cards and Try Changes bars read.
+    const moves = React.useMemo(() => ME.computeMoves(params, results.successRate), [params, results]);
+    const moveCards = moves.moves.filter(l => l.delta >= 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
     return (
       <div style={{ padding: '22px 20px 28px' }}>
         <div style={{ textAlign: 'center', paddingBottom: 22, marginBottom: 22,
@@ -174,12 +178,12 @@
           <div style={{ fontFamily: cm.display, fontSize: 38, color: vc, lineHeight: 1, marginBottom: 10,
             transition: 'color 300ms' }}>{results.verdictWord}.</div>
           <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
-            textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Answer the questionnaire and this fills in with your real plan.'}</p>
+            textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and this fills in with your real plan.'}</p>
           {!dirty && (
             <button onClick={goQuiz} style={{ marginTop: 16, padding: '13px 22px', background: cm.ink,
               color: cm.paper, border: 'none', cursor: 'pointer', fontFamily: cm.body, fontSize: 11.5,
               letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
-              Start the questionnaire →</button>
+              Enter your data →</button>
           )}
         </div>
 
@@ -200,7 +204,7 @@
         <section>
           <div style={{ ...mKick, marginBottom: 12 }}>Three moves that buy better odds</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {results.levers.map(l => (
+            {moveCards.map(l => (
               <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 gap: 14, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '13px 15px' }}>
                 <div>
@@ -223,12 +227,12 @@
     const [adv, setAdv] = React.useState(false);
     return (
       <div style={{ padding: '24px 20px 28px' }}>
-        <div style={{ ...mKick, textAlign: 'center', marginBottom: 8 }}>The Questionnaire · Detailed</div>
+        <div style={{ ...mKick, textAlign: 'center', marginBottom: 8 }}>Input Data · Detailed</div>
         <h1 style={{ fontFamily: cm.display, fontSize: 38, lineHeight: 1.05, textAlign: 'center',
           margin: '0 0 10px', letterSpacing: '-0.01em' }}>A few questions.</h1>
         <p style={{ fontSize: 13.5, lineHeight: 1.55, color: cm.ink70, textAlign: 'center',
           margin: '0 auto 24px', maxWidth: 320, textWrap: 'pretty' }}>
-          Every input the cover uses, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
+          Every input your results use, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
         </p>
 
         {!hideReturning && (
@@ -440,7 +444,7 @@
         {/* bottom tab nav */}
         <nav style={{ borderTop: `1px solid ${cm.ink}`, background: cm.paper, display: 'flex',
           padding: '0 0 20px', flex: '0 0 auto' }}>
-          {[{ id: 'cover', label: 'Cover' }, { id: 'quiz', label: 'Questionnaire' }].map(t => {
+          {[{ id: 'cover', label: 'Results' }, { id: 'quiz', label: 'Input Data' }].map(t => {
             const cta = !dirty && t.id === 'quiz' && tab !== 'quiz';
             return (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, textAlign: 'center',

@@ -189,19 +189,17 @@ function GlidePathChart({ results, theme: th, width = 860, height = 240 }) {
 }
 
 // ── Success odds across what-if moves (horizontal bars) ───────────────────
-function ScenarioCompareChart({ params, theme: th, labelWidth = 168 }) {
-  const q = window.MockEngine.quickSuccess;
-  const base = React.useMemo(() => q(params), [params]);
-  const rows = React.useMemo(() => {
-    const lower = Math.round(params.spending * 0.9 / 1000) * 1000;
-    return [
-      { id: 'base', label: 'Your plan today', rate: base, note: 'as entered' },
-      { id: 'delay', label: 'Retire 2 years later', rate: q({ ...params, retireAge: params.retireAge + 2 }), note: `at ${params.retireAge + 2}` },
-      { id: 'spend', label: 'Spend 10% less', rate: q({ ...params, spending: lower }), note: `$${Math.round(lower / 1000)}k/yr` },
-      { id: 'ss', label: 'Claim SS at 70', rate: q({ ...params, ssClaimAge: 70, spouseClaimAge: 70 }), note: 'delayed' },
-      { id: 'all', label: 'All three together', rate: q({ ...params, retireAge: params.retireAge + 2, spending: lower, ssClaimAge: 70, spouseClaimAge: 70 }), note: 'combined' },
-    ];
-  }, [params, base]);
+// V19.3: no longer computes its own odds. Takes precomputed `data` from
+// window.MockEngine.computeMoves() — the SAME full-path-count runs that feed the
+// Results move cards — so a move can never show two different values on two screens.
+function ScenarioCompareChart({ data, theme: th, labelWidth = 168, baseLabel }) {
+  if (!data) return null;
+  const base = data.base;
+  const rows = [
+    { id: 'base', label: baseLabel || 'Your plan today', rate: base, note: 'as entered' },
+    ...data.moves.map(m => ({ id: m.id, label: m.title, rate: m.rate, note: m.note })),
+    ...(data.combined ? [{ id: 'all', label: 'All together', rate: data.combined.rate, note: 'combined' }] : []),
+  ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontFamily: th.body }}>
       {rows.map(r => {
