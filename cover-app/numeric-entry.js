@@ -1,4 +1,4 @@
-// numeric-entry.js — V19.0 shared parsing and stepping rules for questionnaire inputs.
+// numeric-entry.js — V19.1 shared parsing and stepping rules for questionnaire inputs.
 (function (root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;

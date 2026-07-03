@@ -109,6 +109,22 @@ function CSegment({ value, onChange, theme }) {
   );
 }
 
+// V19.1: small persistent score readout in the sticky masthead (via CoverChrome's
+// rightExtra) so the number is visible while editing fields further down the page,
+// not only at the bottom. Reads the same `results` the rest of the screen already
+// computes — no extra recompute, so it updates exactly when a field commit does.
+function CviScoreChip({ score, vc, dirty }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '4px 10px',
+      border: `1px solid ${vc}`, whiteSpace: 'nowrap' }}>
+      {!dirty && <span style={{ fontFamily: cvi.body, fontSize: 8.5, letterSpacing: '0.1em',
+        textTransform: 'uppercase', color: cvi.clay }}>Sample</span>}
+      <span style={{ fontFamily: cvi.display, fontSize: 19, color: vc, lineHeight: 1 }}>{score}</span>
+      <span style={{ fontFamily: cvi.display, fontSize: 10.5, color: cvi.ink50 }}>/100</span>
+    </div>
+  );
+}
+
 // Dropdown field — same label + helper + info treatment as CField.
 function CSelect({ field, label, value, onChange, options, theme }) {
   const info = field && window.FIELD_INFO[field];
@@ -174,7 +190,7 @@ const CVI_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI',
   'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH',
   'OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => ({ v: s, label: s }));
 
-function CoverInputs(props) { const { mode = 'essentials', params: extP, setParams: extSP } = props || {};
+function CoverInputs(props) { const { mode = 'essentials', params: extP, setParams: extSP, freshStart } = props || {};
   const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = extP || localParams; const setParams = extSP || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
@@ -185,9 +201,13 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   // Questionnaire values stay exact after entry; compact rounding belongs on summary screens.
   const money = v => fmt(v);
   const detailed = mode === 'detailed';
+  // V19.1: dirty = the plan has been touched at least once (vs. sitting on DEFAULTS).
+  // Drives the "sample" labeling and the live score chip below, matching every other screen.
+  const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag={`Concept 07 / Cover · Questionnaire · ${detailed ? 'Option B — everything shown' : 'Option A — essentials + reveal'}`}>
+    <window.CoverChrome active="quiz" tag="V19.1"
+      rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
           The Questionnaire · {detailed ? 'Detailed' : 'Essentials'}
@@ -201,10 +221,12 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             : 'Answer the essentials; open “Show more” in any section for the finer dials. Every field explains itself, and the number on your cover updates as you go.'}
         </p>
 
-        <div style={{ maxWidth: 760, margin: '0 auto 36px' }}>
-          <window.CoverSaveLoadCallout params={params} setParams={setParams}
-            prompt="Returning? Load your saved plan — no need to re-enter everything." primary="load" />
-        </div>
+        {!freshStart && (
+          <div style={{ maxWidth: 760, margin: '0 auto 36px' }}>
+            <window.CoverSaveLoadCallout params={params} setParams={setParams}
+              prompt="Returning? Load your saved plan — no need to re-enter everything." primary="load" />
+          </div>
+        )}
 
         {/* Who the plan is for */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
@@ -367,7 +389,13 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
         <div style={{ marginTop: 44, border: `1px solid ${cvi.ink}`, background: cvi.paperWarm,
           padding: '32px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 32 }}>
           <div>
-            <div style={{ ...cviKicker, marginBottom: 6 }}>Your number, so far</div>
+            {!dirty && (
+              <div style={{ display: 'inline-block', marginBottom: 10, padding: '4px 10px',
+                border: `1px solid ${cvi.clay}`, color: cvi.clay, background: cvi.claySoft,
+                fontFamily: cvi.body, fontSize: 9.5, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                Sample plan · not your numbers yet</div>
+            )}
+            <div style={{ ...cviKicker, marginBottom: 6 }}>{dirty ? 'Your number, so far' : 'Sample number, so far'}</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
               <span style={{ fontFamily: cvi.display, fontSize: 96, lineHeight: 0.9, color: vc, transition: 'color 300ms' }}>{results.successRate}</span>
               <span style={{ fontFamily: cvi.display, fontSize: 30, color: cvi.ink50 }}>/100</span>

@@ -191,7 +191,7 @@
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
-            At {results.paycheck.atAge}, {partner ? "you'll both" : "you'll"} need{' '}
+            At {results.paycheck.atAge}{window.cvPaycheckNote ? window.cvPaycheckNote(params) : ''}, {partner ? "you'll both" : "you'll"} need{' '}
             {ME.formatCurrency(results.paycheck.total)}/mo.
           </p>
           <MPaycheck paycheck={results.paycheck} />
@@ -219,7 +219,7 @@
     );
   }
 
-  function QuizView({ params, update, setParams, vc, partner, results }) {
+  function QuizView({ params, update, setParams, vc, partner, results, hideReturning, dirty }) {
     const [adv, setAdv] = React.useState(false);
     return (
       <div style={{ padding: '24px 20px 28px' }}>
@@ -231,10 +231,12 @@
           Every input the cover uses, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
         </p>
 
-        <div style={{ marginBottom: 26 }}>
-          <window.CoverSaveLoadCallout params={params} setParams={setParams}
-            prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
-        </div>
+        {!hideReturning && (
+          <div style={{ marginBottom: 26 }}>
+            <window.CoverSaveLoadCallout params={params} setParams={setParams}
+              prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
+          </div>
+        )}
 
         <div style={{ marginBottom: 28 }}>
           <div style={{ ...mKick, marginBottom: 8 }}>This plan is for</div>
@@ -374,7 +376,13 @@
 
         {/* Result card */}
         <div style={{ marginTop: 30, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '20px 22px' }}>
-          <div style={{ ...mKick, marginBottom: 6 }}>Your number, so far</div>
+          {!dirty && (
+            <div style={{ display: 'inline-block', marginBottom: 8, padding: '3px 8px',
+              border: `1px solid ${cm.clay}`, color: cm.clay, background: cm.claySoft,
+              fontFamily: cm.body, fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              Sample plan · not your numbers yet</div>
+          )}
+          <div style={{ ...mKick, marginBottom: 6 }}>{dirty ? 'Your number, so far' : 'Sample number, so far'}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
             <span style={{ fontFamily: cm.display, fontSize: 64, lineHeight: 0.9, color: vc, transition: 'color 300ms' }}>{results.successRate}</span>
             <span style={{ fontFamily: cm.display, fontSize: 22, color: cm.ink50 }}>/100</span>
@@ -392,6 +400,11 @@
   function CoverMobile(props) {
     props = props || {};
     const [tab, setTab] = React.useState(props.initialTab || 'cover');
+    // V19.1: suppress the "Returning? Load your saved plan" callout only for the one
+    // visit right after Welcome → "Start a new plan" (props.freshStart). The moment the
+    // user leaves the Questionnaire tab, treat any later visit as a normal return.
+    const [suppressReturning, setSuppressReturning] = React.useState(!!props.freshStart);
+    React.useEffect(() => { if (tab !== 'quiz' && suppressReturning) setSuppressReturning(false); }, [tab]);
     const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
     const results = React.useMemo(() => ME.compute(params), [params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
@@ -402,17 +415,26 @@
     return (
       <div style={{ width: '100%', height: '100%', background: cm.paper, color: cm.ink,
         fontFamily: cm.body, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* masthead */}
+        {/* masthead — the tab bar keeps this outside the scrolling <main>, so on the
+            Questionnaire tab it doubles as a sticky live-score chip (V19.1). */}
         <header style={{ padding: '10px 20px 12px', borderBottom: `1px solid ${cm.ink}`, flex: '0 0 auto',
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ fontFamily: cm.display, fontSize: 24, lineHeight: 1 }}>Compass</div>
-          <div style={{ ...mKick, fontSize: 8.5 }}>The Retirement Issue · No. 5</div>
+          {tab === 'quiz'
+            ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px',
+                border: `1px solid ${vc}`, whiteSpace: 'nowrap' }}>
+                {!dirty && <span style={{ fontFamily: cm.body, fontSize: 7.5, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', color: cm.clay }}>Sample</span>}
+                <span style={{ fontFamily: cm.display, fontSize: 16, color: vc, lineHeight: 1 }}>{results.successRate}</span>
+                <span style={{ fontFamily: cm.display, fontSize: 9, color: cm.ink50 }}>/100</span>
+              </div>
+            : <div style={{ ...mKick, fontSize: 8.5 }}>The Retirement Issue · No. 5</div>}
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           {tab === 'cover'
             ? <CoverView results={results} vc={vc} partner={partner} dirty={dirty} goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
-            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} />}
+            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} hideReturning={suppressReturning} dirty={dirty} />}
         </main>
 
         {/* bottom tab nav */}

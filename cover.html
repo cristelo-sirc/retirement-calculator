@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Compass &middot; The Retirement Issue &middot; V19.0</title>
+  <title>Compass &middot; The Retirement Issue &middot; V19.1</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,18 +19,18 @@
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
   <!-- Real engine adapter: defines window.MockEngine and loads engine.js (math) after DOMContentLoaded -->
-  <script src="cover-app/real-engine.js?v=19.0"></script>
+  <script src="cover-app/real-engine.js?v=19.1"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- The mockup design components (the exact handoff UI) -->
-  <script src="cover-app/numeric-entry.js?v=19.0"></script>
-  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.0"></script>
-  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.0"></script>
-  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.0"></script>
-  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.0"></script>
-  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.0"></script>
+  <script src="cover-app/numeric-entry.js?v=19.1"></script>
+  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.1"></script>
+  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.1"></script>
+  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.1"></script>
+  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.1"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.1"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
@@ -55,7 +55,17 @@
         } catch (e) { return false; }
       });
       const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
-      useEffect(() => { window._coverNav = (id) => setScreen(id); }, []);
+      // V19.1: freshStart is a one-shot flag — true only for the visit right after
+      // Welcome → "Start a new plan", so the Questionnaire's "Returning? Load your saved
+      // plan" callout doesn't contradict a choice the user just made. Any navigation away
+      // from the Questionnaire clears it, so a later return is treated normally.
+      const [freshStart, setFreshStart] = useState(false);
+      useEffect(() => { window._coverNav = (id) => { setScreen(id); if (id !== 'quiz') setFreshStart(false); }; }, []);
+      // V19.1: Cover is read-only; tapping one of its move cards opens Rework with that
+      // move already staged as an unpublished draft. stageLever is a one-shot id, cleared
+      // by CoverAdjust once it has applied the matching lever.
+      const [stageLever, setStageLever] = useState(null);
+      const openReworkWithLever = (leverId) => { setStageLever(leverId); setScreen('rework'); };
       useEffect(() => {
         const onResize = () => setIsMobile(window.innerWidth < 769);
         window.addEventListener('resize', onResize);
@@ -70,18 +80,19 @@
         if (hasSession && !window.confirm('Starting a new plan replaces the plan saved in this browser. You can Save it to a file first. Continue?')) return;
         setParams(window.MockEngine.DEFAULTS);
         setScreen('quiz');
+        setFreshStart(true);
         setStarted(true);
       };
 
       if (!started) return <CoverWelcome hasSession={hasSession} onContinue={beginContinue} onStartNew={beginNew} onLoaded={beginLoad} />;
 
       const shared = { params, setParams };
-      if (isMobile)             return <CoverMobile {...shared} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} />;
-      if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} />;
-      if (screen === 'rework')  return <CoverAdjust {...shared} />;
+      if (isMobile)             return <CoverMobile {...shared} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} freshStart={freshStart} />;
+      if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} freshStart={freshStart} />;
+      if (screen === 'rework')  return <CoverAdjust {...shared} stageLever={stageLever} onLeverStaged={() => setStageLever(null)} />;
       if (screen === 'chart')   return <CoverCharts {...shared} />;
       if (screen === 'charts2') return <CoverCharts2 {...shared} />;
-      return <CoverDesktop {...shared} />;
+      return <CoverDesktop {...shared} onOpenRework={openReworkWithLever} />;
     }
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
