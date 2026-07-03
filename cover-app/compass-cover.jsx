@@ -462,15 +462,18 @@ function CoverNav({ active, emphasizeQuiz }) {
   );
 }
 
-function CoverChrome({ active, children, bg, tag }) {
+function CoverChrome({ active, children, bg, tag, rightExtra }) {
   return (
     <div style={{ width: '100%', height: '100%', background: bg || cvStyles.paper, color: cvStyles.ink,
       fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden' }}>
       <div style={{ padding: '30px 64px 0', background: cvStyles.paper,
         borderBottom: `1px solid ${cvStyles.ink}`, position: 'sticky', top: 0, zIndex: 5 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ fontFamily: cvStyles.display, fontSize: 30, lineHeight: 1 }}>Compass</div>
-          <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
+            {rightExtra}
+          </div>
         </div>
         <CoverNav active={active} />
       </div>
@@ -500,6 +503,10 @@ function CoverAdjust(props) {
   const resetAll = () => setSc({ retireAge: params.retireAge, spending: params.spending, ssClaimAge: params.ssClaimAge, spouseClaimAge: params.spouseClaimAge });
   const commit = () => setParams(p => ({ ...p, ...sc }));
   const anyChange = sc.retireAge !== params.retireAge || sc.spending !== params.spending || sc.ssClaimAge !== params.ssClaimAge || sc.spouseClaimAge !== params.spouseClaimAge;
+  // V19.1: honest sample-state labeling, matching Cover/Questionnaire.
+  const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
+  const filedNoun = dirty ? 'filed plan' : 'sample plan';
+  const filedShort = dirty ? 'as filed' : 'as sample';
 
   // Idempotent lever targets — pressing again just re-sets the same value.
   const levers = [
@@ -532,9 +539,18 @@ function CoverAdjust(props) {
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Rework the Cover · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
           letterSpacing: '-0.01em' }}>Move a dial. Watch the number.</h1>
+        {!dirty && (
+          <div style={{ textAlign: 'center', marginBottom: 10 }}>
+            <span style={{ display: 'inline-block', padding: '5px 12px',
+              border: `1px solid ${cvStyles.clay}`, color: cvStyles.clay, background: cvStyles.claySoft,
+              fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+              Sample plan · not your numbers yet</span>
+          </div>
+        )}
         <p style={{ textAlign: 'center', fontSize: 14, color: cvStyles.ink70, margin: '0 auto 36px', maxWidth: 520, lineHeight: 1.6 }}>
-          Every change is just a draft — your filed plan ({base.successRate}/100) stays put until you publish.
+          Every change is just a draft — this {filedNoun} ({base.successRate}/100) stays put until you publish.
           A tag shows exactly what you've changed, and resets it in one click.
+          {!dirty && ' These are example numbers — answer the questionnaire for your real plan.'}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'start' }}>
@@ -546,9 +562,9 @@ function CoverAdjust(props) {
             <div style={{ fontFamily: cvStyles.display, fontSize: 40, color: vc, lineHeight: 1 }}>{proposed.verdictWord}.</div>
             <div style={{ fontSize: 14, marginTop: 14, color: delta >= 0 ? cvStyles.sage : cvStyles.clay,
               fontWeight: 600 }}>
-              {delta > 0 ? `↑ ${delta} better than as filed (${base.successRate})`
-                : delta < 0 ? `↓ ${Math.abs(delta)} worse than as filed (${base.successRate})`
-                : `Same as filed (${base.successRate})`}
+              {delta > 0 ? `↑ ${delta} better than ${filedShort} (${base.successRate})`
+                : delta < 0 ? `↓ ${Math.abs(delta)} worse than ${filedShort} (${base.successRate})`
+                : `Same ${filedShort} (${base.successRate})`}
             </div>
           </div>
 
@@ -615,10 +631,18 @@ function CoverCharts(props) {
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const fmt = window.MockEngine.formatCurrency;
   const theme = cvTheme(cvVerdictColor(results.verdict));
+  // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
+  const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
     <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.1">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Projection · {(results.numPaths || 0).toLocaleString()} paths</div>
+        {!dirty && (
+          <div style={{ display: 'inline-block', marginBottom: 14, padding: '5px 12px',
+            border: `1px solid ${cvStyles.clay}`, color: cvStyles.clay, background: cvStyles.claySoft,
+            fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+            Sample plan · not your numbers yet</div>
+        )}
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 52, margin: '0 0 8px',
           letterSpacing: '-0.01em', lineHeight: 1.05 }}>Where the money goes,<br />year by year.</h1>
         <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 600, margin: '0 0 32px' }}>
@@ -658,10 +682,18 @@ function CoverCharts2(props) {
   props = props || {}; const [localParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const theme = cvTheme(cvVerdictColor(results.verdict));
+  // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework/Projection.
+  const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
     <CoverChrome active="charts2" tag="V19.1">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>How your mix shifts</div>
+        {!dirty && (
+          <div style={{ display: 'inline-block', marginBottom: 14, padding: '5px 12px',
+            border: `1px solid ${cvStyles.clay}`, color: cvStyles.clay, background: cvStyles.claySoft,
+            fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+            Sample plan · not your numbers yet</div>
+        )}
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 46, margin: '0 0 8px', letterSpacing: '-0.01em', lineHeight: 1.05 }}>
           Stocks now, steadier later.
         </h1>
