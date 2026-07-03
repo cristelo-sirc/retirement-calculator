@@ -1,5 +1,13 @@
 # Change log
 
+## 19.2.0 — 2026-07-03
+
+- Added a year-by-year table to the Projection page (collapsed behind a "See the year-by-year numbers" button) showing age, starting balance, wages, Social Security, pension and other income, portfolio withdrawals, expenses, taxes, and ending balance for every year of the plan.
+- The table offers three views: Average markets (returns at their long-run average every year), Rough markets (an actual unlucky simulated future — only 1 in 10 turn out worse), and Strong markets (an actual lucky one — only 1 in 10 turn out better).
+- Amounts can be shown in future dollars (default, matching the charts) or today's dollars; each year's ending balance always equals the next year's starting balance in both modes.
+- When a view runs out of money, the table says so plainly ("the money runs out at age 84") and tints the affected years.
+- Added permanent automated checks proving every year's numbers reconcile exactly with the simulation — the table doubles as an ongoing engine spot-check.
+
 ## 19.1.0 — 2026-07-03
 
 - Removed leftover internal labels from every screen's footer.

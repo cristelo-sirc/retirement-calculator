@@ -13,7 +13,7 @@ See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.1
+**Current Version:** 19.2
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -35,6 +35,25 @@ record; this file is the technical source of truth; `CLAUDE-legacy.md` preserves
 - **Version references show number only** (e.g., "V18.1") &mdash; no descriptive names or subtitles after the version number
 - **Claude is responsible for all testing** &mdash; Cris does not test. After every change, Claude must deploy (push to GitHub), then conduct live browser testing against the GitHub Pages URL via Chrome MCP. This includes interacting with UI elements, verifying visual output, and testing at both desktop (1680px) and mobile (375px) viewports. Do not mark a task complete until live browser testing passes.
 - **Keep responses succinct** &mdash; alert at 75% context capacity before compaction needed
+
+### Model &amp; Subagent Policy (standing rule, added 2026-07-03)
+
+Two-layer workflow to conserve usage without compromising accuracy:
+
+- **The session model is the brain.** Planning, risk analysis, code review, deploy/git operations, and the
+  final live-browser audit are done by the main chat session model &mdash; never delegated. Cris selects the
+  session model in the app (Fable while available; Opus thereafter).
+- **Sonnet subagents execute mechanical steps.** Once a plan is approved, well-specified mechanical work
+  (version/cache-buster bumps, copy changes, UI relocations, test boilerplate) may be delegated to a subagent.
+  **Always explicitly set the subagent model to Sonnet** &mdash; an unspecified subagent inherits the session
+  model, silently defeating the savings.
+- **Subagent briefs must be self-contained.** Subagents start cold with none of the chat context. Each brief
+  must include: exact files and exact changes, completion criteria, and the relevant environment gotchas
+  (FUSE mount cannot unlink/rename &mdash; no git writes in this folder; cache-buster discipline on every
+  content change; HTML entities not Unicode).
+- **Never delegate:** `engine.js` math, adapter scoring logic (`real-engine.js` success/scoring), anything
+  where accuracy risk was flagged, git/deploy, or verification. The session model audits ALL subagent output
+  against the plan before proceeding.
 
 ## Core Principles
 
@@ -99,6 +118,11 @@ The solver uses a deterministic RNG (`mulberry32` seeded PRNG) so identical mark
 **Withdrawal breakdown:** `wdTaxable`, `wdPreTax`, `wdRoth`, `discretionaryWithdrawal`
 - `wdPreTax` = discretionary pre-tax only (does NOT include RMD &mdash; RMD is tracked separately in `rmd`)
 - RMDs are withdrawn before discretionary withdrawals in the tax convergence loop
+- **`totalWithdrawal` is DISCRETIONARY ONLY (verified 2026-07-03, V19.2):** it sums the converged
+  `wdTaxable + wdPreTax + wdRoth` and does NOT include RMD. Total portfolio outflow = `rmd +
+  totalWithdrawal` (how the V18.11 paycheck and the V19.2 table both compute it). The
+  `discretionaryWithdrawal` field (`max(0, totalWithdrawal - totalRmd)`) is therefore misleading
+  &mdash; it subtracts RMD from a figure that never contained it; do not use it for new features.
 
 ### Tax Convergence Loop
 Five-iteration convergence loop (line refs are approximate):
@@ -747,3 +771,72 @@ on any screen, desktop or mobile.
 **Cache-buster:** `?v=19.1` on the version-bump commit; `compass-cover.jsx` and `cover-mobile.jsx` additionally
 bumped to `?v=19.1b` for the post-audit fix (see process lesson above). Saved-plan JSON stamp, both HTML titles,
 `real-engine.js` header, and on-screen kickers all reconciled to 19.1.
+
+---
+
+## V19.2 &mdash; Year-by-year table (three storyline views + permanent reconciliation invariant)
+
+Second batch of `UX-IMPROVEMENT-PLAN.md`. **`engine.js` untouched** &mdash; the new computation lives entirely
+in the adapter; the UI is one new component plus a collapsed section on Projection. Shipped as two themed
+commits (adapter+tests `2e0f779`, UI+versions `a0f1728`) merged to `main` via `22b7aae` &mdash; direct merge
+from the /tmp clone with Cris's explicit approval (the GitHub PR *object* is unreachable from the sandbox; the
+review-shaped commit structure is preserved).
+
+**What shipped.** `compute()` now returns `yearTables` with three coherent single-story views, per Cris's
+prior decisions (never per-year percentile collages): **Average markets** = ONE extra run through the untouched
+engine with `stockVol`/`bondVol` = 0 (the engine's random draws are multiplied by vol, so they go inert &mdash;
+verified); **Rough/Strong markets** = the *actual* simulated paths at the 10th/90th percentile rank of final
+outcome, reusing the results array compute() already sorts for the median (nearly free). The Projection screen
+gained a **collapsed** &ldquo;See the year-by-year numbers&rdquo; section at the bottom (Cris chose collapsed over
+always-visible), opening to a view selector with the approved plain-English labels, a Future/Today's dollars
+toggle (future default), and a fixed-height (~430px) all-years scrolling table with a sticky header (Cris chose
+scrollable over full-length or every-5-years). Columns: Age &middot; Start balance &middot; Wages &middot; Social
+Security &middot; Pension &amp; other &middot; Portfolio withdrawals &middot; Expenses &middot; Taxes &middot; End
+balance. Insolvent views get a plain callout (&ldquo;In this storyline, the money runs out at age 84&rdquo;) and
+row tinting; the retirement-year row is ruled and labeled. Mobile untouched (no Projection tab &mdash; the
+V19.4 decision).
+
+**Engine finding (doc correction, caught by the invariant test).** The logged `totalWithdrawal` is
+**discretionary only; it does NOT include RMD** (RMD is logged separately in `rmd`). The plan doc and an
+engine comment implied otherwise. The first invariant run failed by exactly the RMD amounts starting at age 75
+(and jumped when the younger spouse hit 75 two calendar years later) &mdash; then confirmed in the source:
+`totalWithdrawal` sums only the converged `wd*` fields. The table's withdrawals column is `totalWithdrawal +
+rmd`, matching the V18.11 paycheck. The pathLog Fields section above now documents this; avoid the
+`discretionaryWithdrawal` field entirely. **General lesson: an executable invariant catches in minutes what a
+plausible-sounding doc line would have shipped wrong** &mdash; grade flows against the balance identity, not
+against documentation.
+
+**The permanent invariant (Cris's goal (b): an engine spot-check).** `tests/year-table.test.js` (5 tests;
+suite now 29) proves, on the vol=0 run: `end = start &times; (1 + stockAlloc&times;stockReturn +
+(1-stockAlloc)&times;bondReturn) + contributions - withdrawals + windfall(that age)` to &le;$1 for every
+solvent row (also under windfall + Roth conversions; conversions net to zero across accounts); rows chain
+(each end = next start) in both dollar modes; the first insolvent row's `balanceAge` equals `depletionAge`;
+rows are deterministic. Rows deliberately carry `contributions` and `stockAlloc` (not displayed) so the
+identity is checkable from exposed rows alone. **Today's-$ convention:** cash flows and Start balance deflate
+by the row's own cumulative `inflation`; End balance deflates by the NEXT year's factor &mdash; end balances
+sit on the next birthday, and this keeps end = next start true after the toggle.
+
+**Live audit (deployed site, Chrome MCP).** Desktop: table verified at 5,000 and 10,000 paths; every screen
+opened at 10k (V18.9 lesson) with zero console errors; the age-55 row reconciles on sight (950,000 &times;
+1.056 + 22,080 contributions = 1,025,280); Rough callout age 84 and Strong final $4,284,231 matched the local
+Node run **to the dollar** (deterministic across environments); DOM-extracted rows: worst chain mismatch $0 in
+both dollar modes; odds identical across screens (65/100 at 10k). Default score 64/100 identical before/after
+(regression gate &mdash; scoring code untouched). Mobile regression-checked (badge, 64/100, tab bar intact).
+Cris's saved plan was backed up to a spare localStorage key before testing and restored after.
+
+**Environment lessons (new).**
+- **`*.github.io` is blocked by the sandbox proxy allowlist** (like `api.github.com`): `curl` cannot verify
+  the deployed site from the sandbox. Deployed-site checks must run in the browser via Chrome MCP.
+- **The browser is the api.github.com workaround:** `fetch('https://api.github.com/repos/&hellip;/actions/runs')`
+  from the page context (public repo, CORS-allowed) reads Pages build status the sandbox can't.
+- **Pages deploys can fail silently.** The V19.2 merge push produced NO Pages run at all; an empty retrigger
+  commit produced a run that failed at GitHub's deploy step (transient &mdash; V19.1 had one too); a second
+  empty commit succeeded. If the live site looks stale ~5+ minutes after a push, check the Actions runs via
+  the browser before suspecting the code.
+- **Chrome MCP window sizing:** the MCP tab lives in its own Chrome window; `resize_window` can report success
+  while the OS ignores it. Fix: ask Cris to maximize *that* window (not the main one). Chrome's ~500px minimum
+  outer width means a true 375px viewport isn't reachable by window resizing; 500px still renders the mobile
+  component (breakpoint 769), which is sufficient for mobile regression checks.
+
+**Cache-buster:** `engine.js?v=19.2` + `?v=19.2` on all `cover-app/*` includes in both shells; both HTML
+titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.2.
