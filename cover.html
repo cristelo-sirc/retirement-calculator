@@ -55,7 +55,12 @@
         } catch (e) { return false; }
       });
       const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
-      useEffect(() => { window._coverNav = (id) => setScreen(id); }, []);
+      // V19.1: freshStart is a one-shot flag — true only for the visit right after
+      // Welcome → "Start a new plan", so the Questionnaire's "Returning? Load your saved
+      // plan" callout doesn't contradict a choice the user just made. Any navigation away
+      // from the Questionnaire clears it, so a later return is treated normally.
+      const [freshStart, setFreshStart] = useState(false);
+      useEffect(() => { window._coverNav = (id) => { setScreen(id); if (id !== 'quiz') setFreshStart(false); }; }, []);
       useEffect(() => {
         const onResize = () => setIsMobile(window.innerWidth < 769);
         window.addEventListener('resize', onResize);
@@ -70,14 +75,15 @@
         if (hasSession && !window.confirm('Starting a new plan replaces the plan saved in this browser. You can Save it to a file first. Continue?')) return;
         setParams(window.MockEngine.DEFAULTS);
         setScreen('quiz');
+        setFreshStart(true);
         setStarted(true);
       };
 
       if (!started) return <CoverWelcome hasSession={hasSession} onContinue={beginContinue} onStartNew={beginNew} onLoaded={beginLoad} />;
 
       const shared = { params, setParams };
-      if (isMobile)             return <CoverMobile {...shared} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} />;
-      if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} />;
+      if (isMobile)             return <CoverMobile {...shared} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} freshStart={freshStart} />;
+      if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} freshStart={freshStart} />;
       if (screen === 'rework')  return <CoverAdjust {...shared} />;
       if (screen === 'chart')   return <CoverCharts {...shared} />;
       if (screen === 'charts2') return <CoverCharts2 {...shared} />;

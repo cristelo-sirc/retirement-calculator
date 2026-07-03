@@ -174,7 +174,7 @@ const CVI_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI',
   'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH',
   'OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => ({ v: s, label: s }));
 
-function CoverInputs(props) { const { mode = 'essentials', params: extP, setParams: extSP } = props || {};
+function CoverInputs(props) { const { mode = 'essentials', params: extP, setParams: extSP, freshStart } = props || {};
   const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = extP || localParams; const setParams = extSP || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
@@ -187,7 +187,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const detailed = mode === 'detailed';
 
   return (
-    <window.CoverChrome active="quiz" tag={`Concept 07 / Cover · Questionnaire · ${detailed ? 'Option B — everything shown' : 'Option A — essentials + reveal'}`}>
+    <window.CoverChrome active="quiz" tag="V19.1">
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
           The Questionnaire · {detailed ? 'Detailed' : 'Essentials'}
@@ -201,10 +201,12 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             : 'Answer the essentials; open “Show more” in any section for the finer dials. Every field explains itself, and the number on your cover updates as you go.'}
         </p>
 
-        <div style={{ maxWidth: 760, margin: '0 auto 36px' }}>
-          <window.CoverSaveLoadCallout params={params} setParams={setParams}
-            prompt="Returning? Load your saved plan — no need to re-enter everything." primary="load" />
-        </div>
+        {!freshStart && (
+          <div style={{ maxWidth: 760, margin: '0 auto 36px' }}>
+            <window.CoverSaveLoadCallout params={params} setParams={setParams}
+              prompt="Returning? Load your saved plan — no need to re-enter everything." primary="load" />
+          </div>
+        )}
 
         {/* Who the plan is for */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,

@@ -191,7 +191,7 @@
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
-            At {results.paycheck.atAge}, {partner ? "you'll both" : "you'll"} need{' '}
+            At {results.paycheck.atAge}{window.cvPaycheckNote ? window.cvPaycheckNote(params) : ''}, {partner ? "you'll both" : "you'll"} need{' '}
             {ME.formatCurrency(results.paycheck.total)}/mo.
           </p>
           <MPaycheck paycheck={results.paycheck} />
@@ -219,7 +219,7 @@
     );
   }
 
-  function QuizView({ params, update, setParams, vc, partner, results }) {
+  function QuizView({ params, update, setParams, vc, partner, results, hideReturning }) {
     const [adv, setAdv] = React.useState(false);
     return (
       <div style={{ padding: '24px 20px 28px' }}>
@@ -231,10 +231,12 @@
           Every input the cover uses, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
         </p>
 
-        <div style={{ marginBottom: 26 }}>
-          <window.CoverSaveLoadCallout params={params} setParams={setParams}
-            prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
-        </div>
+        {!hideReturning && (
+          <div style={{ marginBottom: 26 }}>
+            <window.CoverSaveLoadCallout params={params} setParams={setParams}
+              prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
+          </div>
+        )}
 
         <div style={{ marginBottom: 28 }}>
           <div style={{ ...mKick, marginBottom: 8 }}>This plan is for</div>
@@ -392,6 +394,11 @@
   function CoverMobile(props) {
     props = props || {};
     const [tab, setTab] = React.useState(props.initialTab || 'cover');
+    // V19.1: suppress the "Returning? Load your saved plan" callout only for the one
+    // visit right after Welcome → "Start a new plan" (props.freshStart). The moment the
+    // user leaves the Questionnaire tab, treat any later visit as a normal return.
+    const [suppressReturning, setSuppressReturning] = React.useState(!!props.freshStart);
+    React.useEffect(() => { if (tab !== 'quiz' && suppressReturning) setSuppressReturning(false); }, [tab]);
     const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
     const results = React.useMemo(() => ME.compute(params), [params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
@@ -412,7 +419,7 @@
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           {tab === 'cover'
             ? <CoverView results={results} vc={vc} partner={partner} dirty={dirty} goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
-            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} />}
+            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} hideReturning={suppressReturning} />}
         </main>
 
         {/* bottom tab nav */}

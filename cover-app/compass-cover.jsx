@@ -39,6 +39,20 @@ function cvChanceLabel(params) {
 }
 window.cvChanceLabel = cvChanceLabel;
 
+// V19.1: results.paycheck.atAge is the age the WHOLE household has stopped working — the
+// later of the two retirement ages for a couple (real-engine.js picks whichever partner
+// retires last), not necessarily params.retireAge. The old copy ("At 67, you'll both
+// need...") never explained where that age came from when partners retire at different
+// ages. This spells it out only when it isn't obvious (couple, different retirement ages).
+function cvPaycheckNote(params) {
+  if (!params || !params.hasPartner) return '';
+  var you = params.retireAge, partner = params.spouseRetireAge || 0;
+  if (partner === you) return '';
+  return partner > you ? ' — that’s when your partner retires, the later of the two'
+    : ' — that’s your own retirement age, the later of the two';
+}
+window.cvPaycheckNote = cvPaycheckNote;
+
 function cvVerdictColor(v) {
   return v === 'green' ? cvStyles.sage : v === 'yellow' ? cvStyles.amber : cvStyles.clay;
 }
@@ -184,14 +198,17 @@ function CoverDesktop(props) {
       fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden',
     }}>
       {/* ===== COVER ===== */}
-      <section style={{ height: 900, minHeight: 900, padding: '34px 64px 40px', boxSizing: 'border-box',
+      <section style={{ height: 900, minHeight: 900, padding: '0 64px 40px', boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14 }}>
-          <div style={{ fontFamily: cvStyles.display, fontSize: 34, lineHeight: 1 }}>Compass</div>
-          <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
+        {/* V19.1: sticky so the nav is reachable without scrolling back to the top */}
+        <div style={{ position: 'sticky', top: 0, zIndex: 5, background: cvStyles.paper, paddingTop: 34 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14 }}>
+            <div style={{ fontFamily: cvStyles.display, fontSize: 34, lineHeight: 1 }}>Compass</div>
+            <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
+          </div>
+          <CoverNav active="cover" emphasizeQuiz={!dirty} />
         </div>
-        <CoverNav active="cover" emphasizeQuiz={!dirty} />
         <div style={{ marginTop: 16 }}>
           <CoverSaveLoadCallout params={params} setParams={setParams}
             prompt="Have a saved plan? Load it — or save this one to a file." primary="save" compact />
@@ -206,7 +223,7 @@ function CoverDesktop(props) {
               accent={vc} big />
             <CoverLine kicker="Your Paycheck, Explained"
               title={`${fmt(results.paycheck.total)} a month`}
-              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.paycheck.atAge}.`} />
+              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.paycheck.atAge}${cvPaycheckNote(params)}.`} />
             <CoverLine kicker="Inside"
               title="Three moves that buy better odds"
               body="Small, specific changes — and exactly how many points each is worth." />
@@ -332,7 +349,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>Concept 07 / Cover · V19.0</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.1</div>
         </div>
       </section>
     </div>
@@ -452,7 +469,7 @@ function CoverChrome({ active, children, bg, tag }) {
     <div style={{ width: '100%', height: '100%', background: bg || cvStyles.paper, color: cvStyles.ink,
       fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden' }}>
       <div style={{ padding: '30px 64px 0', background: cvStyles.paper,
-        borderBottom: `1px solid ${cvStyles.ink}` }}>
+        borderBottom: `1px solid ${cvStyles.ink}`, position: 'sticky', top: 0, zIndex: 5 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <div style={{ fontFamily: cvStyles.display, fontSize: 30, lineHeight: 1 }}>Compass</div>
           <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
@@ -500,7 +517,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="Concept 07 / Cover · Rework">
+    <CoverChrome active="rework" tag="V19.1">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Rework the Cover · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -589,7 +606,7 @@ function CoverCharts(props) {
   const fmt = window.MockEngine.formatCurrency;
   const theme = cvTheme(cvVerdictColor(results.verdict));
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="Concept 07 / Cover · Projection">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.1">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Projection · {(results.numPaths || 0).toLocaleString()} paths</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 52, margin: '0 0 8px',
@@ -632,7 +649,7 @@ function CoverCharts2(props) {
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const theme = cvTheme(cvVerdictColor(results.verdict));
   return (
-    <CoverChrome active="charts2" tag="Concept 07 / Cover · Income & Odds">
+    <CoverChrome active="charts2" tag="V19.1">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>How your mix shifts</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 46, margin: '0 0 8px', letterSpacing: '-0.01em', lineHeight: 1.05 }}>
@@ -734,7 +751,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>Concept 07 / Cover · Welcome · V19.0</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.1</div>
       </div>
     </div>
   );
