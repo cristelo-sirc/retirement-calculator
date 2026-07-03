@@ -13,7 +13,7 @@ See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.0
+**Current Version:** 19.1
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -359,6 +359,15 @@ Housekeeping only &mdash; **no app or engine changes** (V18.3 unchanged; `engine
 `codex/v19-completion`, merged through PR #1, and local `main` was fast-forwarded to the resulting release
 checkpoint (`3f6b20e`). Local Git is once again the authoritative working copy.
 
+**Update (V19.1):** &ldquo;the mounted folder's Git locks were broken&rdquo; above undersold the constraint &mdash;
+it isn't a repo-state problem that reconciliation fixes, it's that the mount cannot `unlink`/`rename` files at
+all, confirmed against a throwaway test file. A `git commit` that fails partway through can leave a permanently
+un-removable `.git/index.lock`, wedging that clone's git metadata for the rest of the session (the working files
+themselves are unaffected). `scripts/deploy.sh`'s writable-clone-in-`/tmp` technique is the correct workaround
+for *any* git write in this folder, not just emergency direct-to-`main` deploys &mdash; see the V19.1 section's
+environment-lesson entries for the working pattern (edit in place here, commit/push from a `/tmp` clone) and for
+the separate `api.github.com`-vs-`github.com` proxy-allowlist distinction.
+
 ---
 
 ## V18.8 &mdash; Monte Carlo default raised to 5,000, range to 10,000, internals proportional
@@ -638,3 +647,103 @@ mapping; it must not discover consumers only through the mapping being tested.
 Questionnaire. Exact entry, tooltip taps, employer Roth selection, chart ages, saved-plan defaults, and browser
 errors were checked locally and again on GitHub Pages. Released through PR #1; production and local `main` both
 point to `3f6b20e`.
+
+---
+
+## V19.1 &mdash; Combined low-risk UX batch (quick wins, one editing model, honest sample state)
+
+First batch of `UX-IMPROVEMENT-PLAN.md` (a 2026-07-03 live UX audit of V19.0, batches V19.1&ndash;V19.4).
+Three themed commits on one branch, one deploy, one comprehensive audit, per Cris's explicit token-economy
+instruction. **`engine.js` untouched throughout** &mdash; every change is UI/copy in the adapter's React layer.
+
+**Commit 1 &mdash; quick wins.** Removed the &ldquo;Concept 07 / &hellip;&rdquo; dev-artifact footer tags from
+every screen (Cover, Rework, Projection, Income &amp; Odds, Questionnaire, Welcome), replaced with a plain
+version marker. The Questionnaire's &ldquo;Returning? Load your saved plan&rdquo; callout now hides for the one
+visit right after Welcome &rarr; &ldquo;Start a new plan&rdquo; (a one-shot `freshStart` flag in the app shell,
+cleared the moment the user navigates away from the Questionnaire) &mdash; direct/returning arrivals still see
+it. Sticky header + nav on desktop (`position: sticky` on the shared masthead block in `CoverChrome` and on
+`CoverDesktop`'s own header) so screens are reachable without scrolling to the top; mobile's bottom tab bar was
+already effectively sticky and is unchanged.
+
+**Commit 2 &mdash; one editing model (the core &ldquo;which changes count?&rdquo; finding).** Cover's
+instant-write &ldquo;Adjust the Plan&rdquo; slider panel &mdash; which changed the real plan immediately with no
+undo, right next to Rework's identical-looking dials that were only a draft &mdash; is gone. In its place, a
+plain callout pointing to Rework. The &ldquo;Three Moves, Ranked&rdquo; cards are now clickable: tapping one
+opens Rework with that exact move already staged as an unpublished draft (`CoverAdjust` reuses the same
+`lever.apply()` a manual &ldquo;Suggested moves&rdquo; tap would run, via a one-shot `props.stageLever` id
+threaded from the app shell, so staging can never drift from doing it by hand). Publish is still required for a
+draft to count. Mobile's Cover never had instant-edit sliders and has no Rework screen, so it is unaffected
+(that gap is the separate, not-yet-decided V19.4 mobile-parity item).
+
+**Commit 3 &mdash; honest sample state + live score.** The clay &ldquo;Sample plan &middot; not your numbers
+yet&rdquo; badge and reworded copy, previously Cover-only, now also appears on Rework, Projection, Income &amp;
+Odds, and the Questionnaire's own bottom score panel (all gated on the same `dirty` check &mdash; params vs.
+`MockEngine.DEFAULTS` &mdash; Cover already used). Rework's &ldquo;your filed plan&rdquo; / &ldquo;as filed&rdquo;
+copy reads &ldquo;this sample plan&rdquo; / &ldquo;as sample&rdquo; while untouched. New live score chip in the
+Questionnaire's sticky masthead (desktop: a `rightExtra` slot added to `CoverChrome`, quiz screen only; mobile:
+replaces the masthead kicker while the Questionnaire tab is active) so the number is visible while editing
+fields further down the page, not only after scrolling to the bottom. The chip reads the same `results` object
+the screen already computes on field commit &mdash; no new recompute path, so it updates at the same cadence as
+everything else.
+
+**Post-audit fix (same session): the paycheck-age note had the wrong comparison.** Commit 1's fix for the
+&ldquo;At 67, you'll both need&hellip;&rdquo; copy (67 = the household's fully-retired age, which can exceed
+either partner's own `retireAge` when the partner is younger, per V18.11's paycheck logic) shipped comparing
+`params.retireAge` to `params.spouseRetireAge`. Live audit against the deployed DEFAULTS scenario caught that
+this was wrong: DEFAULTS has both retiring at 65 (equal), yet `atAge` is 67, because real-engine.js picks
+whichever partner's retirement lands later ON THE CALENDAR &mdash; the younger partner's 65th birthday simply
+falls in a later year. Comparing the two *nominal* retirement ages missed this entirely, so the note silently
+rendered blank on exactly the scenario the original audit had flagged. **Fix:** compare the *displayed* `atAge`
+against the user's own `retireAge` directly (`cvPaycheckNote(params, atAge)`); that tracks the discrepancy
+regardless of why it happened. **General lesson:** when explaining where a *computed/derived* value came from,
+compare against that computed value, not against the raw inputs that feed it &mdash; two equal inputs can still
+produce a surprising computed result through a path (like a birth-year gap) the inputs alone don't show.
+
+**Process lesson: cache-buster discipline applies to every content change, not just version boundaries.** The
+paycheck-note fix above was first shipped reusing the already-deployed `?v=19.1` query string on
+`compass-cover.jsx` / `cover-mobile.jsx`. Because that exact query string had already been fetched once (earlier
+in the same audit session), the fix did not actually reach the live site &mdash; verified by fetching the
+deployed file directly and finding the pre-fix single-argument `cvPaycheckNote(params)` still being served,
+minutes after the fix was pushed. A follow-up commit bumped just those two files' cache-busters to `?v=19.1b`
+(the V18.11 precedent for a same-day follow-up), which resolved it. Any content edit &mdash; not only a formal
+version release &mdash; needs its own cache-bust if it's shipped as a separate commit after the including HTML
+was already fetched.
+
+**Environment lesson: this project folder is FUSE-mounted and cannot `unlink`/`rename` files, at all, ever.**
+This is broader than the previously-documented &ldquo;Git locks were broken&rdquo; note (see Repo Maintenance,
+below) &mdash; it is a hard property of the mount, confirmed by testing that even a fresh throwaway file cannot
+be removed (`rm` &rarr; &ldquo;Operation not permitted&rdquo;). Consequences: (1) `git commit` in this folder can
+leave a `.git/index.lock` that can *never* be cleared from inside the sandbox (truncating it in place doesn't
+help; git requires the lock file's absence, not emptiness), permanently wedging that clone's git metadata for
+the rest of the session; (2) this is not fixable by retrying, `git reset`, or any local workaround &mdash;
+**stop trying git write operations in this folder once one has failed this way.** The working files themselves
+are unaffected (regular file writes/edits succeed fine; it's specifically unlink/rename that's blocked), so the
+actual deliverable is never at risk &mdash; only this clone's ability to track it. **Working pattern that
+avoids the problem entirely:** keep using Read/Write/Edit (and read-only git like `status`/`fetch`/`log`) in the
+mounted project folder as normal, but do every git *write* &mdash; `add`, `commit`, `merge`, `push` &mdash; in a
+disposable clone under `/tmp` (real disk, confirmed ext4, not FUSE), syncing the edited files over with `cp`
+before each commit. `git push`/`clone`/`fetch` against `github.com` work fine from the sandbox in either
+location; the constraint is specifically the mounted folder's own `.git`, not networking.
+
+**Environment lesson: `api.github.com` is blocked by the sandbox's outbound proxy allowlist; `github.com` is
+not.** Confirmed via `curl -v`: the proxy returns `403 blocked-by-allowlist` for `CONNECT api.github.com:443`,
+while plain git operations (`clone`/`fetch`/`push`) against `github.com` succeed normally. This means the
+GitHub REST API (opening a PR, checking run status, etc. via `curl`/`gh`) is **not reachable** from this
+environment, even though ordinary git push/pull is. This is a standing constraint, not a transient failure worth
+retrying. When the standard branch &rarr; PR &rarr; merge workflow is called for, push the branch (works fine)
+and either hand Cris the printed compare-branch URL to open the PR himself, or get his explicit go-ahead to
+merge the branch into `main` directly via git in the writable clone (still preserving the themed commits in
+history &mdash; only the GitHub PR *object* is skipped, not the review-shaped commit structure).
+
+**Live audit (desktop 1680px + mobile 375px via Chrome MCP against the deployed GitHub Pages URL).** All five
+desktop screens plus mobile Cover/Questionnaire: sticky nav reachable mid-scroll; each Cover move card stages the
+matching Rework draft without publishing (Cover's own score stayed unpublished/unchanged after staging); sample
+badges and live score chip agree with each other and with the bottom Questionnaire score everywhere; Rework's
+staged delta (+10 for &ldquo;delay retirement 2 years&rdquo; on the default plan) matched Income &amp; Odds' bar
+for the identical move (cross-screen consistency, a V18.5&ndash;V18.7 invariant, still holds); the
+Returning-callout correctly reappeared after leaving and returning to the Questionnaire tab; zero console errors
+on any screen, desktop or mobile.
+
+**Cache-buster:** `?v=19.1` on the version-bump commit; `compass-cover.jsx` and `cover-mobile.jsx` additionally
+bumped to `?v=19.1b` for the post-audit fix (see process lesson above). Saved-plan JSON stamp, both HTML titles,
+`real-engine.js` header, and on-screen kickers all reconciled to 19.1.

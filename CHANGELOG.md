@@ -1,5 +1,15 @@
 # Change log
 
+## 19.1.0 — 2026-07-03
+
+- Removed leftover internal labels from every screen's footer.
+- The "load your saved plan" prompt no longer appears right after choosing to start a new plan.
+- Clarified the paycheck age shown for couples: it's whichever partner finishes working later, explained when that differs from your own retirement age.
+- Made the top navigation stay in view while scrolling on desktop.
+- The Cover page no longer lets you change your plan directly. Its "moves" now open the Rework page with that change already queued up, so nothing is applied until you choose to publish it.
+- Extended the "these are sample numbers" notice to every screen that can show sample data, not just the Cover.
+- Added a live running score to the questionnaire so you can see it change as you answer, without scrolling to the bottom.
+
 ## 19.0.0 — 2026-06-29
 
 - Rebuilt the age timeline as exact elapsed years: today’s balance is shown unchanged at today’s age, and each later balance belongs to the following birthday.
