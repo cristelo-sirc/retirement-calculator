@@ -206,19 +206,19 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag="V19.2"
+    <window.CoverChrome active="quiz" tag="V19.3"
       rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
-          The Questionnaire · {detailed ? 'Detailed' : 'Essentials'}
+          Input Data · {detailed ? 'Detailed' : 'Essentials'}
         </div>
         <h1 style={{ fontFamily: cvi.display, fontSize: 58, lineHeight: 1.04, textAlign: 'center',
           margin: '0 0 14px', letterSpacing: '-0.01em' }}>A few questions.</h1>
         <p style={{ fontSize: 15.5, lineHeight: 1.6, color: cvi.ink70, textAlign: 'center',
           maxWidth: 560, margin: '0 auto 30px' }}>
           {detailed
-            ? 'Every input the cover uses, in plain language. Hover any “i” for the why behind it; sensible defaults cover anything you skip.'
-            : 'Answer the essentials; open “Show more” in any section for the finer dials. Every field explains itself, and the number on your cover updates as you go.'}
+            ? 'Every input your results use, in plain language. Hover any “i” for the why behind it; sensible defaults cover anything you skip.'
+            : 'Answer the essentials; open “Show more” in any section for the finer dials. Every field explains itself, and your results update as you go.'}
         </p>
 
         {!freshStart && (
@@ -408,7 +408,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             <div style={{ fontFamily: cvi.display, fontSize: 34, color: vc, marginBottom: 14, transition: 'color 300ms' }}>{results.verdictWord}.</div>
             <button onClick={() => window._coverNav && window._coverNav('cover')} style={{ padding: '15px 30px', background: cvi.ink, color: cvi.paper, border: 'none',
               fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase',
-              cursor: 'pointer', fontWeight: 600 }}>See the cover →</button>
+              cursor: 'pointer', fontWeight: 600 }}>See your results →</button>
           </div>
         </div>
 

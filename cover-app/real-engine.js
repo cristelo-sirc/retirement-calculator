@@ -1,4 +1,4 @@
-// real-engine.js — V19.2 adapter
+// real-engine.js — V19.3 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.2';
+      s.src = 'engine.js?v=19.3';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -217,7 +217,7 @@
   }
 
   // Fixed seed base => the SAME plan produces the SAME set of paths on every screen
-  // (Cover, Projection, Income & Odds, Rework, Questionnaire, mobile). Reuses
+  // (Results, Charts, Try Changes, Input Data, mobile). Reuses
   // engine.js's existing deterministic solver RNG via solverPathIndex; engine.js
   // itself is UNCHANGED. Without this each screen re-rolled Math.random(), so the
   // identical plan showed slightly different odds (V18.5 cross-screen-drift fix).
@@ -243,12 +243,46 @@
     return Math.round((solved / results.length) * 100);
   }
 
-  // Success-only estimate at the FULL path count (same numPaths as compute()), so the
-  // Income & Odds what-if base equals the cover's headline. Reads the single numPaths source.
-  function quickSuccess(m) {
-    if (!window.simulatePath) return 0;
-    var mm = normalizeParams(m).params;
-    return successOf(runPaths(mapToReal(mm, mm.numPaths || 5000)), mm.legacyGoal || 0);
+  // V19.3: exact move deltas at the FULL path count (Cris: accuracy over speed).
+  // Replaces both the old proportional buildLevers (cover cards) and the old
+  // quickSuccess-based ScenarioCompareChart (Income & Odds bars) with ONE computation,
+  // so a move can never show two different point values on two screens. Called only by
+  // the screens that display moves (Results cards, Try Changes bars, mobile Results) —
+  // Input Data and Charts don't show moves, so their recomputes no longer pay for them.
+  // baseRate: pass the already-computed headline successRate; the deterministic solver
+  // RNG makes a re-run identical, so reusing it saves one full run. includeCombined
+  // adds the "all three together" run (only the Try Changes bars show it).
+  function computeMoves(params, baseRate, opts) {
+    opts = opts || {};
+    if (!window.simulatePath) return { base: baseRate || 0, moves: [], combined: null };
+    var m = normalizeParams(params).params;
+    var real = mapToReal(m, m.numPaths || 5000);
+    var goal = m.legacyGoal || 0;
+    var base = (baseRate != null) ? baseRate : successOf(runPaths(real), goal);
+    var moves = [];
+    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2 })), goal);
+    moves.push({ id: 'delay', title: 'Delay retirement 2 years',
+      detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge,
+      note: 'at ' + (m.retireAge + 2), rate: r1, delta: r1 - base });
+    var newSpend = Math.round(real.lifestyleSpending * 0.9 / 1000) * 1000;
+    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend })), goal);
+    moves.push({ id: 'spend', title: 'Cut spending 10%',
+      detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k',
+      note: '$' + Math.round(newSpend / 1000) + 'k/yr', rate: r2, delta: r2 - base });
+    if (m.ssClaimAge < 70) {
+      // Both partners delay (V18.10 unification) — same fields Rework's suggested move sets.
+      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70 })), goal);
+      moves.push({ id: 'ss', title: 'Wait until 70 for Social Security',
+        detail: 'Claim at 70 instead of ' + m.ssClaimAge + (m.hasPartner ? ' (both of you)' : ''),
+        note: 'delayed', rate: r3, delta: r3 - base });
+    }
+    var combined = null;
+    if (opts.includeCombined) {
+      var rc = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2,
+        lifestyleSpending: newSpend, userClaimAge: 70, spouseClaimAge: 70 })), goal);
+      combined = { rate: rc, delta: rc - base };
+    }
+    return { base: base, moves: moves, combined: combined };
   }
 
   function verdictFor(rate) {
@@ -258,30 +292,6 @@
       verdictBlurb: 'Your plan works in most scenarios, but a bad market sequence could squeeze you.' };
     return { verdict: 'red', verdictWord: 'At Risk',
       verdictBlurb: 'Your plan runs out of money in too many scenarios. Adjustments are needed.' };
-  }
-
-  // Cover "Three Moves" deltas. Each move AND the base are measured at the same 200 paths
-  // (V18.7) so the delta is apples-to-apples — it now lines up with the full-count Income &
-  // Odds deltas instead of mixing a 200-path move with a 1500-path base. Legacy goal applied
-  // to every run so the deltas respect the goal too.
-  function buildLevers(m, real) {
-    var goal = m.legacyGoal || 0;
-    var lp = Math.max(50, Math.round((real.numPaths || 5000) * 200 / 1500));  // "Three Moves" sample = same share of the path count as the old 200/1500, so it tracks the slider
-    var base = successOf(runPaths(Object.assign({}, real, { numPaths: lp })), goal);
-    var levers = [];
-    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2, numPaths: lp })), goal);
-    levers.push({ id: 'delay', title: 'Delay retirement 2 years',
-      detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge, delta: r1 - base });
-    var newSpend = Math.round(real.lifestyleSpending * 0.9 / 1000) * 1000;
-    var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend, numPaths: lp })), goal);
-    levers.push({ id: 'spend', title: 'Cut spending 10%',
-      detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k', delta: r2 - base });
-    if (m.ssClaimAge < 70) {
-      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70, numPaths: lp })), goal);
-      levers.push({ id: 'ss', title: 'Wait until 70 for Social Security',
-        detail: 'Claim at 70 instead of ' + m.ssClaimAge, delta: r3 - base });
-    }
-    return levers.sort(function (a, b) { return b.delta - a.delta; }).filter(function (l) { return l.delta >= 0; }).slice(0, 3);
   }
 
   function initialPortfolioBalance(m) {
@@ -350,7 +360,7 @@
     var m = normalizeParams(params).params;   // validate + clamp every entry point (incl. numPaths)
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
       return { params: m, successRate: 0, numPaths: m.numPaths || 5000, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
-        levers: [], medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
+        medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0, yearTables: null };
     }
@@ -433,7 +443,7 @@
     return Object.assign({
       params: m, successRate: successRate, numPaths: real.numPaths,
       sustainableSpending: sustainableSpending, runwayYears: runwayYears, medianLegacy: medianLegacy,
-      levers: buildLevers(m, real), paycheck: paycheck,
+      paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
       yearTables: yearTables
     }, v);
@@ -457,7 +467,7 @@
   }
 
   window.MockEngine = {
-    DEFAULTS: DEFAULTS, compute: compute, quickSuccess: quickSuccess, normalizeParams: normalizeParams,
+    DEFAULTS: DEFAULTS, compute: compute, computeMoves: computeMoves, normalizeParams: normalizeParams,
     formatCurrency: formatCurrency, formatPct: formatPct, clone: clone, ssFactor: ssFactor
   };
 })();

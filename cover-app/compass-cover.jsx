@@ -2,9 +2,11 @@
 // Compass sibling pushed toward a magazine COVER: the hero art IS the success
 // number, set enormous. Low density, lots of air. DM Serif Display.
 //
-// This file holds the Cover, Rework, Projection and Charts screens plus shared
-// display primitives. The questionnaire lives in cover-inputs.jsx (loaded after
-// this one) and reuses window.cvStyles / window.CoverChrome / window.cvTheme.
+// This file holds the Results (cover), Try Changes, and Charts screens plus shared
+// display primitives. The Input Data questionnaire lives in cover-inputs.jsx (loaded
+// after this one) and reuses window.cvStyles / window.CoverChrome / window.cvTheme.
+// V19.3: Income & Odds retired — its glide path lives on Charts, its comparison
+// bars on Try Changes; tabs renamed (internal screen ids unchanged).
 
 const cvStyles = {
   paper: '#f6f2ea',
@@ -71,7 +73,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.2', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.3', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -188,12 +190,17 @@ window.CoverSaveLoadCallout = CoverSaveLoadCallout;
 function CoverDesktop(props) {
   props = props || {}; const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
+  // V19.3: exact move deltas at the FULL path count, from the single computeMoves
+  // source the Try Changes bars also read — the cards and the bars can never disagree.
+  // The headline successRate is passed in so the base run isn't repeated.
+  const moves = React.useMemo(() => window.MockEngine.computeMoves(params, results.successRate), [params, results]);
+  const moveCards = moves.moves.filter(l => l.delta >= 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
   const fmt = window.MockEngine.formatCurrency;
   const vc = cvVerdictColor(results.verdict);
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
-  // V19.1: Cover is read-only — tapping a move card opens Rework with that exact move
-  // staged as an unpublished draft (props.onOpenRework, wired in the app shell). Falls
-  // back to a plain nav if the shell didn't wire staging.
+  // V19.1: Cover is read-only — tapping a move card opens Try Changes with that exact
+  // move staged as an unpublished draft (props.onOpenRework, wired in the app shell).
+  // Falls back to a plain nav if the shell didn't wire staging.
   const openMove = (leverId) => { if (props.onOpenRework) props.onOpenRework(leverId); else if (window._coverNav) window._coverNav('rework'); };
 
   return (
@@ -223,7 +230,7 @@ function CoverDesktop(props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 34 }}>
             <CoverLine kicker={dirty ? 'The Verdict' : 'Sample Verdict'}
               title={`${dirty ? 'Your plan' : 'This sample plan'} is ${results.verdictWord.toLowerCase()}.`}
-              body={dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Answer the questionnaire and this cover fills in with your real plan.'}
+              body={dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and these results fill in with your real plan.'}
               accent={vc} big />
             <CoverLine kicker="Your Paycheck, Explained"
               title={`${fmt(results.paycheck.total)} a month`}
@@ -236,7 +243,7 @@ function CoverDesktop(props) {
                 style={{ alignSelf: 'flex-start', padding: '14px 26px', background: cvStyles.ink, color: cvStyles.paper,
                   border: 'none', cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.14em',
                   textTransform: 'uppercase', fontWeight: 600 }}>
-                Answer the questionnaire →</button>
+                Enter your data →</button>
             )}
           </div>
 
@@ -304,7 +311,7 @@ function CoverDesktop(props) {
             <div>
               <div style={{ ...cvKicker, marginBottom: 18 }}>Three Moves, Ranked</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {results.levers.map(l => (
+                {moveCards.map(l => (
                   <div key={l.id} role="button" tabIndex={0} onClick={() => openMove(l.id)}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMove(l.id); } }}
                     style={{
@@ -315,7 +322,7 @@ function CoverDesktop(props) {
                       <div style={{ fontFamily: cvStyles.display, fontSize: 21, lineHeight: 1.15 }}>{l.title}</div>
                       <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 3 }}>{l.detail}</div>
                       <div style={{ fontSize: 10.5, color: cvStyles.sage, marginTop: 7, fontWeight: 600,
-                        letterSpacing: '0.08em', textTransform: 'uppercase' }}>Try this on Rework →</div>
+                        letterSpacing: '0.08em', textTransform: 'uppercase' }}>Draft this on Try Changes →</div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontFamily: cvStyles.display, fontSize: 30, color: cvStyles.sage,
@@ -326,7 +333,7 @@ function CoverDesktop(props) {
                 ))}
               </div>
               <div style={{ fontSize: 12, color: cvStyles.ink50, marginTop: 14 }}>
-                Tap a move to draft it on <strong style={{ color: cvStyles.ink70 }}>Rework</strong> —
+                Tap a move to draft it on <strong style={{ color: cvStyles.ink70 }}>Try Changes</strong> —
                 nothing changes here until you choose to publish it.
               </div>
             </div>
@@ -335,21 +342,21 @@ function CoverDesktop(props) {
               justifyContent: 'center', gap: 14 }}>
               <div style={{ ...cvKicker }}>Want to try something else?</div>
               <div style={{ fontFamily: cvStyles.display, fontSize: 22, lineHeight: 1.3 }}>
-                Every dial lives on Rework now.
+                Every dial lives on Try Changes.
               </div>
               <div style={{ fontSize: 13, color: cvStyles.ink70, lineHeight: 1.6 }}>
-                This cover only ever shows your filed plan. Head to Rework to draft any change and
-                watch the odds move — nothing counts here until you publish it.
+                This page only ever shows your filed plan. Head to Try Changes to draft any change
+                and watch the odds move — nothing counts here until you publish it.
               </div>
               <button onClick={() => window._coverNav && window._coverNav('rework')}
                 style={{ alignSelf: 'flex-start', padding: '12px 22px', background: cvStyles.ink,
                   color: cvStyles.paper, border: 'none', cursor: 'pointer', fontFamily: cvStyles.body,
                   fontSize: 11.5, letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 600 }}>
-                Open Rework →</button>
+                Open Try Changes →</button>
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.2</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.3</div>
         </div>
       </section>
     </div>
@@ -433,12 +440,13 @@ function CoverSlider({ label, value, onChange, min, max, step = 1, display, acce
 // SHARED CHROME + NAV
 // ============================================================================
 function CoverNav({ active, emphasizeQuiz }) {
+  // V19.3: four tabs, plain-job names (per Cris). Internal ids are unchanged so
+  // window._coverNav targets and the app shell's routing keep working.
   const tabs = [
-    { id: 'quiz', label: 'Questionnaire' },
-    { id: 'cover', label: 'Cover' },
-    { id: 'rework', label: 'Rework' },
-    { id: 'chart', label: 'Projection' },
-    { id: 'charts2', label: 'Income & Odds' },
+    { id: 'quiz', label: 'Input Data' },
+    { id: 'cover', label: 'Results' },
+    { id: 'rework', label: 'Try Changes' },
+    { id: 'chart', label: 'Charts' },
   ];
   return (
     <nav style={{ display: 'flex', gap: 26, justifyContent: 'center', alignItems: 'center', paddingTop: 14, flexWrap: 'wrap' }}>
@@ -505,6 +513,10 @@ function CoverAdjust(props) {
   const resetAll = () => setSc({ retireAge: params.retireAge, spending: params.spending, ssClaimAge: params.ssClaimAge, spouseClaimAge: params.spouseClaimAge });
   const commit = () => setParams(p => ({ ...p, ...sc }));
   const anyChange = sc.retireAge !== params.retireAge || sc.spending !== params.spending || sc.ssClaimAge !== params.ssClaimAge || sc.spouseClaimAge !== params.spouseClaimAge;
+  // V19.3: the comparison bars (formerly Income & Odds) live here now, fed by the same
+  // full-path-count computeMoves source as the Results cards. They compare the FILED
+  // plan's moves (params), not the draft above — the draft has its own score at left.
+  const movesData = React.useMemo(() => window.MockEngine.computeMoves(params, base.successRate, { includeCombined: true }), [params, base]);
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   const filedNoun = dirty ? 'filed plan' : 'sample plan';
@@ -536,9 +548,9 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.2">
+    <CoverChrome active="rework" tag="V19.3">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
-        <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Rework the Cover · live</div>
+        <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
           letterSpacing: '-0.01em' }}>Move a dial. Watch the number.</h1>
         {!dirty && (
@@ -601,7 +613,7 @@ function CoverAdjust(props) {
               <button onClick={commit} disabled={!anyChange} style={{ width: '100%', marginTop: 22, padding: '14px',
                 background: anyChange ? cvStyles.ink : cvStyles.ink20, color: cvStyles.paper, border: 'none',
                 fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase',
-                cursor: anyChange ? 'pointer' : 'default', fontWeight: 600 }}>Publish as the new cover</button>
+                cursor: anyChange ? 'pointer' : 'default', fontWeight: 600 }}>Publish as your new plan</button>
             </div>
             <div style={{ ...cvKicker, marginBottom: 12 }}>Suggested moves · tap to set</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -620,13 +632,28 @@ function CoverAdjust(props) {
             </div>
           </div>
         </div>
+
+        {/* V19.3: the moves, side by side — moved here from the retired Income & Odds
+            screen, so the place you compare moves is the place you try them. */}
+        <div style={{ marginTop: 56, paddingTop: 40, borderTop: `1px solid ${cvStyles.rule}` }}>
+          <div style={{ ...cvKicker, marginBottom: 10 }}>The moves, side by side</div>
+          <h2 style={{ fontFamily: cvStyles.display, fontSize: 36, margin: '0 0 8px', letterSpacing: '-0.01em', lineHeight: 1.05 }}>
+            What each change is worth.
+          </h2>
+          <p style={{ fontSize: 14.5, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 620, margin: '0 0 28px' }}>
+            Every bar is measured against this {filedNoun} at the full path count — the exact same
+            numbers as the move cards on Results. Tap a suggested move above to draft one.
+          </p>
+          <ScenarioCompareChart data={movesData} theme={theme} labelWidth={176}
+            baseLabel={dirty ? 'Your plan today' : 'This sample plan'} />
+        </div>
       </div>
     </CoverChrome>
   );
 }
 
 // ============================================================================
-// ④ PROJECTION — balance fan + income by source
+// ④ CHARTS — balance fan + income by source + glide path + year-by-year table
 // ============================================================================
 function CoverCharts(props) {
   props = props || {}; const [localParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams;
@@ -636,9 +663,9 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.2">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.3">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
-        <div style={{ ...cvKicker, marginBottom: 10 }}>The Projection · {(results.numPaths || 0).toLocaleString()} paths</div>
+        <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
           <div style={{ display: 'inline-block', marginBottom: 14, padding: '5px 12px',
             border: `1px solid ${cvStyles.clay}`, color: cvStyles.clay, background: cvStyles.claySoft,
@@ -665,6 +692,20 @@ function CoverCharts(props) {
           <IncomeSourceChart results={results} theme={theme} width={960} height={300} />
         </div>
 
+        {/* V19.3: glide path — moved here from the retired Income & Odds screen
+            (per Cris: after the paycheck chart, before the summary stats). */}
+        <div style={{ marginTop: 56 }}>
+          <div style={{ ...cvKicker, marginBottom: 8 }}>How your mix shifts</div>
+          <h2 style={{ fontFamily: cvStyles.display, fontSize: 34, margin: '0 0 8px', letterSpacing: '-0.01em' }}>
+            Stocks now, steadier later.
+          </h2>
+          <p style={{ fontSize: 14.5, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 620, margin: '0 0 24px' }}>
+            Your glide path eases out of stocks as you age, so a crash late in retirement does less
+            damage when you can least afford it.
+          </p>
+          <GlidePathChart results={results} theme={theme} width={960} height={240} />
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 32, marginTop: 48,
           paddingTop: 32, borderTop: `1px solid ${cvStyles.rule}` }}>
           <CoverBigStat big={`${results.successRate}`} unit="/100" label="Plans that succeed" />
@@ -678,49 +719,6 @@ function CoverCharts(props) {
         <div style={{ marginTop: 48, paddingTop: 36, borderTop: `1px solid ${cvStyles.rule}` }}>
           <div style={{ ...cvKicker, marginBottom: 14 }}>The year-by-year numbers</div>
           <YearByYearTable results={results} theme={theme} />
-        </div>
-      </div>
-    </CoverChrome>
-  );
-}
-
-// ============================================================================
-// ⑤ INCOME & ODDS — glide path + scenario comparison
-// ============================================================================
-function CoverCharts2(props) {
-  props = props || {}; const [localParams] = React.useState(window.MockEngine.DEFAULTS); const params = props.params || localParams;
-  const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
-  const theme = cvTheme(cvVerdictColor(results.verdict));
-  // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework/Projection.
-  const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
-  return (
-    <CoverChrome active="charts2" tag="V19.2">
-      <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
-        <div style={{ ...cvKicker, marginBottom: 10 }}>How your mix shifts</div>
-        {!dirty && (
-          <div style={{ display: 'inline-block', marginBottom: 14, padding: '5px 12px',
-            border: `1px solid ${cvStyles.clay}`, color: cvStyles.clay, background: cvStyles.claySoft,
-            fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
-            Sample plan · not your numbers yet</div>
-        )}
-        <h1 style={{ fontFamily: cvStyles.display, fontSize: 46, margin: '0 0 8px', letterSpacing: '-0.01em', lineHeight: 1.05 }}>
-          Stocks now, steadier later.
-        </h1>
-        <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 620, margin: '0 0 24px' }}>
-          Your glide path eases out of stocks as you age, so a crash late in retirement does less damage
-          when you can least afford it.
-        </p>
-        <GlidePathChart results={results} theme={theme} width={960} height={240} />
-
-        <div style={{ marginTop: 56, paddingTop: 40, borderTop: `1px solid ${cvStyles.rule}` }}>
-          <div style={{ ...cvKicker, marginBottom: 10 }}>The moves, side by side</div>
-          <h2 style={{ fontFamily: cvStyles.display, fontSize: 40, margin: '0 0 8px', letterSpacing: '-0.01em', lineHeight: 1.05 }}>
-            What each change is worth.
-          </h2>
-          <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 620, margin: '0 0 32px' }}>
-            The same odds, run five ways. Combine all three and the plan moves from tight to comfortable.
-          </p>
-          <ScenarioCompareChart params={params} theme={theme} labelWidth={176} />
         </div>
       </div>
     </CoverChrome>
@@ -790,7 +788,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 430, margin: '0 0 32px' }}>
             {hasSession
               ? 'Pick up where you left off, load a plan you saved, or start fresh. Your answers stay in this browser unless you save them to a file.'
-              : 'Answer a few questions and the cover fills in with your real numbers — about 3–5 minutes. Your answers stay in this browser unless you save them to a file.'}
+              : 'Answer a few questions and your results fill in with your real numbers — about 3–5 minutes. Your answers stay in this browser unless you save them to a file.'}
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 430 }}>
             {hasSession && <ActionButton primary onClick={onContinue}
@@ -802,10 +800,10 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.2</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.3</div>
       </div>
     </div>
   );
 }
 
-Object.assign(window, { CoverDesktop, CoverAdjust, CoverCharts, CoverCharts2, CoverWelcome });
+Object.assign(window, { CoverDesktop, CoverAdjust, CoverCharts, CoverWelcome });
