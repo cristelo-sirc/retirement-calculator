@@ -1,4 +1,4 @@
-// real-engine.js — V19.4 adapter
+// real-engine.js — V19.5 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.4';
+      s.src = 'engine.js?v=19.5';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -330,7 +330,10 @@
         // NOTE (verified V19.2): the engine's logged totalWithdrawal is DISCRETIONARY
         // only — RMDs are withdrawn first and logged separately in `rmd` (same reason
         // the paycheck sums rmd + wd*). Total portfolio outflow is the sum of both.
-        withdrawals: (y.totalWithdrawal || 0) + (y.rmd || 0),
+        // V19.5 (F-SURPLUS fix): net out surplusBanked -- money the engine deposited
+        // BACK into taxable this year (leftover guaranteed income) never actually left
+        // the portfolio to fund spending, so it shouldn't count as a withdrawal here.
+        withdrawals: (y.totalWithdrawal || 0) + (y.rmd || 0) - (y.surplusBanked || 0),
         expenses: y.spending || 0,
         taxes: y.taxBill || 0,
         endBalance: y.totalBal,
@@ -387,7 +390,11 @@
     var spouseRetIdx = m.hasPartner ? Math.max(0, (m.spouseRetireAge || 0) - (m.spouseAge || 0)) : 0;
     var retIdx = Math.max(userRetIdx, spouseRetIdx);
     var ry = medianLog[Math.min(retIdx, medianLog.length - 1)] || {};
-    var portfolioDraw = (ry.rmd || 0) + (ry.wdTaxable || 0) + (ry.wdPreTax || 0) + (ry.wdRoth || 0);
+    // V19.5 (F-SURPLUS fix): net out surplusBanked -- the engine now deposits leftover
+    // guaranteed income (RMD/SS beyond spending+taxes) back into taxable, so that
+    // portion never actually left the portfolio to fund this year's outflow. Without
+    // this the paycheck bars would overshoot spending+taxes in surplus years.
+    var portfolioDraw = (ry.rmd || 0) + (ry.wdTaxable || 0) + (ry.wdPreTax || 0) + (ry.wdRoth || 0) - (ry.surplusBanked || 0);
     var taxesMo = (ry.taxBill || 0) / 12;
     var spendingMo = (ry.spending || 0) / 12;
     var paycheck = {
@@ -422,7 +429,9 @@
     var incomeByYear = medianLog.filter(function (y) { return y.age >= m.retireAge; }).map(function (y) {
       return { age: y.age, ss: y.ssIncome || 0, pension: y.pensionIncome || 0, other: y.partTimeIncome || 0,
         wages: y.wages || 0,
-        portfolio: (y.rmd || 0) + (y.wdTaxable || 0) + (y.wdPreTax || 0) + (y.wdRoth || 0), need: y.spending || 0 };
+        // V19.5 (F-SURPLUS fix): net out banked surplus -- see the paycheck note above.
+        portfolio: (y.rmd || 0) + (y.wdTaxable || 0) + (y.wdPreTax || 0) + (y.wdRoth || 0) - (y.surplusBanked || 0),
+        need: y.spending || 0 };
     });
     var allocByYear = medianLog.map(function (y) {
       var stock = Math.round((y.stockAlloc != null ? y.stockAlloc : real.stockAllocation) * 100);
