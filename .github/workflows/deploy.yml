@@ -1,0 +1,77 @@
+name: Deploy to GitHub Pages
+
+# Custom Pages deploy workflow (replaces the legacy "Deploy from a branch" /
+# auto-Jekyll pipeline). Two problems that pipeline had, both fixed here:
+#   1. It ran every push through a Jekyll build this plain HTML/JS site never
+#      needed — one more moving part, and slower.
+#   2. Its "Deploy to GitHub Pages" step failed intermittently (build always
+#      succeeded; only the publish step flaked) with no way for us to add a
+#      safety net, because that pipeline has no workflow file we can edit.
+# This workflow is ours to edit, so the deploy step below retries itself up to
+# three times before giving up, instead of us noticing a failure and manually
+# pushing an empty commit to retrigger.
+#
+# Requires: repo Settings -> Pages -> Build and deployment -> Source set to
+# "GitHub Actions" (not "Deploy from a branch"). Until that's switched, this
+# workflow's deploy step will fail (harmlessly — the old pipeline keeps
+# serving the live site until the switch is made).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy1.outputs.page_url || steps.deploy2.outputs.page_url || steps.deploy3.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages (attempt 1)
+        id: deploy1
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry 1
+        if: steps.deploy1.outcome == 'failure'
+        run: sleep 20
+
+      - name: Deploy to GitHub Pages (attempt 2)
+        id: deploy2
+        if: steps.deploy1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Wait before retry 2
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        run: sleep 30
+
+      - name: Deploy to GitHub Pages (attempt 3)
+        id: deploy3
+        if: steps.deploy1.outcome == 'failure' && steps.deploy2.outcome == 'failure'
+        uses: actions/deploy-pages@v4
