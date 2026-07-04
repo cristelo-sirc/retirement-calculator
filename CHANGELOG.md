@@ -1,5 +1,17 @@
 # Change log
 
+## 19.5.0 — 2026-07-04
+
+- Fixed a bug where a planned Roth conversion could be taxed as income even when the account didn't have enough money left to actually convert it.
+- Fixed a bug where working part-time after claiming Social Security early could understate your benefit more and more each year as inflation compounded.
+- Fixed a bug where the Medicare surcharge (IRMAA) could be silently skipped in years fully funded by Roth withdrawals, even when it was owed.
+- Fixed a bug that overtaxed capital gains for retirees with little or no other income, by not letting unused standard deduction shelter those gains.
+- Leftover guaranteed income (like a large required withdrawal in a low-spending year) is now saved into your account instead of disappearing from the math.
+- A windfall or inheritance arriving after a plan had run out of money now stays in the plan and can make it solvent again, instead of showing up for one year and then vanishing.
+- Corrected the required-withdrawal table for ages 111 and up, which had been frozen at the age-110 rate.
+- Corrected a one-dollar-a-month rounding difference in the top Medicare surcharge tier.
+- Added dozens of new automated checks (including a 1,152-scenario check that money is never gained or lost unaccounted for) to help keep the math this accurate going forward.
+
 ## 19.4.0 — 2026-07-03
 
 - The phone view now tells you Try Changes and Charts exist on the desktop site, since the phone view only ever showed Results and Input Data.

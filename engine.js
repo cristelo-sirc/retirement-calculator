@@ -1276,12 +1276,17 @@
                     90: 12.2, 91: 11.5, 92: 10.8, 93: 10.1, 94: 9.5,
                     95: 8.9, 96: 8.4, 97: 7.8, 98: 7.3, 99: 6.8,
                     100: 6.4, 101: 6.0, 102: 5.6, 103: 5.2, 104: 4.9, // BUG-006 fix: extended table
-                    105: 4.6, 106: 4.3, 107: 4.1, 108: 3.9, 109: 3.7, 110: 3.5
+                    105: 4.6, 106: 4.3, 107: 4.1, 108: 3.9, 109: 3.7, 110: 3.5,
+                    // V19.5 (F-RMD-110 fix): the IRS Uniform Lifetime Table keeps falling past
+                    // 110 -- it does not floor at 3.5. Verified against 26 CFR 1.401(a)(9)-9,
+                    // Table 2 to Paragraph (c) (2026-07).
+                    111: 3.4, 112: 3.3, 113: 3.1, 114: 3.0, 115: 2.9,
+                    116: 2.8, 117: 2.7, 118: 2.5, 119: 2.3
                 };
-                return table[age] || 3.5; // Floor at 3.5 for ages beyond 110 (BUG-006 fix)
+                return table[age] !== undefined ? table[age] : 2.0; // 120+ per the IRS table
             }
 
-            function calculateSSBenefit(baseFRA, claimAge, currentAge, FRA, annualCOLA, earnings, limit) {
+            function calculateSSBenefit(baseFRA, claimAge, currentAge, FRA, annualCOLA, earnings, limit, inflationMult = 1) {
                 if (baseFRA <= 0) return 0;
                 if (currentAge < claimAge) return 0;
 
@@ -1307,7 +1312,14 @@
                 // Do NOT apply internal COLA here to avoid double-inflation. (BUG-001 fix)
 
                 if (currentAge < FRA && earnings > limit) {
-                    const reduction = (earnings - limit) / 2;
+                    // V19.5 (F-SS-EARNTEST-INFL fix): earnings and limit arrive already
+                    // NOMINAL (the caller multiplies both by inflation before passing them
+                    // in), so this reduction is nominal too. `benefit` above is still in
+                    // TODAY'S dollars (COLA is applied once, externally, by the caller after
+                    // this function returns) -- so convert the reduction back to today's
+                    // dollars before subtracting, instead of subtracting a nominal amount
+                    // from a today's-dollars benefit and then inflating the mismatch again.
+                    const reduction = (earnings - limit) / 2 / inflationMult;
                     benefit = Math.max(0, benefit - reduction);
                 }
 
@@ -1461,7 +1473,13 @@
             function calculateCapGainsTax(taxableGains, ordinaryIncome, filingStatus, bracketMult, sdMult) {
                 if (taxableGains <= 0) return 0;
                 const SD = (filingStatus === 'MFJ' ? STD_DEDUCTION_MFJ : STD_DEDUCTION_SINGLE) * sdMult;
-                const taxableOrdinary = Math.max(0, ordinaryIncome - SD);
+                // V19.5 (F-CG-SD fix): do NOT floor this at 0. Real law stacks gains on top
+                // of (ordinary income - SD) as a single taxable-income number, so when
+                // ordinary income is below the SD the *leftover* deduction must still reduce
+                // how much of the gains sit above $0 -- flooring here silently threw that
+                // leftover away and overtaxed gains for low/no-ordinary-income filers. The
+                // room-in-bracket math two lines down already floors safely at 0.
+                const taxableOrdinary = ordinaryIncome - SD;
 
                 let zeroRateCap, fifteenRateCap;
                 if (filingStatus === 'MFJ') {
@@ -1515,10 +1533,10 @@
                 // this function adds only the income-related surcharge.
                 if (filingStatus === 'MFJ') {
                     thresholds = [218000 * inflationMult, 274000 * inflationMult, 342000 * inflationMult, 410000 * inflationMult, 750000 * inflationMult];
-                    surcharges = [0, 95.70, 240.40, 385.00, 529.60, 578.00];
+                    surcharges = [0, 95.70, 240.40, 385.00, 529.70, 578.00]; // V19.5 (F-IRMAA-T4 fix): CMS 2026 tier-4 is $529.70 (Part B 446.40 + Part D 83.30)
                 } else {
                     thresholds = [109000 * inflationMult, 137000 * inflationMult, 171000 * inflationMult, 205000 * inflationMult, 500000 * inflationMult];
-                    surcharges = [0, 95.70, 240.40, 385.00, 529.60, 578.00];
+                    surcharges = [0, 95.70, 240.40, 385.00, 529.70, 578.00]; // V19.5 (F-IRMAA-T4 fix): CMS 2026 tier-4 is $529.70 (Part B 446.40 + Part D 83.30)
                 }
                 let monthlyCharge = 0;
                 if (magi <= thresholds[0]) monthlyCharge = surcharges[0];
@@ -1918,10 +1936,10 @@
                     if (params.enablePartTime && currentYearAge >= params.partTimeStartAge && currentYearAge <= params.partTimeEndAge) ptIncome = params.partTimeIncome * inflation;
 
                     // Calculate individual SS benefits
-                    let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, ptIncome, SS_EARNINGS_LIMIT * inflation);
+                    let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, ptIncome, SS_EARNINGS_LIMIT * inflation, inflation);
                     let spouseSSBenefit = 0;
                     if (params.spouseAge > 0) {
-                        spouseSSBenefit = calculateSSBenefit(params.spouseSS, params.spouseClaimAge, spouseCurrentAge, FRA, SS_COLA, 0, SS_EARNINGS_LIMIT * inflation);
+                        spouseSSBenefit = calculateSSBenefit(params.spouseSS, params.spouseClaimAge, spouseCurrentAge, FRA, SS_COLA, 0, SS_EARNINGS_LIMIT * inflation, inflation);
                     }
 
                     // Apply spousal benefit if enabled
@@ -2047,8 +2065,12 @@
                         // 5a. Calculate available non-portfolio/non-tax-burdened cash
                         const availableCash = userNetSalary + spouseNetSalary + otherIncome + ptIncome + ssIncome + totalRmd;
 
+                        // V19.5 (F-IRMAA-SKIP fix): snapshot the totalNeed this pass's withdrawals
+                        // are actually based on, so convergence can confirm it hasn't since moved.
+                        const totalNeedUsedThisPass = totalNeed;
+
                         // The gap includes the spending need + the tax burden (estimated from last pass)
-                        let gap = totalNeed + iterationTax - availableCash; // Use totalNeed here
+                        let gap = totalNeedUsedThisPass + iterationTax - availableCash;
 
                         let withdrawals_this_pass = { taxable: 0, userPreTax: 0, spousePreTax: 0, userRoth: 0, spouseRoth: 0 };
                         let taxableGains_this_pass = 0;
@@ -2079,12 +2101,29 @@
 
                         totalWithdrawal = withdrawals_this_pass.taxable + withdrawals_this_pass.userPreTax + withdrawals_this_pass.spousePreTax + withdrawals_this_pass.userRoth + withdrawals_this_pass.spouseRoth;
 
+                        // V19.5 (F-ROTHCONV-PHANTOM fix): tax only the conversion that can
+                        // actually execute this pass. `rothConversion` (computed earlier) is the
+                        // PLANNED amount, capped only against the start-of-year pre-tax balance
+                        // minus RMD -- it does not know about this pass's discretionary
+                        // withdrawals, which can also draw down the same pre-tax account first.
+                        // Mirror the exact post-reset ceiling the balance-mutation step (below,
+                        // after this loop converges) will use, so taxed income and executed
+                        // conversion always agree -- no more taxing money that never converts.
+                        let executedConversion = 0;
+                        if (rothConversion > 0) {
+                            const userPostReset = userPreTax_startOfYear - userRmd - withdrawals_this_pass.userPreTax + userPreTaxContrib;
+                            const userExec = Math.min(Math.max(0, userPostReset), rothConversion);
+                            const spousePostReset = spousePreTax_startOfYear - spouseRmd - withdrawals_this_pass.spousePreTax + spousePreTaxContrib;
+                            const spouseExec = Math.min(Math.max(0, spousePostReset), rothConversion - userExec);
+                            executedConversion = userExec + spouseExec;
+                        }
+
                         // 5b. Calculate Ordinary Income for this pass
                         const ordIncomeFromWithdrawals = withdrawals_this_pass.userPreTax + withdrawals_this_pass.spousePreTax;
                         const ordIncomeFromSalary = userNetSalary + spouseNetSalary;
                         const ordIncomeFromContributions = userRothContrib + spouseRothContrib; // Roth contributions are taxed income
 
-                        let currentOrdIncome = ordIncomeFromSalary + ordIncomeFromContributions + otherIncome + ptIncome + totalRmd + rothConversion + ordIncomeFromWithdrawals;
+                        let currentOrdIncome = ordIncomeFromSalary + ordIncomeFromContributions + otherIncome + ptIncome + totalRmd + executedConversion + ordIncomeFromWithdrawals;
 
                         // 5c. SS Tax calculation (SS taxability depends on other income + capital gains per IRS)
                         const taxableSS = calculateTaxableSS(ssIncome, currentOrdIncome + taxableGains_this_pass, filingStatus);
@@ -2102,6 +2141,14 @@
                             irmaa = calculateIRMAA(lookbackMAGI, filingStatus, bracketMult) * medicareCount;
                         }
 
+                        // V19.5 (F-IRMAA-SKIP fix): refresh totalNeed with THIS pass's IRMAA
+                        // immediately -- not only after a tax-convergence check that could exit
+                        // before this ever ran. A year fully funded by Roth withdrawals converges
+                        // on tax (both 0) in a single pass, which used to exit the loop before this
+                        // line ever executed, silently never charging IRMAA into spending even when
+                        // the 2-year-lookback MAGI sat deep in a surcharge tier.
+                        totalNeed = baseSpending + irmaa;
+
                         // 5e. Calculate New Total Tax
                         // Determine if TCJA has sunset (2026+)
                         const currentCalendarYear = MODEL_BASE_YEAR + i;
@@ -2115,7 +2162,11 @@
                         let newTax = federalOrdinaryTax + capGainsTax + niitTax + stateTax;
 
                         // 5f. Check for Convergence / Finalize
-                        if (Math.abs(newTax - iterationTax) < 1 || iteration === 4) { // Converged if diff < $1 or max 5 passes reached
+                        // V19.5 (F-IRMAA-SKIP fix): converge only once BOTH the tax bill AND the
+                        // total need (which now bakes in this pass's IRMAA) have stabilized. Tax
+                        // alone stabilizing is not enough -- see the totalNeed refresh above.
+                        const needStable = Math.abs(totalNeed - totalNeedUsedThisPass) < 1;
+                        if ((Math.abs(newTax - iterationTax) < 1 && needStable) || iteration === 4) { // Converged if diff < $1 or max 5 passes reached
                             finalTax = newTax;
                             withdrawals_converged = withdrawals_this_pass;
                             finalOrdIncome = currentOrdIncome;
@@ -2124,11 +2175,6 @@
                         }
 
                         iterationTax = newTax;
-
-                        // Update total need with new IRMAA, which forces another convergence pass if it's significant.
-                        // This line was the source of the error in V8.3, but the check for convergence is better
-                        // done on the tax change itself, which the main loop does. We only update totalNeed for the next loop run.
-                        totalNeed = baseSpending + irmaa;
                     } // End Tax Convergence Loop
 
                     // V18.11 (item 4): record this year's converged MAGI so a future year can look it back.
@@ -2144,6 +2190,22 @@
                     taxable = taxable_startOfYear - withdrawals_converged.taxable;
                     userRoth = userRoth_startOfYear - withdrawals_converged.userRoth + userRothContrib;
                     spouseRoth = spouseRoth_startOfYear - withdrawals_converged.spouseRoth + spouseRothContrib;
+
+                    // V19.5 (F-SURPLUS fix): guaranteed RETIREMENT income (SS + pension +
+                    // part-time + RMD) plus this year's discretionary withdrawal can exceed what's
+                    // actually needed for spending + taxes -- most commonly a large forced RMD in a
+                    // low-spending year. That leftover cash is real money that a real household
+                    // would simply keep; bank it into taxable instead of letting it evaporate
+                    // (previously: the RMD left the pre-tax account regardless of need, and any
+                    // surplus was never reinvested anywhere, understating legacy/success).
+                    // Deliberately EXCLUDES salary/wages and is gated on retirementStarted: while
+                    // still working, spending is intentionally modeled as $0 (V18.13) because
+                    // take-home pay is assumed to fund real, unmodeled living expenses -- sweeping
+                    // leftover salary into savings here would silently double-count it as both
+                    // implicit living expenses AND portfolio growth.
+                    const finalAvailableCash = otherIncome + ptIncome + ssIncome + totalRmd;
+                    const surplusCash = retirementStarted ? Math.max(0, finalAvailableCash + totalWithdrawal - totalNeed - finalTax) : 0;
+                    taxable += surplusCash;
 
                     // Apply Roth Conversion (must happen after withdrawals, before log/solvency check)
                     if (rothConversion > 0) {
@@ -2163,10 +2225,23 @@
                     const totalBal = userPreTax + spousePreTax + userRoth + spouseRoth + taxable;
                     const effectiveRate = finalOrdIncome > 0 ? (finalTax / finalOrdIncome) : 0;
 
-                    if (totalBal < 1 && isSolvent) {
+                    // V19.5 (F-DEPLETED-WINDFALL fix): solvency is now evaluated fresh every
+                    // year instead of latching false forever. Previously, once depleted, a later
+                    // windfall was added to taxable and shown arriving on the chart/log that same
+                    // year, then unconditionally erased back to $0 the very next year regardless
+                    // of the balance -- money was displayed, then silently destroyed. A real
+                    // inheritance can genuinely rescue a broke household, so: if the balance is
+                    // still under $1, clamp to 0 and record the depletion age (only advancing it
+                    // the moment solvency is first lost); if new money (windfall or banked
+                    // surplus) brings the balance back to $1+, the plan resumes and depletionAge
+                    // clears -- there is no depletionAge for a plan that's solvent at the end.
+                    if (totalBal < 1) {
+                        if (isSolvent) { depletionAge = balanceAge; }
                         isSolvent = false;
-                        depletionAge = balanceAge;
                         userPreTax = 0; spousePreTax = 0; userRoth = 0; spouseRoth = 0; taxable = 0; // zero out balances
+                    } else if (!isSolvent) {
+                        isSolvent = true; // resurrected by new money this year
+                        depletionAge = null;
                     }
 
                     pathLog.push({
@@ -2194,9 +2269,9 @@
                         wdPreTax: withdrawals_converged.userPreTax + withdrawals_converged.spousePreTax,  // Discretionary pre-tax (beyond RMD)
                         wdRoth: withdrawals_converged.userRoth + withdrawals_converged.spouseRoth,
                         inflation: inflation,
-                        isSolvent: isSolvent
+                        isSolvent: isSolvent,
+                        surplusBanked: surplusCash // V19.5 (F-SURPLUS): leftover guaranteed-income cash banked into taxable this year
                     });
-                    if (!isSolvent) { userPreTax = 0; spousePreTax = 0; userRoth = 0; spouseRoth = 0; taxable = 0; }
 
                     // Update previous year balance for guardrails
                     previousYearBalance = totalBal;

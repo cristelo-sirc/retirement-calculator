@@ -171,7 +171,11 @@ test('2026 tax, capital-gains, Medicare, and Social Security baselines are exact
   assertClose(calculateFederalOrdinaryTax(57000, 'MFJ', 1, 1), 2480, 'joint first bracket');
 
   assertClose(calculateCapGainsTax(98900, 0, 'MFJ', 1, 1), 0, 'joint zero-rate capital gains ceiling');
-  assertClose(calculateCapGainsTax(99000, 0, 'MFJ', 1, 1), 15, 'capital gains above zero-rate ceiling');
+  // V19.5 (F-SURPLUS/F-CG-SD fix, 2026-07-04): the unused standard deduction now
+  // shelters gains too (taxable income 99000-32200=66800, still under the 98900
+  // zero-rate cap), so this stays $0 -- see audit-statutory.test.js for the case that
+  // tests the true 0%-ceiling boundary with the SD already spoken for by ordinary income.
+  assertClose(calculateCapGainsTax(99000, 0, 'MFJ', 1, 1), 0, 'unused SD now shelters these gains too');
 
   assertClose(calculateIRMAA(218000, 'MFJ', 1), 0, 'IRMAA joint base tier');
   assertClose(calculateIRMAA(218001, 'MFJ', 1), 95.70 * 12, 'IRMAA first joint surcharge');

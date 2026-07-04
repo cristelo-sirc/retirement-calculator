@@ -8,12 +8,13 @@ components in `cover-app/`, backed by the **real Monte Carlo engine** (`engine.j
 `real-engine.js` adapter. `engine.js` is reused as a pure math library &mdash; only its DOM init is
 bypassed. **Note:** V18.11 is the first release that intentionally modifies `engine.js` math
 (contribution accumulation fix, IRMAA per-person + 2yr lookback, growing contribution caps).
-See the V18.0 / V18.1 sections below for detail.
+See the V18.0 / V18.1 sections below for detail. **V19.5 is the second such release** (a
+deep engine-accuracy audit and fix batch &mdash; see the V19.5 section below).
 
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.4
+**Current Version:** 19.5
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -1009,3 +1010,101 @@ produced the failing run first (`"pages build and deployment"` = legacy, should 
 `"Deploy to GitHub Pages"` = ours). If it's ours, the 3-attempt retry already ran and still lost —
 that's a stronger signal than the old single-shot legacy failures ever gave, and is worth showing
 Cris directly rather than silently re-pushing.
+
+---
+
+## V19.5 &mdash; Deep engine-accuracy audit: 8 fixes (2 High, 4 Medium, 2 Low/Info)
+
+Second intentional `engine.js` math release (first since V18.11). Addresses
+`AUDIT-ENGINE-2026-07.md` (a 2026-07-04 deep-audit Fable session that added 43 new tests &mdash;
+`tests/audit-*.js` &mdash; and found no Critical issue, 2 High, 4 Medium, 2 Low, 1 Info). Shipped as
+one batch per Cris's explicit instruction to minimize phases/browser-testing rounds: all approved
+fixes together, one version bump, one deploy, one live-browser regression pass. Two findings
+(F-SURPLUS, F-DEPLETED-WINDFALL) needed a semantics decision only Cris could make; both were decided
+before any code was written (see below). A ninth finding (F-PT-EARNTEST-ATTRIB) was deliberately
+**deferred at Cris's request** &mdash; see `BACKLOG.md`.
+
+**F-ROTHCONV-PHANTOM (High) &mdash; taxed on Roth conversions that never happened.** The planned
+conversion amount was added to ordinary income in full even when discretionary withdrawals drained
+the pre-tax account first, so only a fraction could actually convert &mdash; nothing clipped the
+income to match. Repro: a $100k pre-tax account logged $159,901 of ordinary income in one year
+(~$60k phantom). Fix: inside the tax convergence loop, compute the *executable* conversion (mirroring
+the same post-reset ceiling the balance-mutation step already uses) and tax only that.
+
+**F-SS-EARNTEST-INFL (High) &mdash; the Social Security earnings-test reduction was double-inflated.**
+`calculateSSBenefit` received nominal (already-inflated) earnings and limit, computed a nominal
+reduction, then subtracted it from a today's-dollars benefit that gets inflated *again* by the
+caller. Only affects claim-before-FRA plus part-time-income years, growing every year with
+inflation. Fix: the function now takes the year's inflation multiplier and converts the reduction
+back to today's dollars before subtracting, instead of mixing dollar bases.
+
+**F-IRMAA-SKIP (Medium) &mdash; Roth-funded retirement years could silently skip IRMAA.** The tax
+convergence loop could converge on its very first pass (e.g., a year fully funded by Roth
+withdrawals: $0 ordinary income, $0 tax) and exit *before* IRMAA was ever folded into that year's
+spending &mdash; even when the 2-year-lookback MAGI sat deep in a surcharge tier. Fix: the loop now
+refreshes `totalNeed` with IRMAA immediately after computing it each pass, and only converges once
+BOTH the tax bill and `totalNeed` have stabilized (previously only tax was checked).
+
+**F-CG-SD (Medium) &mdash; unused standard deduction never sheltered capital gains.**
+`calculateCapGainsTax` floored `ordinaryIncome - SD` at $0, so when ordinary income was below the SD
+the leftover deduction was silently discarded instead of also shielding gains &mdash; real 2026 law
+stacks gains on top of `ordinary + gains - SD` as one number. Worst case (MFJ, $0 ordinary income):
+up to $32,200 of gains overtaxed at 15% ($4,830/yr), hitting early retirees living off taxable
+sales. Fix: removed the floor (the downstream bracket-room math already floors safely at $0).
+
+**F-SURPLUS (Medium) &mdash; per Cris's explicit decision: bank it.** When guaranteed retirement
+income (RMD + SS + pension + part-time) exceeded spending + taxes, the excess simply vanished (RMD
+cash left the pre-tax account regardless of need, and nothing reinvested it). Fix: leftover cash
+(`otherIncome + ptIncome + ssIncome + totalRmd + withdrawals - totalNeed - tax`, when positive) is
+now deposited into taxable every year, logged as a new `surplusBanked` pathLog field. **Deliberately
+excludes salary/wages and is gated on `retirementStarted`** &mdash; an earlier draft of this fix
+included wages unconditionally (matching the audit's literal fix-sketch wording) and broke every
+working-year invariant test, because V18.13 intentionally models $0 spending while working (take-home
+pay is assumed to fund real, unmodeled living expenses); sweeping leftover salary into savings would
+have silently double-counted it as both implicit living expenses and portfolio growth. The adapter
+(`real-engine.js`) nets `surplusBanked` out of the paycheck's and year-table's "portfolio" column in
+three places, since banked surplus never actually left the portfolio to fund that year's outflow.
+
+**F-DEPLETED-WINDFALL (Medium) &mdash; per Cris's explicit decision: bank it, let the plan recover.**
+A windfall arriving after the portfolio was already depleted used to be added to the taxable balance,
+appear in that year's logged `totalBal` (so charts/tables showed the money arriving), and then be
+unconditionally erased to $0 the very next year regardless of the balance. Fix: solvency is now
+re-evaluated every year instead of latching `false` forever &mdash; if the balance is still under $1
+it clamps to 0 and records `depletionAge` (only advancing it the moment solvency is first lost); if
+new money (windfall or banked surplus) brings the balance back to $1+, the plan resumes and
+`depletionAge` clears. The same "no resurrection without new money" invariant still holds (verified):
+a household with zero ongoing income and no windfall stays at exactly $0 forever, unchanged.
+
+**F-RMD-110 (Low) &mdash; RMD divisor incorrectly floored at 3.5 past age 110.** The IRS Uniform
+Lifetime Table keeps falling (111&rarr;3.4 ... 120+&rarr;2.0); the engine floored at 3.5, understating
+RMDs at very advanced ages. Fix: extended the table through age 119, explicit 2.0 for 120+. Verified
+against 26 CFR 1.401(a)(9)-9 Table 2 (2026-07) via live web lookup &mdash; the audit's OWN oracle for
+age 115 was itself off by $0.1 (claimed 3.0; the authoritative table says 2.9), corrected in the same
+pass.
+
+**F-IRMAA-T4 (Info, trivial, free) &mdash; $0.10/mo tier-4 rounding.** CMS 2026 tier-4 combined Part B
++ Part D surcharge is $529.70/mo (446.40 + 83.30); engine used $529.60. One-constant fix, zero risk,
+bundled in since it cost nothing extra to verify and fix alongside the rest.
+
+**Deferred at Cris's explicit request: F-PT-EARNTEST-ATTRIB.** The single household part-time-income
+channel is always attributed to the USER for the SS earnings test; a household whose part-time worker
+is actually the spouse still sees the user's benefit reduced. Not a small patch (needs a second,
+per-spouse part-time input across both Questionnaire layouts plus the adapter and input-coverage
+test) &mdash; full scope and an implementation sketch are in `BACKLOG.md`. The audit's `todo` test for
+this finding is intentionally left as `todo`, not flipped, until that lands.
+
+**Validation.** Local suite grew 33 &rarr; 76 tests from the audit session; this batch fixed 8 of the
+9 non-Info findings and left all corresponding `todo` tests flipped to real, passing assertions
+(F-PT-EARNTEST-ATTRIB stays `todo` by design). Two pre-existing tests that encoded the OLD, buggy
+zero-floor capital-gains behavior as their expected value (`audit-statutory.test.js`,
+`financial-engine.test.js`) were corrected to the legally-accurate expectation. Full suite: **76
+tests, 75 pass, 0 fail, 1 todo** (regression gate). The 1,152-scenario conservation matrix
+(`audit-conservation.test.js`) still holds with the new `surplusBanked` term added to its identity
+formula. **Default sample-plan score unchanged at 64/100** &mdash; none of the eight fixes' trigger
+conditions (active Roth conversion, early-claim + part-time SS, IRMAA-tier Roth-funded years, very
+low ordinary income against capital gains, RMD-heavy surplus, post-depletion windfall, age 111+) are
+present in `DEFAULTS`.
+
+**Cache-buster:** `engine.js?v=19.5` + `?v=19.5` on all `cover-app/*` includes in both shells; both
+HTML titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers (Results/Rework/Charts/
+Input Data screens) reconciled to 19.5.
