@@ -13,7 +13,7 @@ See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.2
+**Current Version:** 19.3
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -840,3 +840,68 @@ Cris's saved plan was backed up to a spare localStorage key before testing and r
 
 **Cache-buster:** `engine.js?v=19.2` + `?v=19.2` on all `cover-app/*` includes in both shells; both HTML
 titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.2.
+
+---
+
+## V19.3 &mdash; Restructure &amp; rename: four tabs, one exact move-delta source
+
+Third batch of `UX-IMPROVEMENT-PLAN.md`. **`engine.js` untouched** &mdash; adapter scoring plumbing +
+UI/copy only. Shipped as two themed commits (adapter+tests `8024b8d`, UI+versions `725c36a`) merged to
+`main` via `fce6cec`, plus a post-audit copy-fix `a2ad3c3` &mdash; direct merge from the /tmp clone per
+the V19.2 precedent, approved in-session.
+
+**Tabs (Cris's own naming, decided at batch start):** five tabs &rarr; four &mdash; **Input Data**
+(was Questionnaire) &middot; **Results** (was Cover) &middot; **Try Changes** (was Rework) &middot;
+**Charts** (was Projection). The Income &amp; Odds screen was retired: its glide-path chart moved to
+Charts (after the paycheck chart, before the summary stats &mdash; the V19.2 year-by-year table stays
+last), and its move-comparison bars moved to Try Changes (below the dials), so the place you compare
+moves is the place you try them. **Internal screen ids (`quiz/cover/rework/chart`) are unchanged**
+&mdash; only labels and user-facing copy were renamed; `window._coverNav` targets and saved plans are
+unaffected. Mobile's two tab labels renamed to match (Results / Input Data); mobile scope itself is
+still the open V19.4 decision.
+
+**One exact move-delta source (kills the +17-vs-+19 mismatch).** New adapter API
+`MockEngine.computeMoves(params, baseRate, {includeCombined})`: every move (delay-2yr, spend-10%-less,
+SS-at-70-both) plus the optional all-together run is measured at the **full path count** with the
+deterministic seeds. It returns `{base, moves:[{id,title,detail,note,rate,delta}], combined}`.
+Consumers: desktop Results cards, Try Changes bars (`ScenarioCompareChart` now renders precomputed
+`data` instead of running its own odds), and mobile Results cards &mdash; identical numbers everywhere,
+by construction. `compute()` no longer returns `levers`; the old proportional `buildLevers` sample and
+`quickSuccess` were **removed**. Screens pass the already-computed headline in as `baseRate` (the
+deterministic RNG makes a re-run identical, so this is a pure optimization &mdash; proven by test, not
+assumed). Input Data and Charts don't show moves, so their recomputes no longer pay for them.
+
+**Tests (suite 29 &rarr; 33).** `tests/moves.test.js`: computeMoves' own base run equals compute()'s
+headline; `rate - base === delta` for every move; combined only when requested; SS move skipped at
+claim-age 70; determinism; `compute().levers === undefined`.
+
+**Live audit (deployed site, Chrome MCP; desktop 1680px + mobile 500px).** Default score **64/100
+unchanged** at 5,000 paths (regression gate). Cards = bars to the point: +19/+10/+5 on cards, bars
+83/74/69 against base 64, combined 93 (+29) &mdash; matching the local Node run exactly (determinism
+across environments, again). Tapping the "+19 Cut spending 10%" Results card staged exactly that draft
+on Try Changes (proposed 83 = 64+19, chip $115,000 &rarr; $104,000, unpublished; localStorage confirmed
+untouched). All four desktop screens + mobile opened at **10,000 paths** (V18.9 lesson): zero console
+errors; at 10k the estimate settles at 65 with +18/+9/+4/+29 &mdash; consistent on cards and bars alike.
+Deployed timings at 5,000 paths: compute ~1.0s, moves ~1.4s &mdash; within the estimate approved with
+the batch. Pages deploy succeeded on the first run this time (no silent-failure retriggers needed).
+
+**Post-audit copy fix (same session).** One residual &ldquo;answer the questionnaire&rdquo; string on
+Try Changes was caught in the live audit and fixed as `a2ad3c3`, bumping `compass-cover.jsx` to
+`?v=19.3b` (the V19.1 cache-buster lesson applied on the first try instead of being relearned).
+
+**Environment lessons (new).**
+- **Chrome MCP window sizing, continued:** `resize_window` again reported success while the OS ignored
+  it, and page-zoom keyboard shortcuts (`cmd+-`) sent via the extension do NOT reach Chrome's browser
+  UI (devicePixelRatio stayed 1), so zoom cannot fake a wide viewport either. The only working path
+  remains asking Cris to maximize the MCP tab's own Chrome window &mdash; that took the viewport from
+  500px to 1680px instantly. Budget for this handoff in any desktop live audit.
+- **`/tmp` persists across sessions but with a different owner:** the previous session's `/tmp/rc`
+  clone could not be removed or reused (permission denied). Use a fresh directory name per session
+  (`/tmp/rc3`), not a fixed one.
+- **Push auth:** fresh /tmp clones have no credentials; the token lives in the gitignored
+  `data/deploy-token.txt` (per `scripts/deploy.sh`) and works as
+  `https://x-access-token:<token>@github.com/...` on push.
+
+**Cache-buster:** `engine.js?v=19.3` + `?v=19.3` on all `cover-app/*` includes in both shells
+(`compass-cover.jsx` at `?v=19.3b` after the copy fix); both HTML titles, `real-engine.js` header,
+saved-plan stamp, and on-screen kickers reconciled to 19.3.

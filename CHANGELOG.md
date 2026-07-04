@@ -1,5 +1,13 @@
 # Change log
 
+## 19.3.0 — 2026-07-03
+
+- Simplified the app from five tabs to four, renamed to say what each screen does: Input Data, Results, Try Changes, and Charts.
+- Retired the Income & Odds tab: its stocks-vs-bonds glide-path chart now lives on Charts (after the paycheck chart), and its move-comparison bars now live on Try Changes — so the place you compare moves is the place you try them.
+- Move point values are now computed one way, at the full simulation path count, and shared everywhere they appear. The Results cards, the Try Changes bars, and the mobile cards always show identical numbers (previously the cards used a faster estimate that could differ by a couple of points).
+- Added automated checks proving the move numbers are exact, deterministic, and always agree with the headline score.
+- Updated all on-screen wording that referred to the old screen names.
+
 ## 19.2.0 — 2026-07-03
 
 - Added a year-by-year table to the Projection page (collapsed behind a "See the year-by-year numbers" button) showing age, starting balance, wages, Social Security, pension and other income, portfolio withdrawals, expenses, taxes, and ending balance for every year of the plan.
