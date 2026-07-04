@@ -3,6 +3,11 @@
 //   • Results    — the hero success number, verdict, paycheck, and the moves.
 //   • Input Data — the "everything shown" intake, single-column, with an
 //                  Advanced toggle for the assumption-level dials.
+// V19.4 (mobile-parity decision, Option B): mobile deliberately stays this two-tab
+// companion — Try Changes and Charts are desktop-only — but CoverView now discloses
+// that in copy so mobile users know those screens exist rather than assuming they don't.
+// Option A (a native third mobile tab for the fan chart + year-by-year table) was
+// considered and moved to BACKLOG.md as a possible future upgrade, not built.
 // Reuses window.cvStyles / window.FIELD_INFO / window.InfoTip / window.MockEngine
 // and window.CVI_STATES. Loaded after compass-cover.jsx + cover-inputs.jsx.
 
@@ -218,6 +223,19 @@
               </div>
             ))}
           </div>
+        </section>
+
+        {/* V19.4: mobile stays a two-tab companion (Results + Input Data) — this note
+            discloses that Try Changes (test your own moves) and Charts (year-by-year
+            table, balance fan chart) exist on desktop, so mobile users know what
+            they're not seeing rather than assuming that's everything. */}
+        <section style={{ marginTop: 26, paddingTop: 20, borderTop: `1px solid ${cm.rule}` }}>
+          <p style={{ fontSize: 12, lineHeight: 1.55, color: cm.ink70, textWrap: 'pretty' }}>
+            This phone view covers your results and your inputs. Two more screens live on a
+            bigger screen: <strong style={{ color: cm.ink }}>Try Changes</strong>, where you can
+            test your own moves before committing to them, and <strong style={{ color: cm.ink }}>
+            Charts</strong>, with the balance projection and year-by-year numbers.
+          </p>
         </section>
       </div>
     );
