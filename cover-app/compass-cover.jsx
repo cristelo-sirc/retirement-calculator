@@ -564,7 +564,7 @@ function CoverAdjust(props) {
         <p style={{ textAlign: 'center', fontSize: 14, color: cvStyles.ink70, margin: '0 auto 36px', maxWidth: 520, lineHeight: 1.6 }}>
           Every change is just a draft — this {filedNoun} ({base.successRate}/100) stays put until you publish.
           A tag shows exactly what you've changed, and resets it in one click.
-          {!dirty && ' These are example numbers — answer the questionnaire for your real plan.'}
+          {!dirty && ' These are example numbers — enter your data for your real plan.'}
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'start' }}>
