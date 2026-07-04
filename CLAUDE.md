@@ -13,7 +13,7 @@ See the V18.0 / V18.1 sections below for detail.
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.3
+**Current Version:** 19.4
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -905,3 +905,58 @@ Try Changes was caught in the live audit and fixed as `a2ad3c3`, bumping `compas
 **Cache-buster:** `engine.js?v=19.3` + `?v=19.3` on all `cover-app/*` includes in both shells
 (`compass-cover.jsx` at `?v=19.3b` after the copy fix); both HTML titles, `real-engine.js` header,
 saved-plan stamp, and on-screen kickers reconciled to 19.3.
+
+---
+
+## V19.4 &mdash; Mobile parity decision: Option B (disclose, don't build)
+
+Closes `UX-IMPROVEMENT-PLAN.md`'s last open item (finding #7) and completes the plan &mdash; all
+four batches (V19.1&ndash;V19.4) are now shipped. **`engine.js` untouched.** Pure UI copy in the
+adapter's React layer; no new adapter computation, no new tests needed (nothing numeric changed).
+
+**The decision.** Two options were on the table: **Option A** &mdash; add a third mobile tab with
+the balance fan chart and the V19.2 year-by-year table (the cheapest meaningful upgrade toward full
+mobile parity). **Option B** &mdash; keep mobile a two-tab companion (Results + Input Data) but say
+so in copy, so mobile users know Try Changes and Charts exist rather than assuming the two tabs are
+the whole app. Cris picked **Option B** directly from the two documented options &mdash; no further
+discussion needed, confirming the plan document had already captured enough context to decide from.
+**Option A moved to `BACKLOG.md`** with an implementation sketch (reuse `BalanceFanChart` + the
+year-by-year table component and `results.yearTables`; no new adapter computation needed) so a
+future session can build it without re-deriving the approach, if mobile parity becomes a priority.
+
+**What shipped.** One new note at the bottom of the mobile Results tab (`cover-app/cover-mobile.jsx`,
+`CoverView`, after the "Three moves" section): "This phone view covers your results and your
+inputs. Two more screens live on a bigger screen: **Try Changes**, where you can test your own
+moves before committing to them, and **Charts**, with the balance projection and year-by-year
+numbers." Mobile's shell, tabs, and all other screens are byte-for-byte unchanged.
+
+**Validation.** Full local suite: 33/33 green, unchanged (regression gate &mdash; nothing numeric
+was touched, so this only confirms nothing else broke). Babel-transform check on the three touched
+JSX files (`cover-mobile.jsx`, `compass-cover.jsx`, `cover-inputs.jsx`) and `node --check` on
+`real-engine.js`. Live audit on the deployed site (Chrome MCP): all four desktop screens (Input
+Data, Results, Try Changes, Charts) opened and visually unchanged; mobile Results tab shows the new
+note exactly as authored; mobile Input Data tab unaffected; zero console errors at either viewport.
+Cris's saved `localStorage['compassParams']` was read, backed up to `sessionStorage`, and restored
+byte-for-byte after testing &mdash; it happened to already equal `DEFAULTS` (so no personalized data
+was ever actually at risk), but the backup/restore discipline was followed regardless, per standing
+audit rule.
+
+**Deploy note: the Pages "Deploy to GitHub Pages" step is a recurring flake, not a one-off.** It
+failed transiently twice in a row after this merge (build succeeded both times; only the deploy job
+failed) &mdash; the same failure mode V19.2 saw once and treated as a one-off. A third push (empty
+retrigger commit) succeeded. **Lesson: budget for at least one retrigger on every future deploy as
+routine, not as a surprise** &mdash; two figures from this session (2 failures before success) vs.
+V19.2's one failure suggest this is a live-with-it GitHub Pages characteristic of this repo/account,
+not something a workflow tweak has fixed.
+
+**Environment lesson update: Chrome MCP `resize_window` worked correctly this session**, both
+1680&times;1000 (desktop) and 500&times;900 (mobile) &mdash; screenshots confirmed the actual
+rendered layout matched (four-tab desktop nav at the wide size, two-tab bottom nav at the narrow
+size), contradicting V19.3's experience of the OS silently ignoring the resize. **Do not assume the
+V19.3 workaround (asking Cris to manually maximize the window) is required by default** &mdash; try
+`resize_window` first each session and only fall back to asking Cris if the rendered content proves
+it didn't take (compare tab-bar/nav layout in the screenshot, not just the reported pixel size).
+
+**Cache-buster:** `engine.js?v=19.4` + `?v=19.4` on all `cover-app/*` includes in both shells; both
+HTML titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers (Results/Rework/Charts/
+Input Data screens, Welcome footer) reconciled to 19.4.

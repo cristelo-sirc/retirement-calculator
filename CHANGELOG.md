@@ -1,5 +1,9 @@
 # Change log
 
+## 19.4.0 — 2026-07-03
+
+- The phone view now tells you Try Changes and Charts exist on the desktop site, since the phone view only ever showed Results and Input Data.
+
 ## 19.3.0 — 2026-07-03
 
 - Simplified the app from five tabs to four, renamed to say what each screen does: Input Data, Results, Try Changes, and Charts.
