@@ -1811,6 +1811,16 @@
 
                 let isSolvent = true;
                 let depletionAge = null;
+                // V19.6: additive "ever went broke" record. `depletionAge` is CLEARED when a
+                // plan recovers via new money (V19.5 F-DEPLETED-WINDFALL), which is right for
+                // the charts but leaves no trace that the plan ever hit $0. `everDepleted`
+                // latches true the first time the balance hits zero and NEVER clears, so the
+                // score can count a decade of destitution as a failure even if the plan later
+                // recovers on paper. `firstDepletionAge` records the age it FIRST happened,
+                // feeding the plain-English "danger age" insight. Neither field is read by any
+                // pre-V19.6 consumer; purely additive.
+                let everDepleted = false;
+                let firstDepletionAge = null;
                 let pathLog = [];
                 let totalTaxPaid = 0;
                 let magiHistory = [];  // V18.11 (item 4): per-year MAGI, feeds the 2-year IRMAA lookback
@@ -2237,6 +2247,7 @@
                     // clears -- there is no depletionAge for a plan that's solvent at the end.
                     if (totalBal < 1) {
                         if (isSolvent) { depletionAge = balanceAge; }
+                        if (!everDepleted) { everDepleted = true; firstDepletionAge = balanceAge; } // V19.6: latch, never clears
                         isSolvent = false;
                         userPreTax = 0; spousePreTax = 0; userRoth = 0; spouseRoth = 0; taxable = 0; // zero out balances
                     } else if (!isSolvent) {
@@ -2276,7 +2287,7 @@
                     // Update previous year balance for guardrails
                     previousYearBalance = totalBal;
                 }
-                return { log: pathLog, finalBalance: userPreTax + spousePreTax + userRoth + spouseRoth + taxable, totalTax: totalTaxPaid, solvent: isSolvent, depletionAge: depletionAge, guardrailTriggers: guardrailTriggersThisPath };
+                return { log: pathLog, finalBalance: userPreTax + spousePreTax + userRoth + spouseRoth + taxable, totalTax: totalTaxPaid, solvent: isSolvent, depletionAge: depletionAge, everDepleted: everDepleted, firstDepletionAge: firstDepletionAge, guardrailTriggers: guardrailTriggersThisPath };
             }
 
             function generateKeyObservations(params, stats) {

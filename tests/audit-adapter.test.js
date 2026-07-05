@@ -92,18 +92,24 @@ test('2d. mapToReal unit contract: every % divided by 100 exactly once, ×12 onl
   close(real.mortgagePrincipal, 1500, 'mortgage payment stays monthly (engine ×12)');
 });
 
-test('2d. successOf: legacy-goal boundary is >=, goal 0 is solvent-only, result is rounded', () => {
+test('2d. successOf: grades on everDepleted (never went broke), goal >= boundary, rounded', () => {
+  // V19.6: successOf now counts a path only if it NEVER went broke (`everDepleted` false)
+  // AND finishes >= the legacy goal. Previously it read the end-state `solvent` flag, which
+  // clears when a windfall revives a broke plan (V19.5) — so a decade of destitution could
+  // still score as success. These results carry both flags to prove the rule now reads
+  // everDepleted: the fourth path is broke-then-recovered (everDepleted true, solvent true,
+  // positive final balance) and must NOT count.
   const results = [
-    { solvent: true, finalBalance: 100 },
-    { solvent: true, finalBalance: 99.99 },
-    { solvent: false, finalBalance: 0 },
-    { solvent: true, finalBalance: 1000 }
+    { everDepleted: false, solvent: true, finalBalance: 100 },
+    { everDepleted: false, solvent: true, finalBalance: 99.99 },
+    { everDepleted: true, solvent: false, finalBalance: 0 },
+    { everDepleted: true, solvent: true, finalBalance: 1000 }   // recovered, but went broke => fail
   ];
-  assert.equal(successOf(results, 100), Math.round((2 / 4) * 100), 'final == goal counts as success');
-  assert.equal(successOf(results, 0), 75, 'goal 0 counts every solvent path');
-  assert.equal(successOf(results), 75, 'missing goal defaults to 0');
-  assert.equal(successOf([{ solvent: true, finalBalance: 1 }, { solvent: true, finalBalance: 1 },
-    { solvent: false, finalBalance: 0 }], 0), 67, 'percentage is rounded to an integer');
+  assert.equal(successOf(results, 100), 25, 'only the never-broke path that ends >= goal counts');
+  assert.equal(successOf(results, 0), 50, 'goal 0 counts every path that never went broke');
+  assert.equal(successOf(results), 50, 'missing goal defaults to 0');
+  assert.equal(successOf([{ everDepleted: false, finalBalance: 1 }, { everDepleted: false, finalBalance: 1 },
+    { everDepleted: true, finalBalance: 0 }], 0), 67, 'percentage is rounded to an integer');
 });
 
 test('2d. percentile stories pick floor(n×0.10/0.90) of the sorted-results array', () => {

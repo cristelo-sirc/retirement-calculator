@@ -1,4 +1,4 @@
-// real-engine.js — V19.5 adapter
+// real-engine.js — V19.6 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.5';
+      s.src = 'engine.js?v=19.6';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -230,17 +230,49 @@
     return results;
   }
 
-  // A path "succeeds" if it never went broke AND finishes with at least the legacy goal
-  // left over. The goal is a FLAT future-dollar amount (no inflation growth). Default 0
-  // reproduces the prior behavior exactly: a solvent path always ends >= 0, so goal 0 is
-  // the old solvent-only test.
+  // A path "succeeds" if it NEVER went broke AND finishes with at least the legacy goal
+  // left over. The goal is a FLAT future-dollar amount (no inflation growth).
+  //
+  // V19.6 (honest scoring): we grade on `everDepleted` (the latching "ever hit $0" flag),
+  // NOT the end-state `solvent` flag. After V19.5's F-DEPLETED-WINDFALL fix, `solvent` is
+  // re-evaluated every year and CLEARS when new money (a windfall or banked surplus) revives
+  // a broke balance -- so a path that spent a decade at $0 mid-retirement and later recovered
+  // was scored `solvent = true` and counted as a success. That is "chance of FINISHING with
+  // money," not "chance of NEVER running out," which is what the headline claims. Grading on
+  // `everDepleted` makes the headline literally true: a single dollar-zero event is a plan
+  // failure regardless of later recovery (the standard Monte Carlo retirement definition).
+  // The V19.5 recovery DISPLAY (charts/tables still show the windfall landing) is untouched.
+  // Legacy safety: at goal 0, a path that never depleted always ends >= 0, so goal 0 remains
+  // a pure "never went broke" test -- and a plan that never goes broke scores identically to
+  // before (everDepleted false == solvent true when there was never a dip).
   function successOf(results, goal) {
     goal = goal || 0;
     var solved = 0;
     for (var i = 0; i < results.length; i++) {
-      if (results[i].solvent && results[i].finalBalance >= goal) solved++;
+      if (!results[i].everDepleted && results[i].finalBalance >= goal) solved++;
     }
     return Math.round((solved / results.length) * 100);
+  }
+
+  // V19.6 (2d): plain-English "danger age" summary derived from the sorted results.
+  // everDepletedShare = share of paths that ever hit $0 (== 100 - successRate at goal 0,
+  // but computed directly so it's robust to a nonzero legacy goal). firstDepletionMedianAge
+  // = the median age-of-first-depletion AMONG the paths that deplete -- i.e. "in the harder
+  // futures, the money first runs low around age X." Null when nothing depletes.
+  function depletionSummaryOf(results) {
+    var ages = [];
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].everDepleted && results[i].firstDepletionAge != null) {
+        ages.push(results[i].firstDepletionAge);
+      }
+    }
+    var share = Math.round((ages.length / results.length) * 100);
+    var medianAge = null;
+    if (ages.length) {
+      ages.sort(function (a, b) { return a - b; });
+      medianAge = ages[Math.floor(ages.length / 2)];
+    }
+    return { everDepletedShare: share, firstDepletionMedianAge: medianAge };
   }
 
   // V19.3: exact move deltas at the FULL path count (Cris: accuracy over speed).
@@ -365,7 +397,8 @@
       return { params: m, successRate: 0, numPaths: m.numPaths || 5000, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
         medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
-        path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0, yearTables: null };
+        path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0, yearTables: null,
+        depletionSummary: { everDepletedShare: 0, firstDepletionMedianAge: null } };
     }
     var real = mapToReal(m, m.numPaths || 5000);
     var goal = m.legacyGoal || 0;            // flat future-dollar target the plan must end at/above
@@ -382,6 +415,7 @@
     var p50 = results[Math.floor(n * 0.50)];
     var medianLog = p50.log;
     var successRate = successOf(results, goal);
+    var depletionSummary = depletionSummaryOf(results);  // V19.6 (2d): danger-age insight
 
     // Paycheck (monthly) from the median path. V18.11 (item 7): feature the HOUSEHOLD'S fully-retired
     // year (both partners have stopped working) so the breakdown matches the "once you both stop working"
@@ -454,7 +488,7 @@
       sustainableSpending: sustainableSpending, runwayYears: runwayYears, medianLegacy: medianLegacy,
       paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
-      yearTables: yearTables
+      yearTables: yearTables, depletionSummary: depletionSummary
     }, v);
   }
 
