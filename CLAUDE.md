@@ -9,12 +9,14 @@ components in `cover-app/`, backed by the **real Monte Carlo engine** (`engine.j
 bypassed. **Note:** V18.11 is the first release that intentionally modifies `engine.js` math
 (contribution accumulation fix, IRMAA per-person + 2yr lookback, growing contribution caps).
 See the V18.0 / V18.1 sections below for detail. **V19.5 is the second such release** (a
-deep engine-accuracy audit and fix batch &mdash; see the V19.5 section below).
+deep engine-accuracy audit and fix batch &mdash; see the V19.5 section below). **V19.6 is the
+third** (an additive &ldquo;ever went broke&rdquo; flag behind an honest-scoring fix &mdash; see
+the V19.6 section below).
 
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.5
+**Current Version:** 19.6
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -1108,3 +1110,68 @@ present in `DEFAULTS`.
 **Cache-buster:** `engine.js?v=19.5` + `?v=19.5` on all `cover-app/*` includes in both shells; both
 HTML titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers (Results/Rework/Charts/
 Input Data screens) reconciled to 19.5.
+
+---
+
+## V19.6 &mdash; Honest success scoring: &ldquo;never ran out&rdquo; means never ran out
+
+Third intentional `engine.js` math-adjacent release (after V18.11 and V19.5), though the engine change
+is purely **additive** &mdash; a new latching flag, no altered dollar. Implements `V19.6-PLAN.md` in full
+(scope 2a+2b+2c+2d, all decided with Cris 2026-07-05). Shipped as one batch.
+
+**The finding.** A real saved plan scored **100/100** yet did not pass Cris&rsquo;s sniff test (a couple
+retiring at 50/55, Social Security deferred to 70). Traced year-by-year through the real engine: the
+arithmetic was right but the **definition of success was wrong for what the headline claims.** The Results
+headline reads &ldquo;Chance of never running out,&rdquo; but `successOf` graded on the **end-state**
+`solvent` flag, which &mdash; after V19.5&rsquo;s F-DEPLETED-WINDFALL fix &mdash; **clears** when a windfall
+or banked surplus revives a broke balance. So a path that hit $0 mid-retirement and later recovered was
+scored a success. That is &ldquo;chance of FINISHING with money,&rdquo; not &ldquo;chance of NEVER running
+out.&rdquo; On the reference plan, 2,753 of 5,000 paths (55%) hit $0 at some point (median 9 years at $0,
+worst 19) yet the plan read 100%; the honest score is ~45%.
+
+**2a &mdash; `engine.js`: additive latching flag (engine math IS touched, additively).** Added
+`everDepleted` (latches `true` the first time `totalBal < 1`, **never clears**) and `firstDepletionAge`
+(the age it first happened, for the danger-age insight). Both are returned from `simulatePath` alongside the
+existing `solvent`/`depletionAge`. **No existing field, balance, or return value changes** &mdash; the
+V19.5 recovery behavior (`depletionAge` still clears on recovery so the charts show the windfall landing) is
+fully preserved. Grep-confirmed no pre-V19.6 consumer reads either new field.
+
+**2b &mdash; `real-engine.js`: score on &ldquo;never went broke.&rdquo;** `successOf` now counts a path only
+if `!everDepleted && finalBalance >= goal`. Single source, so it flows to every screen that scores &mdash;
+Results headline, Try Changes bars (`computeMoves`), and the sustainable-spending bisection &mdash; in
+lockstep. At goal 0 a path that never depleted always ends &ge; 0, and a plan that never goes broke has
+`everDepleted === false` exactly when the old `solvent === true`, so **plans that never dip are unchanged**
+(the default sample stays **64/100**, verified). Only plans with broke-then-recovered paths drop &mdash;
+a demonstrated realistic case went from **94 (old) to 0 (new)** once its windfall-driven &ldquo;recoveries&rdquo;
+stopped counting.
+
+**2c &mdash; headline copy kept, tooltip clarifier added.** Per Cris, the label stays &ldquo;Chance of never
+running out&rdquo; (now literally true) and its goal variant &ldquo;Chance of leaving $Xk or more&rdquo;
+(`cvChanceLabel`, unchanged). Added an `InfoTip` beside the headline kicker on desktop Results and mobile
+Results reading: *&ldquo;A future counts as a failure if your balance ever hits $0, even if it later
+recovers.&rdquo;* (`CV_CHANCE_TOOLTIP` in `compass-cover.jsx`).
+
+**2d &mdash; danger-age insight.** `compute()` now returns `depletionSummary` = `{ everDepletedShare,
+firstDepletionMedianAge }` (median age-of-first-depletion among the paths that deplete). A new `cvDangerLine`
+helper renders a plain-English line under the verdict on desktop and mobile Results &mdash; e.g. *&ldquo;In
+the harder futures, the money first runs low around age 63.&rdquo;* &mdash; gated to hide when under 10% of
+paths deplete. Additive; no effect on the score.
+
+**Accuracy disclosure.** This changes how success is *counted*, not how paths are *simulated*. No path&rsquo;s
+dollars change. Every affected plan&rsquo;s score can only stay the same or **drop** (more honest); none can
+rise. Plans with no dollar-zero event (incl. `DEFAULTS`) are unchanged.
+
+**Validation.** New `tests/success-scoring.test.js` (8 tests): `successOf` fails a broke-then-recovered path
+and passes a never-dipped one; the legacy goal still binds; the engine&rsquo;s `everDepleted` **latches**
+through a windfall recovery (solvent true, `depletionAge` null, `everDepleted` still true) while the same path
+scores as a failure; `depletionSummaryOf` reports share + median age; and `compute()`&rsquo;s headline equals
+the everDepleted count and is strictly lower than the old solvent count on a recovery-heavy plan. One
+pre-existing test (`audit-adapter.test.js` 2d) that encoded the OLD solvent rule was deliberately updated with
+a comment. Full suite: **84 tests, 83 pass, 0 fail, 1 todo** (the F-PT-EARNTEST-ATTRIB todo stays as-is).
+Babel-transform of all five JSX files + `node --check` on both plain-JS files pass. DEFAULTS re-scored 64
+(unchanged); a reconstructed recovery scenario confirmed old 94 &rarr; new 0.
+
+**Cache-buster:** `engine.js?v=19.6` + `?v=19.6` on all `cover-app/*` includes in both shells; both HTML
+titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers (Results/Try Changes/Charts/Input
+Data) reconciled to 19.6. `engine.js` math IS touched (additive flag only). The V19.5 provenance comments in
+`real-engine.js` are left as-is per convention.

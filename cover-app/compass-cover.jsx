@@ -41,6 +41,21 @@ function cvChanceLabel(params) {
 }
 window.cvChanceLabel = cvChanceLabel;
 
+// V19.6 (2c): the clarifier that rides in the headline metric's info tooltip. After the
+// V19.6 scoring fix the headline literally counts only paths that never hit $0, so we
+// explain that a mid-retirement dollar-zero event is a failure even if the plan recovers.
+var CV_CHANCE_TOOLTIP = 'A future counts as a failure if your balance ever hits $0, even if it later recovers.';
+window.CV_CHANCE_TOOLTIP = CV_CHANCE_TOOLTIP;
+
+// V19.6 (2d): plain-English "danger age" line from results.depletionSummary. Returns null
+// when too few futures deplete to be worth surfacing, so it self-hides on healthy plans.
+function cvDangerLine(results) {
+  var d = results && results.depletionSummary;
+  if (!d || !d.firstDepletionMedianAge || d.everDepletedShare < 10) return null;
+  return 'In the harder futures, the money first runs low around age ' + d.firstDepletionMedianAge + '.';
+}
+window.cvDangerLine = cvDangerLine;
+
 // V19.1 (fixed post-audit): results.paycheck.atAge is the age the WHOLE household has
 // stopped working — real-engine.js picks whichever partner's retirement lands LATER ON THE
 // CALENDAR, using each partner's own current age as the clock. Two partners can both have
@@ -73,7 +88,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.5', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.6', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -254,7 +269,11 @@ function CoverDesktop(props) {
                 fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
                 Sample plan · not your numbers yet</div>
             )}
-            <div style={{ ...cvKicker, marginBottom: -6 }}>{cvChanceLabel(params)}</div>
+            <div style={{ ...cvKicker, marginBottom: -6, display: 'inline-flex', alignItems: 'center',
+              gap: 6, justifyContent: 'center' }}>
+              {cvChanceLabel(params)}
+              {window.InfoTip && <window.InfoTip text={CV_CHANCE_TOOLTIP} label="how the score counts" theme={cvStyles} />}
+            </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
               <div style={{ fontFamily: cvStyles.display, fontSize: 360, lineHeight: 0.82,
                 color: cvStyles.ink, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
@@ -266,6 +285,12 @@ function CoverDesktop(props) {
               transition: 'background 300ms' }} />
             <div style={{ fontFamily: cvStyles.display, fontSize: 56, color: vc, lineHeight: 1,
               transition: 'color 300ms' }}>{results.verdictWord}.</div>
+            {cvDangerLine(results) && (
+              <div style={{ fontFamily: cvStyles.body, fontSize: 14, color: cvStyles.ink70,
+                marginTop: 16, maxWidth: 440, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                {cvDangerLine(results)}
+              </div>
+            )}
           </div>
         </div>
 
@@ -356,7 +381,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.5</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.6</div>
         </div>
       </section>
     </div>
@@ -548,7 +573,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.5">
+    <CoverChrome active="rework" tag="V19.6">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -663,7 +688,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.5">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.6">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -800,7 +825,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.5</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.6</div>
       </div>
     </div>
   );

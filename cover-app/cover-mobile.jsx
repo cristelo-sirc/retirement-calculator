@@ -173,7 +173,11 @@
               fontFamily: cm.body, fontSize: 9, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
               Sample · not your numbers yet</div>
           )}
-          <div style={{ ...mKick, marginBottom: 4 }}>{window.cvChanceLabel ? window.cvChanceLabel(params) : 'Chance of never running out'}</div>
+          <div style={{ ...mKick, marginBottom: 4, display: 'inline-flex', alignItems: 'center', gap: 5,
+            justifyContent: 'center' }}>
+            {window.cvChanceLabel ? window.cvChanceLabel(params) : 'Chance of never running out'}
+            {window.InfoTip && window.CV_CHANCE_TOOLTIP && <window.InfoTip text={window.CV_CHANCE_TOOLTIP} label="how the score counts" theme={cm} />}
+          </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
             <span style={{ fontFamily: cm.display, fontSize: 150, lineHeight: 0.84, color: cm.ink,
               letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums', transition: 'color 300ms' }}>{results.successRate}</span>
@@ -182,6 +186,10 @@
           <div style={{ width: 130, height: 4, background: vc, margin: '6px auto 12px', transition: 'background 300ms' }} />
           <div style={{ fontFamily: cm.display, fontSize: 38, color: vc, lineHeight: 1, marginBottom: 10,
             transition: 'color 300ms' }}>{results.verdictWord}.</div>
+          {window.cvDangerLine && window.cvDangerLine(results) && (
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: cm.ink70, margin: '0 auto 12px', maxWidth: 300 }}>
+              {window.cvDangerLine(results)}</p>
+          )}
           <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
             textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and this fills in with your real plan.'}</p>
           {!dirty && (

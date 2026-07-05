@@ -1,5 +1,13 @@
 # Change log
 
+## 19.6.0 — 2026-07-05
+
+- Made the headline score honest to its own label. "Chance of never running out" now counts a future as a failure if the balance ever hits $0 — even if a later windfall or delayed Social Security brings it back on paper. Previously a plan that went broke for years mid-retirement and recovered was still counted as a success, which could badly overstate safety (one real plan read 100% when nearly half its futures spent years at $0).
+- Added a short plain-English line under the score, when a meaningful share of futures deplete, pointing at *when* the money first runs low (e.g. "In the harder futures, the money first runs low around age 63").
+- Added a tooltip on the score explaining the rule: a future counts as a failure if your balance ever hits $0, even if it later recovers.
+- This changes only how success is *counted*, not how any future is *simulated*. No plan's dollars change; a plan's score can only stay the same or drop (more honest). Plans that never go broke — including the built-in sample — are unchanged.
+- Added automated checks proving a broke-then-recovered future scores as a failure and that the "ever went broke" flag never silently clears.
+
 ## 19.5.0 — 2026-07-04
 
 - Fixed a bug where a planned Roth conversion could be taxed as income even when the account didn't have enough money left to actually convert it.
