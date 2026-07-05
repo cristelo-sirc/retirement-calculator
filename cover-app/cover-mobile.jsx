@@ -18,8 +18,9 @@
   // Questionnaire values stay exact after entry; compact rounding belongs on summary screens.
   const money = v => ME.formatCurrency(v);
 
-  const mKick = { fontFamily: cm.body, fontSize: 9.5, letterSpacing: '0.2em',
-    textTransform: 'uppercase', color: cm.ink50 };
+  // V19.8: matches desktop cvKicker's contrast/size fix.
+  const mKick = { fontFamily: cm.body, fontSize: 11.5, letterSpacing: '0.16em',
+    textTransform: 'uppercase', color: cm.ink70 };
 
   // ── Field primitives (full-width, 42px touch targets) ─────────────────────
   function FieldHead({ field, label }) {
@@ -27,8 +28,8 @@
     return (
       <div style={{ marginBottom: 7 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontFamily: cm.body, fontSize: 10.5, letterSpacing: '0.12em',
-            textTransform: 'uppercase', color: cm.ink50 }}>{label}</span>
+          <span style={{ fontFamily: cm.body, fontSize: 12, letterSpacing: '0.1em',
+            textTransform: 'uppercase', color: cm.ink70 }}>{label}</span>
           {info && <InfoTip field={field} label={label} theme={cm} />}
         </div>
         {info && <div style={{ fontSize: 12, lineHeight: 1.4, color: cm.ink70, marginTop: 3,
@@ -149,7 +150,7 @@
           {segs.map(s => <span key={s.key}>{s.label} {Math.round((s.val / total) * 100)}%</span>)}
         </div>
         {paycheck.taxes > 0.5 && (
-          <div style={{ fontSize: 10.5, color: cm.ink50, marginTop: 7, lineHeight: 1.4 }}>
+          <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 7, lineHeight: 1.4 }}>
             Includes {ME.formatCurrency(paycheck.taxes)}/mo for taxes; {ME.formatCurrency(paycheck.spending)}/mo is what you spend.
           </div>
         )}
@@ -169,9 +170,9 @@
               alignItems: 'baseline', gap: 14, padding: '9px 0',
               borderBottom: i < facts.length - 1 ? `1px solid ${cm.rule}` : 'none' }}>
               <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <div style={{ fontFamily: cm.body, fontSize: 10.5, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', color: cm.ink50 }}>{f.label}</div>
-                {f.sub && <div style={{ fontSize: 11, color: cm.ink50, marginTop: 1, textWrap: 'pretty' }}>{f.sub}</div>}
+                <div style={{ fontFamily: cm.body, fontSize: 12, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', color: cm.ink70 }}>{f.label}</div>
+                {f.sub && <div style={{ fontSize: 12, color: cm.ink70, marginTop: 1, textWrap: 'pretty' }}>{f.sub}</div>}
               </div>
               <div style={{ fontFamily: cm.display, fontSize: 17, lineHeight: 1.2, textAlign: 'right',
                 color: cm.ink, flex: '0 0 auto' }}>{f.value}</div>
@@ -193,8 +194,8 @@
               alignItems: 'center', gap: 14, border: `1px solid ${cm.ink}`, background: cm.paperWarm,
               padding: '12px 14px' }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontFamily: cm.body, fontSize: 10, letterSpacing: '0.1em',
-                  textTransform: 'uppercase', color: cm.ink50 }}>{c.label} · {c.tag}</div>
+                <div style={{ fontFamily: cm.body, fontSize: 11.5, letterSpacing: '0.08em',
+                  textTransform: 'uppercase', color: cm.ink70 }}>{c.label} · {c.tag}</div>
                 <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 3, textWrap: 'pretty' }}>{c.body}</div>
               </div>
               <div style={{ fontFamily: cm.display, fontSize: 26, color: cm.ink, lineHeight: 1,
@@ -282,7 +283,7 @@
                 </div>
                 <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
                   <div style={{ fontFamily: cm.display, fontSize: 26, color: cm.sage, lineHeight: 1 }}>+{l.delta}</div>
-                  <div style={{ ...mKick, fontSize: 8 }}>points</div>
+                  <div style={{ ...mKick, fontSize: 10 }}>points</div>
                 </div>
               </div>
             ))}
@@ -452,7 +453,7 @@
                 {params.enableGuardrails && <MStep field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
                 {params.enableGuardrails && <MStep field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30} onChange={v => update('guardrailAdjustment', v)} suffix="%" />}
               </MSub>
-              <div style={{ fontSize: 11.5, lineHeight: 1.5, color: cm.ink50, textWrap: 'pretty', marginTop: 4 }}>
+              <div style={{ fontSize: 12, lineHeight: 1.5, color: cm.ink70, textWrap: 'pretty', marginTop: 4 }}>
                 Note: tax filing status follows your “Just me / Me + partner” choice (single vs. married-joint).
                 State tax is one flat rate on income and gains — it does not apply state-specific Social Security or pension exemptions.
               </div>
@@ -494,7 +495,8 @@
     const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
     const results = React.useMemo(() => ME.compute(params), [params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
-    const vc = results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber : cm.clay;
+    const vc = results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber
+      : results.verdict === 'orange' ? cm.rust : cm.clay;
     const partner = params.hasPartner;
     const dirty = JSON.stringify(params) !== JSON.stringify(ME.DEFAULTS);
 
@@ -514,7 +516,7 @@
                 <span style={{ fontFamily: cm.display, fontSize: 16, color: vc, lineHeight: 1 }}>{results.successRate}</span>
                 <span style={{ fontFamily: cm.display, fontSize: 9, color: cm.ink50 }}>/100</span>
               </div>
-            : <div style={{ ...mKick, fontSize: 8.5 }}>The Retirement Issue · No. 5</div>}
+            : <div style={{ ...mKick, fontSize: 10.5 }}>The Retirement Issue · No. 5</div>}
         </header>
 
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -529,10 +531,12 @@
           {[{ id: 'cover', label: 'Results' }, { id: 'quiz', label: 'Input Data' }].map(t => {
             const cta = !dirty && t.id === 'quiz' && tab !== 'quiz';
             return (
+            // V19.8: 11px/ink50 was too small/light for primary nav; bumped to 13px,
+            // inactive color darkened to ink70.
             <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, textAlign: 'center',
-              padding: '14px 0 10px', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase',
+              padding: '14px 0 10px', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
               cursor: 'pointer', background: cta ? cm.sage : 'none', border: 'none', fontFamily: cm.body,
-              color: cta ? cm.paper : (tab === t.id ? cm.ink : cm.ink50), fontWeight: (cta || tab === t.id) ? 600 : 400,
+              color: cta ? cm.paper : (tab === t.id ? cm.ink : cm.ink70), fontWeight: (cta || tab === t.id) ? 600 : 400,
               borderTop: tab === t.id ? `2px solid ${cm.ink}` : '2px solid transparent', marginTop: -1 }}>
               {cta ? 'Start here →' : t.label}</button>
           );})}

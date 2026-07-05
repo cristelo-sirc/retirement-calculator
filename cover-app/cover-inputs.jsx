@@ -10,8 +10,9 @@
 // and window.InfoTip / window.FIELD_INFO from retire-ui.jsx.
 
 const cvi = window.cvStyles;
-const cviKicker = { fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.22em',
-  textTransform: 'uppercase', color: cvi.ink50 };
+// V19.8: matches cvKicker's contrast/size fix in compass-cover.jsx.
+const cviKicker = { fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.18em',
+  textTransform: 'uppercase', color: cvi.ink70 };
 
 // Editable field with optional step buttons, helper line + info icon.
 function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 1, suffix, format, theme }) {
@@ -19,8 +20,8 @@ function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.13em',
-          textTransform: 'uppercase', color: cvi.ink50 }}>{label}</span>
+        <span style={{ fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.1em',
+          textTransform: 'uppercase', color: cvi.ink70 }}>{label}</span>
         {info && <window.InfoTip field={field} label={label} theme={theme} />}
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
@@ -48,8 +49,8 @@ function CToggle({ field, label, value, onChange, theme }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.13em',
-          textTransform: 'uppercase', color: cvi.ink50 }}>{label}</span>
+        <span style={{ fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.1em',
+          textTransform: 'uppercase', color: cvi.ink70 }}>{label}</span>
         {info && <window.InfoTip field={field} label={label} theme={theme} />}
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
@@ -131,8 +132,8 @@ function CSelect({ field, label, value, onChange, options, theme }) {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-        <span style={{ fontFamily: cvi.body, fontSize: 10.5, letterSpacing: '0.13em',
-          textTransform: 'uppercase', color: cvi.ink50 }}>{label}</span>
+        <span style={{ fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.1em',
+          textTransform: 'uppercase', color: cvi.ink70 }}>{label}</span>
         {info && <window.InfoTip field={field} label={label} theme={theme} />}
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
@@ -195,7 +196,8 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
   const fmt = window.MockEngine.formatCurrency;
-  const vc = results.verdict === 'green' ? cvi.sage : results.verdict === 'yellow' ? cvi.amber : cvi.clay;
+  const vc = results.verdict === 'green' ? cvi.sage : results.verdict === 'yellow' ? cvi.amber
+    : results.verdict === 'orange' ? cvi.rust : cvi.clay;
   const theme = window.cvTheme(vc);
   const partner = params.hasPartner;
   // Questionnaire values stay exact after entry; compact rounding belongs on summary screens.
@@ -206,7 +208,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag="V19.7"
+    <window.CoverChrome active="quiz" tag="V19.8"
       rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
@@ -379,7 +381,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             {params.enableGuardrails && <CField field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30}
               onChange={v => update('guardrailAdjustment', v)} suffix="%" theme={theme} />}
           </CSub>
-          <div style={{ fontSize: 11.5, lineHeight: 1.5, color: cvi.ink50, textWrap: 'pretty' }}>
+          <div style={{ fontSize: 12, lineHeight: 1.5, color: cvi.ink70, textWrap: 'pretty' }}>
             Note: tax filing status follows your “Just me / Me + partner” choice above (single vs. married-joint).
             State tax is modeled as one flat rate on income and gains — it does not apply state-specific Social Security or pension exemptions.
           </div>

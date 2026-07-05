@@ -20,6 +20,8 @@ const cvStyles = {
   sageSoft: '#cdd9ce',
   amber: '#b8843a',
   amberSoft: '#ead9bd',
+  rust: '#a85c33',
+  rustSoft: '#e6d0bd',
   clay: '#9c4b3e',
   claySoft: '#e6c7c0',
   display: '"DM Serif Display", Georgia, serif',
@@ -27,8 +29,10 @@ const cvStyles = {
 };
 window.cvStyles = cvStyles;
 
-const cvKicker = { fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.22em',
-  textTransform: 'uppercase', color: cvStyles.ink50 };
+// V19.8: 10.5px/ink50 (~3.3:1 contrast) was too small/light for section labels;
+// bumped to 12px and darkened to ink70 (~4.5:1).
+const cvKicker = { fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.18em',
+  textTransform: 'uppercase', color: cvStyles.ink70 };
 
 // V18.10/V18.11: the headline metric counts a path as success only if it stays solvent AND
 // finishes at/above the legacy goal. When a goal is set, "never running out" alone would
@@ -158,10 +162,10 @@ function CoverGlance({ params, results }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '13px 24px' }}>
         {facts.map(f => (
           <div key={f.label}>
-            <div style={{ ...cvKicker, fontSize: 9, marginBottom: 3 }}>{f.label}</div>
+            <div style={{ ...cvKicker, fontSize: 10.5, marginBottom: 3 }}>{f.label}</div>
             <div style={{ fontFamily: cvStyles.display, fontSize: 18, lineHeight: 1.12,
               letterSpacing: '-0.01em' }}>{f.value}</div>
-            {f.sub && <div style={{ fontSize: 10.5, color: cvStyles.ink50, marginTop: 1 }}>{f.sub}</div>}
+            {f.sub && <div style={{ fontSize: 11.5, color: cvStyles.ink70, marginTop: 1 }}>{f.sub}</div>}
           </div>
         ))}
       </div>
@@ -180,11 +184,11 @@ function CoverOutcomes({ results }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 36, marginBottom: 26 }}>
         {o.cards.map(c => (
           <div key={c.key}>
-            <div style={{ ...cvKicker, fontSize: 9.5, marginBottom: 6 }}>{c.label}
-              <span style={{ color: cvStyles.ink20, marginLeft: 6 }}>· {c.tag}</span></div>
+            <div style={{ ...cvKicker, fontSize: 11, marginBottom: 6 }}>{c.label}
+              <span style={{ color: cvStyles.ink70, marginLeft: 6 }}>· {c.tag}</span></div>
             <div style={{ fontFamily: cvStyles.display, fontSize: 46, lineHeight: 1,
               letterSpacing: '-0.02em' }}>{c.value}</div>
-            <div style={{ ...cvKicker, fontSize: 9, marginTop: 6 }}>at plan's end</div>
+            <div style={{ ...cvKicker, fontSize: 10.5, marginTop: 6 }}>at plan's end</div>
             <div style={{ fontSize: 13, color: cvStyles.ink70, lineHeight: 1.5, marginTop: 10 }}>{c.body}</div>
           </div>
         ))}
@@ -199,7 +203,8 @@ function CoverOutcomes({ results }) {
 window.CoverOutcomes = CoverOutcomes;
 
 function cvVerdictColor(v) {
-  return v === 'green' ? cvStyles.sage : v === 'yellow' ? cvStyles.amber : cvStyles.clay;
+  return v === 'green' ? cvStyles.sage : v === 'yellow' ? cvStyles.amber
+    : v === 'orange' ? cvStyles.rust : cvStyles.clay;
 }
 // Theme object handed to the shared charts + ui helpers.
 function cvTheme(accent) { return { ...cvStyles, accent: accent || cvStyles.ink }; }
@@ -214,7 +219,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.7', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.8', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -287,7 +292,7 @@ function CoverSaveLoad({ params, setParams, align }) {
         <button onClick={save} style={link}>Save plan to a file ↓</button>
         <button onClick={load} style={link}>Load a saved plan ↑</button>
       </div>
-      <div style={{ fontSize: 11, color: cvStyles.ink50, marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: cvStyles.ink70, marginTop: 8 }}>
         {msg || 'Your plan auto-saves in this browser. Save to a file to keep a copy or move it between devices.'}
       </div>
     </div>
@@ -466,12 +471,12 @@ function CoverDesktop(props) {
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontFamily: cvStyles.display, fontSize: 30, color: cvStyles.sage,
                         lineHeight: 1 }}>+{l.delta}</div>
-                      <div style={{ ...cvKicker, fontSize: 9 }}>points</div>
+                      <div style={{ ...cvKicker, fontSize: 10.5 }}>points</div>
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 12, color: cvStyles.ink50, marginTop: 14 }}>
+              <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 14 }}>
                 Tap a move to draft it on <strong style={{ color: cvStyles.ink70 }}>Try Changes</strong> —
                 nothing changes here until you choose to publish it.
               </div>
@@ -495,7 +500,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.7</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.8</div>
         </div>
       </section>
     </div>
@@ -505,8 +510,8 @@ function CoverDesktop(props) {
 function CoverLine({ kicker, title, body, accent, big }) {
   return (
     <div style={{ borderLeft: `3px solid ${accent || cvStyles.ink}`, paddingLeft: 16 }}>
-      <div style={{ fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.2em',
-        textTransform: 'uppercase', color: cvStyles.ink50, marginBottom: 6 }}>{kicker}</div>
+      <div style={{ fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: cvStyles.ink70, marginBottom: 6 }}>{kicker}</div>
       <div style={{ fontFamily: cvStyles.display, fontSize: big ? 30 : 23, lineHeight: 1.1,
         marginBottom: 6, letterSpacing: '-0.01em', color: accent || cvStyles.ink }}>{title}</div>
       <div style={{ fontSize: 13.5, lineHeight: 1.5, color: cvStyles.ink70, maxWidth: 320 }}>{body}</div>
@@ -533,12 +538,12 @@ function CoverPaycheck({ paycheck }) {
             whiteSpace: 'nowrap' }}>{fmt(s.val)}</div>
         ))}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10.5,
-        letterSpacing: '0.08em', textTransform: 'uppercase', color: cvStyles.ink70, flexWrap: 'wrap', gap: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11.5,
+        letterSpacing: '0.06em', textTransform: 'uppercase', color: cvStyles.ink70, flexWrap: 'wrap', gap: 8 }}>
         {segs.map(s => <span key={s.key}>{s.label} {Math.round((s.val / total) * 100)}%</span>)}
       </div>
       {paycheck.taxes > 0.5 && (
-        <div style={{ fontSize: 11, color: cvStyles.ink50, marginTop: 8 }}>
+        <div style={{ fontSize: 12, color: cvStyles.ink70, marginTop: 8 }}>
           Total includes {fmt(paycheck.taxes)}/mo for taxes; {fmt(paycheck.spending)}/mo is what you actually spend.
         </div>
       )}
@@ -554,8 +559,8 @@ function CoverSlider({ label, value, onChange, min, max, step = 1, display, acce
     <div style={{ marginBottom: last ? 0 : 20 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         marginBottom: 8 }}>
-        <span style={{ fontSize: 10.5, letterSpacing: '0.12em', textTransform: 'uppercase',
-          color: cvStyles.ink50 }}>{label}</span>
+        <span style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
+          color: cvStyles.ink70 }}>{label}</span>
         <span style={{ fontFamily: cvStyles.display, fontSize: 24, color: cvStyles.ink,
           fontVariantNumeric: 'tabular-nums' }}>{display}</span>
       </div>
@@ -584,15 +589,17 @@ function CoverNav({ active, emphasizeQuiz }) {
         const isCTA = emphasizeQuiz && t.id === 'quiz' && active !== 'quiz';
         if (isCTA) return (
           <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)}
-            style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.16em',
+            style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
               textTransform: 'uppercase', fontWeight: 600, color: cvStyles.paper, background: cvStyles.sage,
               padding: '6px 14px', borderRadius: 99 }}>
             Start here · {t.label}</span>
         );
         return (
-          <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)} style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 10.5, letterSpacing: '0.18em',
+          // V19.8: 10.5px/ink50 (~3.3:1 contrast) was too small/light for primary nav;
+          // bumped to 13px and inactive color darkened to ink70 (~4.5:1).
+          <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)} style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
             textTransform: 'uppercase', paddingBottom: 7,
-            color: active === t.id ? cvStyles.ink : cvStyles.ink50,
+            color: active === t.id ? cvStyles.ink : cvStyles.ink70,
             fontWeight: active === t.id ? 600 : 400,
             borderBottom: active === t.id ? `2px solid ${cvStyles.ink}` : '2px solid transparent' }}>
             {t.label}</span>
@@ -678,7 +685,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.7">
+    <CoverChrome active="rework" tag="V19.8">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -754,8 +761,8 @@ function CoverAdjust(props) {
                   border: `1px solid ${l.active ? cvStyles.sage : cvStyles.rule}`, cursor: 'pointer',
                   padding: '12px 16px', transition: 'background 150ms' }}>
                   <span style={{ fontFamily: cvStyles.display, fontSize: 18 }}>{l.title}</span>
-                  <span style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
-                    color: l.active ? cvStyles.sage : cvStyles.ink50, fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+                    color: l.active ? cvStyles.sage : cvStyles.ink70, fontWeight: 600 }}>
                     {l.active ? '✓ Applied' : 'Set'}</span>
                 </button>
               ))}
@@ -793,7 +800,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.7">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.8">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -863,8 +870,8 @@ function CoverBigStat({ big, unit, label }) {
           letterSpacing: '-0.02em' }}>{big}</span>
         {unit && <span style={{ fontFamily: cvStyles.display, fontSize: 20, color: cvStyles.ink50 }}>{unit}</span>}
       </div>
-      <div style={{ fontFamily: cvStyles.body, fontSize: 11, letterSpacing: '0.1em',
-        textTransform: 'uppercase', color: cvStyles.ink50, marginTop: 8 }}>{label}</div>
+      <div style={{ fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.08em',
+        textTransform: 'uppercase', color: cvStyles.ink70, marginTop: 8 }}>{label}</div>
     </div>
   );
 }
@@ -930,7 +937,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.7</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.8</div>
       </div>
     </div>
   );

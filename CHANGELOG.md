@@ -1,5 +1,10 @@
 # Change log
 
+## 19.8.0 — 2026-07-05
+
+- Split the "Tight" verdict band into two: scores 80–89 still read "Tight," but 65–79 now reads "Shaky" — a plainer signal that a meaningful share of futures run out of money, since that band used to share a word with scores as high as 89. "On Track" (90+) and "At Risk" (under 65) are unchanged. This only changes labels and color, not how any plan is scored.
+- Made the small-caps labels and navigation tabs throughout the app bigger and darker — the main tabs, section headers, questionnaire field labels, and captions were too small and too light (measured contrast below accessibility guidelines). Fraction suffixes like "/100" next to the big score, and decorative icons, were deliberately left as-is.
+
 ## 19.7.0 — 2026-07-05
 
 - Added a "Your Plan at a Glance" panel beside the score on Results, so the number now comes with the life it describes: retirement age(s), Social Security claim age(s), everyday spending (clearly labeled as excluding housing and healthcare) next to the safe-to-spend figure, legacy goal (or "None set"), plan horizon, and the monthly retirement paycheck.
