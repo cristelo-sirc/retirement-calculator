@@ -1280,7 +1280,15 @@ problem Cris flagged, and dimming them is what makes the big number read as the 
 alone too &mdash; they're icon controls, not text labels, and out of the approved scope. `ink50` remains a
 valid token in the shared palette for these uses; only text-label usage was changed.
 
-**Validation.** [to be completed after the local test run and live browser audit below]
+**Validation.** Local suite: 86 tests, 85 pass, 0 fail, 1 todo (unchanged from V19.7 &mdash; no
+engine/scoring logic touched). Verified all four `verdictFor()` boundaries directly (89&rarr;Tight,
+90&rarr;On Track, 79&rarr;Shaky, 80&rarr;Tight, 64&rarr;At Risk, 65&rarr;Shaky) and confirmed
+`DEFAULTS` still scores 64 (unchanged, correctly still "At Risk" since 64 &lt; 65 under both the old
+and new thresholds). Live-tested the deployed site (desktop 1680px + mobile 500px): all four color
+tiers confirmed rendering distinctly and correctly on the Try Changes comparison bars (64 At Risk/clay,
+69 &amp; 74 Shaky/rust, 83 Tight/amber, 93 On Track/sage); nav tabs, kickers, field labels, chart axis
+labels, and the year-by-year table headers all visibly larger/darker on every screen (Results, Try
+Changes, Charts, Input Data) on both viewports; zero console errors throughout.
 
 **Cache-buster:** `engine.js?v=19.8` + `?v=19.8` on all `cover-app/*` includes in both shells; both HTML
 titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.8. `engine.js`
