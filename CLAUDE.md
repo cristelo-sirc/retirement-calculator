@@ -16,7 +16,7 @@ the V19.6 section below).
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.7
+**Current Version:** 19.8
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -1227,3 +1227,61 @@ dirty).
 **Cache-buster:** `engine.js?v=19.7` + `?v=19.7` on all `cover-app/*` includes in both shells; both HTML
 titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.7. `engine.js`
 math UNCHANGED (adapter fields are additive exposition only).
+
+---
+
+## V19.8 &mdash; Four-tier verdict + app-wide label legibility fix
+
+**`engine.js` untouched.** Both changes are UI/copy plus adapter-side tier boundaries and colors;
+`successOf()`'s definition of a successful path (the V19.6 `everDepleted` rule) is unchanged, so no
+plan's score can move because of this release &mdash; only the word/color a given score is labeled with,
+and how legible the surrounding text is. Prompted directly by Cris reacting to a live screenshot of the
+Results page (small labels hard to read; a 75/100 plan labeled "Tight" read as understating the risk).
+
+**Four verdict tiers, replacing the old flat 90/70 split.** The prior `verdictFor()` (in `real-engine.js`)
+covered 70&ndash;89 with a single word, "Tight" &mdash; so an 89 (arguably fine) and a 70 (roughly a 1-in-3
+chance the money runs out under the V19.6 &ldquo;ever went broke&rdquo; scoring rule) read identically.
+Cris reviewed three draft tier/wording schemes and chose **Draft 1** (a four-tier split, keeping the
+existing words where they still fit): **90&ndash;100 On Track** (unchanged), **80&ndash;89 Tight** (unchanged
+wording, narrower band), **65&ndash;79 Shaky** (new &mdash; "More than 1 in 5 futures run out of money at
+some point. Worth strengthening before you count on this."), **0&ndash;64 At Risk** (unchanged wording,
+now starts lower). A 75/100 plan now reads "Shaky" instead of "Tight."
+
+**New color for the new tier.** Added `rust` (`#a85c33`) + `rustSoft` (`#e6d0bd`) to the shared `cvStyles`
+palette (`compass-cover.jsx`), sitting between `amber` (Tight) and `clay` (At Risk) on the same muted
+earth-tone palette as `sage`/`amber`/`clay`. Every verdict-to-color mapping was updated in lockstep so a
+given score renders the same color everywhere: `cvVerdictColor()` (desktop Results/Try Changes/Charts),
+the inline ternaries in `cover-mobile.jsx` and `cover-inputs.jsx`, and `rcVerdictColor()` in
+`retire-charts.jsx` (the Try Changes comparison bars, which carry their own independent 90/70 thresholds
+duplicated from the adapter &mdash; also updated to 90/80/65 so a bar is never a different color than the
+Results verdict at the same score).
+
+**Label/nav legibility fix (the approved "Option A").** Measured, not just eyeballed: the shared small-caps
+label color `ink50` (50%-opacity black over the `#f6f2ea` cream background) works out to roughly **3.3:1**
+contrast &mdash; below the WCAG AA floor of 4.5:1 for text this size. The existing `ink70` token (despite
+its name, actually 60%-opacity black) measures **~4.5:1** and was already used elsewhere in the app, so
+the fix reuses it rather than inventing a new value. Applied everywhere a small-caps label or secondary
+caption used `ink50`, in both files' shared style constants and every file's local copy of the same
+patterns: the four-tab desktop nav (`CoverNav`, 10.5px&rarr;13px, inactive color `ink50`&rarr;`ink70`) and
+the two-tab mobile bottom bar (same fix, 11px&rarr;13px); the shared eyebrow/kicker styles `cvKicker`
+(compass-cover.jsx), `cviKicker` (cover-inputs.jsx), and `mKick` (cover-mobile.jsx) plus their smaller
+per-instance overrides (fact-grid labels, outcome-card labels, "at plan's end" captions, "points" labels);
+the Questionnaire's field-label component (`CField`/`CToggle`/`CSelect` in cover-inputs.jsx, `FieldHead` in
+cover-mobile.jsx) &mdash; the most-read text in the app, previously 10.5px/`ink50`; paycheck breakdown
+captions, save/load status text, the "Tap a move to draft it&hellip;" and "Note: tax filing status&hellip;"
+helper sentences; and the Charts screen's SVG axis labels (dollar/percent tick marks), move-comparison row
+notes, the year-by-year table's column headers, and the "Hide table" control.
+
+**Deliberately left unchanged (and why).** The "/100" suffix rendered beside every giant score number, and
+unit suffixes (e.g. "/yr") beside `CoverBigStat` figures, keep `ink50` &mdash; these are an intentional
+de-emphasis technique paired with a much larger number on the same line, not the "hard to read label"
+problem Cris flagged, and dimming them is what makes the big number read as the headline. Decorative icons
+(the dropdown chevron, the `InfoTip` "i" badge, the `DiffChip` reset icon in `retire-ui.jsx`) were left
+alone too &mdash; they're icon controls, not text labels, and out of the approved scope. `ink50` remains a
+valid token in the shared palette for these uses; only text-label usage was changed.
+
+**Validation.** [to be completed after the local test run and live browser audit below]
+
+**Cache-buster:** `engine.js?v=19.8` + `?v=19.8` on all `cover-app/*` includes in both shells; both HTML
+titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.8. `engine.js`
+UNCHANGED.

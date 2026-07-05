@@ -1,4 +1,4 @@
-// real-engine.js — V19.7 adapter
+// real-engine.js — V19.8 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.7';
+      s.src = 'engine.js?v=19.8';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -317,13 +317,20 @@
     return { base: base, moves: moves, combined: combined };
   }
 
+  // V19.8: four tiers, replacing the old flat 90/70 split. The old 70-89 "Tight" band
+  // covered both an 89 (arguably fine) and a 70 (1-in-3 chance of running dry) under one
+  // word, which read as more reassuring than a 70 deserves. Now: 90+ On Track, 80-89
+  // Tight, 65-79 Shaky (new), under 65 At Risk. Wording/thresholds only — successOf()'s
+  // definition of a "successful" path (V19.6, everDepleted-based) is unchanged.
   function verdictFor(rate) {
     if (rate >= 90) return { verdict: 'green', verdictWord: 'On Track',
       verdictBlurb: 'Your plan has strong odds. You can likely retire as planned without changes.' };
-    if (rate >= 70) return { verdict: 'yellow', verdictWord: 'Tight',
-      verdictBlurb: 'Your plan works in most scenarios, but a bad market sequence could squeeze you.' };
+    if (rate >= 80) return { verdict: 'yellow', verdictWord: 'Tight',
+      verdictBlurb: 'Your plan works in most futures, but a run of bad markets could squeeze you.' };
+    if (rate >= 65) return { verdict: 'orange', verdictWord: 'Shaky',
+      verdictBlurb: 'More than 1 in 5 futures run out of money at some point. Worth strengthening before you count on this.' };
     return { verdict: 'red', verdictWord: 'At Risk',
-      verdictBlurb: 'Your plan runs out of money in too many scenarios. Adjustments are needed.' };
+      verdictBlurb: 'Your plan runs out of money in too many futures. Changes are needed.' };
   }
 
   function initialPortfolioBalance(m) {

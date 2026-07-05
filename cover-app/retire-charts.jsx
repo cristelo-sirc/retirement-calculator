@@ -1,7 +1,7 @@
 // retire-charts.jsx — Shared, themeable charts for Compass + Cover.
 // Every chart takes a `theme` object so it adopts each concept's palette + type:
 //   { paper, paperWarm, ink, ink70, ink50, rule, sage, sageSoft, amber,
-//     amberSoft, clay, claySoft, display, body, accent }
+//     amberSoft, rust, rustSoft, clay, claySoft, display, body, accent }
 //
 // Charts:
 //   • BalanceFanChart      — median balance + good/bad market band over time
@@ -9,8 +9,10 @@
 //   • GlidePathChart       — stock vs bond mix over time
 //   • ScenarioCompareChart — success odds across what-if moves, horizontal bars
 
+// V19.8: matches real-engine.js's verdictFor tiers (90 / 80 / 65), so a Try Changes bar
+// is always the same color as the Results verdict at that same score.
 function rcVerdictColor(rate, th) {
-  return rate >= 90 ? th.sage : rate >= 70 ? th.amber : th.clay;
+  return rate >= 90 ? th.sage : rate >= 80 ? th.amber : rate >= 65 ? th.rust : th.clay;
 }
 
 // Linear-interpolated percentile of an ASCENDING-sorted array.
@@ -61,7 +63,7 @@ function BalanceFanChart({ results, theme: th, width = 860, height = 320 }) {
           return (
             <g key={f}>
               <line x1={pad.l} x2={W - pad.r} y1={ys(v)} y2={ys(v)} stroke={th.rule} />
-              <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="10.5" fill={th.ink50}
+              <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="11.5" fill={th.ink70}
                 fontFamily={th.body}>${Math.round(v / 1000)}k</text>
             </g>
           );
@@ -71,7 +73,7 @@ function BalanceFanChart({ results, theme: th, width = 860, height = 320 }) {
             fontFamily={th.body}>Age {a}</text>
         ))}
       </svg>
-      <div style={{ fontSize: 11, color: th.ink50, marginTop: 8, fontFamily: th.body, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12, color: th.ink70, marginTop: 8, fontFamily: th.body, lineHeight: 1.5 }}>
         Bold line = median (P50) balance at each age. Shaded band = 10th–90th percentile across {(results.paths.length || 0).toLocaleString()} paths;
         four in five futures land inside it. The axis tops out at the 90th percentile, so rarer high outcomes run off the top.
       </div>
@@ -124,7 +126,7 @@ function IncomeSourceChart({ results, theme: th, width = 860, height = 300 }) {
           return (
             <g key={f}>
               <line x1={pad.l} x2={W - pad.r} y1={ys(v)} y2={ys(v)} stroke={th.rule} opacity="0.5" />
-              <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="10.5" fill={th.ink50}
+              <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="11.5" fill={th.ink70}
                 fontFamily={th.body}>${Math.round(v / 1000)}k</text>
             </g>
           );
@@ -171,7 +173,7 @@ function GlidePathChart({ results, theme: th, width = 860, height = 240 }) {
         <text x={retireX + 6} y={pad.t + 12} fontSize="10.5" fill={th.ink70} fontFamily={th.body}>Retirement</text>
         {[0, 50, 100].map(v => (
           <g key={v}>
-            <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="10.5" fill={th.ink50}
+            <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="11.5" fill={th.ink70}
               fontFamily={th.body}>{v}%</text>
           </g>
         ))}
@@ -210,7 +212,7 @@ function ScenarioCompareChart({ data, theme: th, labelWidth = 168, baseLabel }) 
             alignItems: 'center', gap: 14 }}>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: 13, color: th.ink, fontWeight: r.id === 'base' ? 600 : 400 }}>{r.label}</div>
-              <div style={{ fontSize: 10.5, color: th.ink50, letterSpacing: '0.04em' }}>{r.note}</div>
+              <div style={{ fontSize: 11.5, color: th.ink70, letterSpacing: '0.03em' }}>{r.note}</div>
             </div>
             <div style={{ position: 'relative', height: 26, background: th.paperWarm,
               border: `1px solid ${th.rule}` }}>
@@ -233,7 +235,7 @@ function ScenarioCompareChart({ data, theme: th, labelWidth = 168, baseLabel }) 
           </div>
         );
       })}
-      <div style={{ fontSize: 11, color: th.ink50, marginTop: 4, paddingLeft: labelWidth + 14 }}>
+      <div style={{ fontSize: 12, color: th.ink70, marginTop: 4, paddingLeft: labelWidth + 14 }}>
         Dashed line marks your plan’s current odds ({base}/100).
       </div>
     </div>
@@ -274,7 +276,7 @@ function YearByYearTable({ results, theme: th }) {
   });
   const thStyle = {
     position: 'sticky', top: 0, zIndex: 1, background: th.paper, textAlign: 'right',
-    padding: '8px 10px', fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase',
+    padding: '8px 10px', fontSize: 11.5, letterSpacing: '0.06em', textTransform: 'uppercase',
     color: th.ink70, borderBottom: `1.5px solid ${th.ink}`, fontFamily: th.body, whiteSpace: 'nowrap'
   };
   const tdStyle = {
@@ -316,7 +318,7 @@ function YearByYearTable({ results, theme: th }) {
           ))}
         </div>
         <button onClick={() => setOpen(false)} style={{ marginLeft: 'auto', background: 'transparent',
-          border: 'none', cursor: 'pointer', color: th.ink50, fontFamily: th.body, fontSize: 12 }}>
+          border: 'none', cursor: 'pointer', color: th.ink70, fontFamily: th.body, fontSize: 12 }}>
           Hide table &uarr;
         </button>
       </div>
@@ -363,7 +365,7 @@ function YearByYearTable({ results, theme: th }) {
           </tbody>
         </table>
       </div>
-      <div style={{ fontSize: 11, color: th.ink50, marginTop: 10, fontFamily: th.body, lineHeight: 1.6 }}>
+      <div style={{ fontSize: 12, color: th.ink70, marginTop: 10, fontFamily: th.body, lineHeight: 1.6 }}>
         Each row covers the year that begins at that age; End balance is measured on the following
         birthday and matches the next row's Start balance. Wages are take-home pay after retirement
         contributions. Expenses combine everyday spending, housing, and healthcare. Portfolio
