@@ -16,7 +16,7 @@ the V19.6 section below).
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.6
+**Current Version:** 19.7
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -1175,3 +1175,55 @@ Babel-transform of all five JSX files + `node --check` on both plain-JS files pa
 titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers (Results/Try Changes/Charts/Input
 Data) reconciled to 19.6. `engine.js` math IS touched (additive flag only). The V19.5 provenance comments in
 `real-engine.js` are left as-is per convention.
+
+---
+
+## V19.7 &mdash; Results page context: "Your Plan at a Glance" + "How It Could Play Out"
+
+**`engine.js` untouched.** UI/copy plus two purely-additive adapter fields; scoring untouched, so
+`successRate` cannot move (DEFAULTS stays 64/100, verified). The problem: the Results page showed a big
+score with almost no plan context beside it, and a lower "Why the Verdict Reads That Way" band that mostly
+restated numbers shown elsewhere. Approved with Cris across three decision rounds.
+
+**Beat 1 &mdash; "Your Plan at a Glance" (replaces the paycheck teaser beside the score).** A compact
+fact grid of the INPUTS behind the score: retirement age(s), Social Security claim age(s), everyday
+spending *(labeled "excl. housing &amp; healthcare"* &mdash; the V18.13 contract: `spending` excludes
+housing/healthcare, so it is NOT total outflow; labeling it honestly was an explicit accuracy decision),
+safe-to-spend beside it, legacy goal (or "None set" at 0), plan horizon ("Ages X&ndash;Y &middot; N
+years"), and the monthly paycheck (preserved from the old teaser). The detailed paycheck breakdown lower
+on the page is untouched.
+
+**Beat 2 &mdash; "How It Could Play Out" (replaces "Why the Verdict Reads That Way").** The OUTCOMES the
+Monte Carlo produces, which the page never stated plainly: **Rough / Middle / Strong** end balances
+(P10 / P50 / P90), then a longevity + risk line (how long the money lasts in the middle outcome, and the
+share of futures that hit $0 at some point). The old band's three cards were: "% succeed" (restated the
+score), "median legacy" (kept &mdash; it is the Middle column now), "safe to spend" (moved into Beat 1).
+`CoverReason` (the old card component) was removed as orphaned.
+
+**Adapter (additive only).** `compute()` now returns `roughLegacy` / `strongLegacy` = the P10 / P90 end
+balances, read from the SAME sorted results array and SAME percentile indices (`floor(n*0.10)` /
+`floor(n*0.90)`) that `buildYearTables` uses for its rough/strong table views &mdash; so the strip's
+headline figures equal the rough/strong final rows of the year-by-year table exactly (asserted in a new
+test). `medianLegacy`, `runwayYears`, and `depletionSummary` already existed. No effect on `successRate`.
+
+**Shared data helpers (no drift).** `cvGlanceFacts(params, results)` and `cvOutcomes(results)` (in
+`compass-cover.jsx`, on `window`) build the derived strings once; desktop (`CoverGlance` / `CoverOutcomes`)
+and mobile (`MGlance` / `MOutcomes` in `cover-mobile.jsx`) render them with their own styling but read the
+same helpers &mdash; same discipline as `cvChanceLabel` / `cvDangerLine`. Mobile gets full parity on the
+new content (both beats), laid out as stacked lists/cards for the narrow column.
+
+**Disclosed overlaps (intentional):** safe-to-spend now shows in Beat 1 and no longer as its own card (net
+removal of duplication); the danger-age still appears by the score via `cvDangerLine` while Beat 2 states
+the *share* that ever ran low (at legacy-goal 0, that share == 100 &minus; successRate by definition, and
+diverges once a goal is set).
+
+**Validation.** Full suite **86 tests, 85 pass, 0 fail, 1 todo** (was 84/83/1; +2 new V19.7 assertions:
+rough&le;median&le;strong &amp; equality to yearTables finals; DEFAULTS still 64). Babel-transform of the
+three touched JSX files + `node --check` on the adapter pass. Headless `compute(DEFAULTS)` confirmed
+`roughLegacy` 0 / `medianLegacy` ~$749k / `strongLegacy` ~$5.0M, ordered and matching yearTables exactly,
+score 64. Live browser audit pending (desktop 1680px + mobile ~500px, couple &amp; single, sample &amp;
+dirty).
+
+**Cache-buster:** `engine.js?v=19.7` + `?v=19.7` on all `cover-app/*` includes in both shells; both HTML
+titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.7. `engine.js`
+math UNCHANGED (adapter fields are additive exposition only).

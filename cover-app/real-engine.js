@@ -1,4 +1,4 @@
-// real-engine.js — V19.6 adapter
+// real-engine.js — V19.7 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.6';
+      s.src = 'engine.js?v=19.7';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -395,7 +395,7 @@
     var m = normalizeParams(params).params;   // validate + clamp every entry point (incl. numPaths)
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
       return { params: m, successRate: 0, numPaths: m.numPaths || 5000, verdict: 'yellow', verdictWord: '…', verdictBlurb: 'Calculating…',
-        medianLegacy: 0, sustainableSpending: 0, runwayYears: 0,
+        medianLegacy: 0, roughLegacy: 0, strongLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0, yearTables: null,
         depletionSummary: { everDepletedShare: 0, firstDepletionMedianAge: null } };
@@ -444,6 +444,13 @@
 
     // Median legacy + runway
     var medianLegacy = Math.max(0, p50.finalBalance);
+    // V19.7: rough/strong end balances for the "How It Could Play Out" outcomes strip.
+    // Same percentile indices (P10/P90) and same sorted results array that buildYearTables
+    // uses for its rough/strong table views, so the strip headline figures equal the
+    // rough/strong final rows of the year-by-year table exactly. Purely additive — no
+    // effect on successRate or any existing field.
+    var roughLegacy = Math.max(0, results[Math.floor(n * 0.10)].finalBalance);
+    var strongLegacy = Math.max(0, results[Math.floor(n * 0.90)].finalBalance);
     var runwayYears = (p50.depletionAge !== null ? p50.depletionAge : m.endAge) - m.retireAge;
 
     // Sustainable spending: spending level that holds ~90% success (fast bisection
@@ -486,6 +493,7 @@
     return Object.assign({
       params: m, successRate: successRate, numPaths: real.numPaths,
       sustainableSpending: sustainableSpending, runwayYears: runwayYears, medianLegacy: medianLegacy,
+      roughLegacy: roughLegacy, strongLegacy: strongLegacy,
       paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
       yearTables: yearTables, depletionSummary: depletionSummary

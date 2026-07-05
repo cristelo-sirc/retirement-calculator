@@ -1,5 +1,13 @@
 # Change log
 
+## 19.7.0 — 2026-07-05
+
+- Added a "Your Plan at a Glance" panel beside the score on Results, so the number now comes with the life it describes: retirement age(s), Social Security claim age(s), everyday spending (clearly labeled as excluding housing and healthcare) next to the safe-to-spend figure, legacy goal (or "None set"), plan horizon, and the monthly retirement paycheck.
+- Replaced the old "Why the Verdict Reads That Way" section — which mostly repeated numbers now shown elsewhere — with "How It Could Play Out": the range of results a good simulation is actually for. It shows the end balance in rough markets (bottom 10%), the middle outcome, and strong markets (top 10%), plus how long the money lasts in the middle case and the share of futures that ran the balance to $0 at some point.
+- Both additions appear on the phone view too, so mobile Results now carries the same plan-at-a-glance facts and the outcomes range.
+- No change to how anything is simulated or scored — these are existing numbers, surfaced. The built-in sample still reads 64/100.
+- Added automated checks that the new rough/middle/strong figures are correctly ordered and match the year-by-year table exactly.
+
 ## 19.6.0 — 2026-07-05
 
 - Made the headline score honest to its own label. "Chance of never running out" now counts a future as a failure if the balance ever hits $0 — even if a later windfall or delayed Social Security brings it back on paper. Previously a plan that went broke for years mid-retirement and recovered was still counted as a success, which could badly overstate safety (one real plan read 100% when nearly half its futures spent years at $0).

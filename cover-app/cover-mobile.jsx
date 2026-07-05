@@ -157,6 +157,58 @@
     );
   }
 
+  // ── V19.7: plan-at-a-glance + outcomes (shares cvGlanceFacts / cvOutcomes with desktop) ──
+  function MGlance({ params, results }) {
+    const facts = window.cvGlanceFacts(params, results);
+    return (
+      <section style={{ marginBottom: 26 }}>
+        <div style={{ ...mKick, marginBottom: 12 }}>Your plan at a glance</div>
+        <div>
+          {facts.map((f, i) => (
+            <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between',
+              alignItems: 'baseline', gap: 14, padding: '9px 0',
+              borderBottom: i < facts.length - 1 ? `1px solid ${cm.rule}` : 'none' }}>
+              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <div style={{ fontFamily: cm.body, fontSize: 10.5, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', color: cm.ink50 }}>{f.label}</div>
+                {f.sub && <div style={{ fontSize: 11, color: cm.ink50, marginTop: 1, textWrap: 'pretty' }}>{f.sub}</div>}
+              </div>
+              <div style={{ fontFamily: cm.display, fontSize: 17, lineHeight: 1.2, textAlign: 'right',
+                color: cm.ink, flex: '0 0 auto' }}>{f.value}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  function MOutcomes({ results }) {
+    const o = window.cvOutcomes(results);
+    return (
+      <section style={{ marginBottom: 26 }}>
+        <div style={{ ...mKick, marginBottom: 12 }}>How it could play out</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {o.cards.map(c => (
+            <div key={c.key} style={{ display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', gap: 14, border: `1px solid ${cm.ink}`, background: cm.paperWarm,
+              padding: '12px 14px' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontFamily: cm.body, fontSize: 10, letterSpacing: '0.1em',
+                  textTransform: 'uppercase', color: cm.ink50 }}>{c.label} · {c.tag}</div>
+                <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 3, textWrap: 'pretty' }}>{c.body}</div>
+              </div>
+              <div style={{ fontFamily: cm.display, fontSize: 26, color: cm.ink, lineHeight: 1,
+                flex: '0 0 auto' }}>{c.value}</div>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 12.5, lineHeight: 1.55, color: cm.ink70, marginTop: 12, textWrap: 'pretty' }}>
+          {o.longevityLine} {o.riskLine}
+        </p>
+      </section>
+    );
+  }
+
   // ── The two views ─────────────────────────────────────────────────────────
   function CoverView({ results, vc, partner, dirty, goQuiz, params, setParams }) {
     // V19.3: exact move deltas at the FULL path count, from the same computeMoves
@@ -205,6 +257,8 @@
             prompt="Save this plan to a file, or load another." primary="save" compact />
         </div>
 
+        <MGlance params={params} results={results} />
+
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
@@ -213,6 +267,8 @@
           </p>
           <MPaycheck paycheck={results.paycheck} />
         </section>
+
+        <MOutcomes results={results} />
 
         <section>
           <div style={{ ...mKick, marginBottom: 12 }}>Three moves that buy better odds</div>

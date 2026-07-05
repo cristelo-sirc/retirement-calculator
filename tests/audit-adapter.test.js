@@ -205,3 +205,23 @@ test('2d. FIXED F-SURPLUS: paycheck sources reconcile to outflow in surplus year
   const outflow = pc.spending + pc.taxes;
   close(sources, outflow, 'RMD-heavy surplus year now reconciles', 1);
 });
+
+// V19.7: the "How It Could Play Out" outcomes strip reads roughLegacy/strongLegacy
+// (P10/P90 end balances) from compute(). They must (a) order rough <= median <= strong
+// and (b) equal the final balances of the rough/strong year-table views EXACTLY (same
+// percentile indices, same sorted results array), so the strip headline figures can
+// never disagree with the year-by-year table. Additive fields — no scoring effect.
+test('V19.7: compute() exposes rough/strong legacy matching yearTables, correctly ordered', () => {
+  const res = engine.compute({ ...engine.DEFAULTS, numPaths: 2000 });
+  assert.ok(res.roughLegacy <= res.medianLegacy, 'rough <= median');
+  assert.ok(res.medianLegacy <= res.strongLegacy, 'median <= strong');
+  assert.equal(res.roughLegacy, Math.max(0, res.yearTables.rough.finalBalance),
+    'roughLegacy equals rough year-table final');
+  assert.equal(res.strongLegacy, Math.max(0, res.yearTables.strong.finalBalance),
+    'strongLegacy equals strong year-table final');
+});
+
+// V19.7: adding the outcomes fields must not move the score. DEFAULTS stays 64/100.
+test('V19.7: DEFAULTS score unchanged (regression gate)', () => {
+  assert.equal(engine.compute(engine.DEFAULTS).successRate, 64);
+});

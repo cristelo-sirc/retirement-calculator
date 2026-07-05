@@ -72,6 +72,132 @@ function cvPaycheckNote(params, atAge) {
 }
 window.cvPaycheckNote = cvPaycheckNote;
 
+// V19.7: shared data builders for the "Your Plan at a Glance" and "How It Could Play
+// Out" blocks. Desktop (compass-cover.jsx) and mobile (cover-mobile.jsx) render these
+// with their own styling but read the SAME derived strings here, so the two layouts
+// can never disagree on a number or label (same discipline as cvChanceLabel/cvDangerLine).
+// Everything comes straight from params + the compute() result — no recomputation.
+function cvGlanceFacts(params, results) {
+  var p = params || {}, r = results || {};
+  var fmt = window.MockEngine.formatCurrency;
+  var couple = !!p.hasPartner;
+  var pc = r.paycheck || {};
+  var startAge = p.currentAge;
+  var facts = [
+    { label: 'Retirement age',
+      value: couple ? ('You ' + p.retireAge + ' · Spouse ' + p.spouseRetireAge) : ('Age ' + p.retireAge) },
+    { label: 'Social Security',
+      value: couple ? ('You at ' + p.ssClaimAge + ' · Spouse ' + p.spouseClaimAge) : ('Claim at ' + p.ssClaimAge),
+      sub: 'claim age' },
+    { label: 'Everyday spending', value: fmt(p.spending, { compact: true }) + '/yr',
+      sub: 'excl. housing & healthcare' },
+    { label: 'Safe to spend', value: fmt(r.sustainableSpending, { compact: true }) + '/yr',
+      sub: 'for near-certain odds' },
+    { label: 'Legacy goal',
+      value: (p.legacyGoal || 0) > 0 ? fmt(p.legacyGoal, { compact: true }) : 'None set',
+      sub: (p.legacyGoal || 0) > 0 ? 'target left at the end' : 'no target set' },
+    { label: 'Plan horizon', value: 'Ages ' + startAge + '–' + p.endAge,
+      sub: (p.endAge - startAge) + ' years' + (couple ? ' (your timeline)' : '') },
+    { label: 'Monthly paycheck', value: fmt(pc.total || 0) + '/mo',
+      sub: 'once fully retired' }
+  ];
+  return facts;
+}
+window.cvGlanceFacts = cvGlanceFacts;
+
+// V19.7: the "How It Could Play Out" outcomes strip — the RANGE the Monte Carlo produces.
+// rough/middle/strong are the P10/P50/P90 end balances (same percentiles the year-by-year
+// table uses); longevity is the middle path's runway and the share of futures that ever ran
+// low. Note (disclosed): at legacy-goal 0, everShare == 100 - successRate by definition; it's
+// still worth stating plainly and diverges once a legacy goal is set.
+function cvOutcomes(results) {
+  var r = results || {};
+  var fmt = window.MockEngine.formatCurrency;
+  var d = r.depletionSummary || {};
+  var retireAge = r.params ? r.params.retireAge : null;
+  var endAge = r.params ? r.params.endAge : null;
+  var lastsThroughAge = (retireAge != null) ? retireAge + (r.runwayYears || 0) : null;
+  var middleDepletes = (endAge != null && lastsThroughAge != null) ? lastsThroughAge < endAge : false;
+  var everShare = Math.round(d.everDepletedShare || 0);
+  var longevityLine;
+  if (middleDepletes) {
+    longevityLine = 'In the middle outcome, the money runs out around age ' + lastsThroughAge + '.';
+  } else {
+    longevityLine = 'In the middle outcome, the money lasts the full plan' +
+      (endAge != null ? ' (through age ' + endAge + ')' : '') + '.';
+  }
+  var riskLine;
+  if (everShare <= 0) riskLine = 'No simulated future ever ran the balance down to $0.';
+  else riskLine = everShare + '% of futures ran the balance to $0 at some point' +
+    (d.firstDepletionMedianAge && everShare >= 10 ? ' — first around age ' + d.firstDepletionMedianAge : '') + '.';
+  return {
+    cards: [
+      { key: 'rough', label: 'Rough markets', tag: 'Bottom 10%',
+        value: fmt(r.roughLegacy || 0, { compact: true }),
+        body: 'A poor run of returns leaves about this at the end.' },
+      { key: 'middle', label: 'Middle', tag: 'Median',
+        value: fmt(r.medianLegacy || 0, { compact: true }),
+        body: 'The most typical outcome — for heirs or late-life care.' },
+      { key: 'strong', label: 'Strong markets', tag: 'Top 10%',
+        value: fmt(r.strongLegacy || 0, { compact: true }),
+        body: 'A favorable run of returns leaves about this.' }
+    ],
+    longevityLine: longevityLine,
+    riskLine: riskLine
+  };
+}
+window.cvOutcomes = cvOutcomes;
+
+// V19.7: desktop "Your Plan at a Glance" — replaces the old paycheck teaser beside the
+// score. Compact 2-column fact grid; the monthly paycheck survives as one of the facts.
+function CoverGlance({ params, results }) {
+  const facts = window.cvGlanceFacts(params, results);
+  return (
+    <div style={{ borderLeft: `3px solid ${cvStyles.ink}`, paddingLeft: 16 }}>
+      <div style={{ ...cvKicker, marginBottom: 12 }}>Your Plan at a Glance</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '13px 24px' }}>
+        {facts.map(f => (
+          <div key={f.label}>
+            <div style={{ ...cvKicker, fontSize: 9, marginBottom: 3 }}>{f.label}</div>
+            <div style={{ fontFamily: cvStyles.display, fontSize: 18, lineHeight: 1.12,
+              letterSpacing: '-0.01em' }}>{f.value}</div>
+            {f.sub && <div style={{ fontSize: 10.5, color: cvStyles.ink50, marginTop: 1 }}>{f.sub}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+window.CoverGlance = CoverGlance;
+
+// V19.7: desktop "How It Could Play Out" — replaces the redundant "Why the Verdict Reads
+// That Way" band. Three range cards (P10/P50/P90 end balances) + a longevity/risk footer.
+function CoverOutcomes({ results }) {
+  const o = window.cvOutcomes(results);
+  return (
+    <div>
+      <div style={{ ...cvKicker, marginBottom: 18 }}>How It Could Play Out</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 36, marginBottom: 26 }}>
+        {o.cards.map(c => (
+          <div key={c.key}>
+            <div style={{ ...cvKicker, fontSize: 9.5, marginBottom: 6 }}>{c.label}
+              <span style={{ color: cvStyles.ink20, marginLeft: 6 }}>· {c.tag}</span></div>
+            <div style={{ fontFamily: cvStyles.display, fontSize: 46, lineHeight: 1,
+              letterSpacing: '-0.02em' }}>{c.value}</div>
+            <div style={{ ...cvKicker, fontSize: 9, marginTop: 6 }}>at plan's end</div>
+            <div style={{ fontSize: 13, color: cvStyles.ink70, lineHeight: 1.5, marginTop: 10 }}>{c.body}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ borderTop: `1px solid ${cvStyles.rule}`, paddingTop: 16, fontSize: 14,
+        color: cvStyles.ink70, lineHeight: 1.6 }}>
+        {o.longevityLine} {o.riskLine}
+      </div>
+    </div>
+  );
+}
+window.CoverOutcomes = CoverOutcomes;
+
 function cvVerdictColor(v) {
   return v === 'green' ? cvStyles.sage : v === 'yellow' ? cvStyles.amber : cvStyles.clay;
 }
@@ -88,7 +214,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.6', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.7', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -247,9 +373,7 @@ function CoverDesktop(props) {
               title={`${dirty ? 'Your plan' : 'This sample plan'} is ${results.verdictWord.toLowerCase()}.`}
               body={dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and these results fill in with your real plan.'}
               accent={vc} big />
-            <CoverLine kicker="Your Paycheck, Explained"
-              title={`${fmt(results.paycheck.total)} a month`}
-              body={`Where every dollar comes from once ${params.hasPartner ? 'you both stop' : 'you stop'} working at ${results.paycheck.atAge}${cvPaycheckNote(params, results.paycheck.atAge)}.`} />
+            <CoverGlance params={params} results={results} />
             <CoverLine kicker="Inside"
               title="Three moves that buy better odds"
               body="Small, specific changes — and exactly how many points each is worth." />
@@ -317,18 +441,8 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, marginBottom: 18 }}>Why the Verdict Reads That Way</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 36,
-            paddingBottom: 56, borderBottom: `1px solid ${cvStyles.rule}`, marginBottom: 56 }}>
-            <CoverReason big={`${results.successRate}%`}
-              head="of futures succeed"
-              body={`Across ${(results.numPaths || 0).toLocaleString()} simulated histories, ${results.successRate}% ${(params.legacyGoal || 0) > 0 ? `finish with at least ${fmt(params.legacyGoal, { compact: true })} left` : 'finish with money still in the account'} at ${results.params.endAge}.`} />
-            <CoverReason big={fmt(results.medianLegacy, { compact: true })}
-              head="median legacy"
-              body="The middle outcome leaves this for heirs or late-life care — more in fair markets, less in foul." />
-            <CoverReason big={fmt(results.sustainableSpending, { compact: true })}
-              head="safe to spend / yr"
-              body={`For near-certain odds, this is the level that gets you there — ${results.sustainableSpending >= results.params.spending ? 'above' : 'below'} today's plan.`} />
+          <div style={{ paddingBottom: 56, borderBottom: `1px solid ${cvStyles.rule}`, marginBottom: 56 }}>
+            <CoverOutcomes results={results} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 56,
@@ -381,7 +495,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.6</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.7</div>
         </div>
       </section>
     </div>
@@ -432,17 +546,8 @@ function CoverPaycheck({ paycheck }) {
   );
 }
 
-function CoverReason({ big, head, body }) {
-  return (
-    <div>
-      <div style={{ fontFamily: cvStyles.display, fontSize: 48, lineHeight: 1, marginBottom: 6,
-        letterSpacing: '-0.02em' }}>{big}</div>
-      <div style={{ fontFamily: cvStyles.body, fontSize: 11, letterSpacing: '0.12em',
-        textTransform: 'uppercase', color: cvStyles.ink50, marginBottom: 10 }}>{head}</div>
-      <div style={{ fontSize: 13.5, lineHeight: 1.6, color: cvStyles.ink70 }}>{body}</div>
-    </div>
-  );
-}
+// (CoverReason removed in V19.7 — the "Why the Verdict Reads That Way" band it fed was
+//  replaced by CoverOutcomes / "How It Could Play Out".)
 
 function CoverSlider({ label, value, onChange, min, max, step = 1, display, accent, last }) {
   return (
@@ -573,7 +678,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.6">
+    <CoverChrome active="rework" tag="V19.7">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -688,7 +793,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.6">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.7">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -825,7 +930,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.6</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.7</div>
       </div>
     </div>
   );
