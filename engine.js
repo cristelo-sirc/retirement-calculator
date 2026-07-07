@@ -69,7 +69,13 @@
             const COMPENSATION_LIMIT = 360000;
             const ROTH_CATCHUP_WAGE_THRESHOLD = 150000;
 
-            // SS Earnings Limit - 2026 (under full retirement age)
+            // SS Earnings Limit - 2026 (under full retirement age): $1 withheld per $2 over.
+            // V19.9 (B5) disclosure: the engine ALWAYS applies this under-FRA limit until age 67 and
+            // does NOT model the distinct rule for the single calendar year a person REACHES FRA
+            // ($65,160 in 2026, $1 per $3, counting only pre-FRA-month earnings). The annual model has
+            // no birth month, so that one-year rule can't be applied exactly; this is disclosed in the
+            // SS claim-age tooltip and the README rather than presented as exact. Only affects plans
+            // that claim before 67 AND have part-time earnings, and only in that transition year.
             const SS_EARNINGS_LIMIT = 24480;
 
             // Published 2026 COLA. The long-range projection still grows benefits with
@@ -1533,10 +1539,10 @@
                 // this function adds only the income-related surcharge.
                 if (filingStatus === 'MFJ') {
                     thresholds = [218000 * inflationMult, 274000 * inflationMult, 342000 * inflationMult, 410000 * inflationMult, 750000 * inflationMult];
-                    surcharges = [0, 95.70, 240.40, 385.00, 529.70, 578.00]; // V19.5 (F-IRMAA-T4 fix): CMS 2026 tier-4 is $529.70 (Part B 446.40 + Part D 83.30)
+                    surcharges = [0, 95.70, 240.40, 385.00, 529.60, 578.00]; // V19.9 (corrects V19.5): CMS 2026 tier-4 is $529.60 (Part B 446.30 + Part D 83.30). V19.5 used 446.40/$529.70 in error — see CLAUDE.md V19.9 note.
                 } else {
                     thresholds = [109000 * inflationMult, 137000 * inflationMult, 171000 * inflationMult, 205000 * inflationMult, 500000 * inflationMult];
-                    surcharges = [0, 95.70, 240.40, 385.00, 529.70, 578.00]; // V19.5 (F-IRMAA-T4 fix): CMS 2026 tier-4 is $529.70 (Part B 446.40 + Part D 83.30)
+                    surcharges = [0, 95.70, 240.40, 385.00, 529.60, 578.00]; // V19.9 (corrects V19.5): CMS 2026 tier-4 is $529.60 (Part B 446.30 + Part D 83.30). V19.5 used 446.40/$529.70 in error — see CLAUDE.md V19.9 note.
                 }
                 let monthlyCharge = 0;
                 if (magi <= thresholds[0]) monthlyCharge = surcharges[0];
@@ -1942,14 +1948,23 @@
                     const spousePensionMult = params.enableSpousePensionCOLA ? inflation : 1;
                     if (currentYearAge >= params.pensionAge) otherIncome += params.pension * userPensionMult;
                     if (spouseCurrentAge >= params.spousePensionAge && params.spouseAge > 0) otherIncome += params.spousePension * spousePensionMult;
+                    // V19.9 (B6): part-time income belongs to a specific earner (params.partTimeOwner,
+                    // 'user' or 'spouse'). It gates on THAT person's age, and — critically — the SS
+                    // earnings test reduces only THAT person's benefit. Previously the single channel
+                    // always gated on and was tested against the USER, so a household whose part-timer
+                    // was the spouse still saw the user's early benefit wrongly reduced.
+                    const ptOwnerIsSpouse = (params.partTimeOwner === 'spouse') && (params.spouseAge > 0);
+                    const ptOwnerAge = ptOwnerIsSpouse ? spouseCurrentAge : currentYearAge;
                     let ptIncome = 0;
-                    if (params.enablePartTime && currentYearAge >= params.partTimeStartAge && currentYearAge <= params.partTimeEndAge) ptIncome = params.partTimeIncome * inflation;
+                    if (params.enablePartTime && ptOwnerAge >= params.partTimeStartAge && ptOwnerAge <= params.partTimeEndAge) ptIncome = params.partTimeIncome * inflation;
+                    const userPtEarnings = ptOwnerIsSpouse ? 0 : ptIncome;
+                    const spousePtEarnings = ptOwnerIsSpouse ? ptIncome : 0;
 
                     // Calculate individual SS benefits
-                    let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, ptIncome, SS_EARNINGS_LIMIT * inflation, inflation);
+                    let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, userPtEarnings, SS_EARNINGS_LIMIT * inflation, inflation);
                     let spouseSSBenefit = 0;
                     if (params.spouseAge > 0) {
-                        spouseSSBenefit = calculateSSBenefit(params.spouseSS, params.spouseClaimAge, spouseCurrentAge, FRA, SS_COLA, 0, SS_EARNINGS_LIMIT * inflation, inflation);
+                        spouseSSBenefit = calculateSSBenefit(params.spouseSS, params.spouseClaimAge, spouseCurrentAge, FRA, SS_COLA, spousePtEarnings, SS_EARNINGS_LIMIT * inflation, inflation);
                     }
 
                     // Apply spousal benefit if enabled
@@ -2064,7 +2079,17 @@
                     let irmaa = 0;
                     let totalNeed = baseSpending; // FIX: Initialize totalNeed before the loop
 
-                    for (let iteration = 0; iteration < 5; iteration++) {
+                    // V19.9 (B1): the loop used to hard-stop after 5 passes even when the tax bill
+                    // and required withdrawal had NOT converged, committing withdrawals that were
+                    // sized against a stale earlier tax estimate. Portfolio arithmetic still
+                    // balanced, but the household-cash identity (income + withdrawals == spending +
+                    // taxes) could miss by thousands in tax-heavy years (e.g. large Roth
+                    // conversions). Raise the cap so the loop runs until BOTH tax and need are
+                    // stable within $1; at that point the identity holds to ~$1 by construction.
+                    // Normal years still converge in 3-5 passes and break early, so there is no
+                    // performance cost outside pathological, tax-churning years.
+                    const MAX_TAX_PASSES = 100;
+                    for (let iteration = 0; iteration < MAX_TAX_PASSES; iteration++) {
                         // Temporary balances for this iteration (reset after RMD)
                         let temp_userPreTax = userPreTax_startOfYear - userRmd;
                         let temp_spousePreTax = spousePreTax_startOfYear - spouseRmd;
@@ -2176,7 +2201,7 @@
                         // total need (which now bakes in this pass's IRMAA) have stabilized. Tax
                         // alone stabilizing is not enough -- see the totalNeed refresh above.
                         const needStable = Math.abs(totalNeed - totalNeedUsedThisPass) < 1;
-                        if ((Math.abs(newTax - iterationTax) < 1 && needStable) || iteration === 4) { // Converged if diff < $1 or max 5 passes reached
+                        if ((Math.abs(newTax - iterationTax) < 1 && needStable) || iteration === MAX_TAX_PASSES - 1) { // Converged if diff < $1, else safety cap (V19.9: 100, was 5)
                             finalTax = newTax;
                             withdrawals_converged = withdrawals_this_pass;
                             finalOrdIncome = currentOrdIncome;

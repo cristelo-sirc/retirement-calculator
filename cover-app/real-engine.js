@@ -1,4 +1,4 @@
-// real-engine.js — V19.8 adapter
+// real-engine.js — V19.9 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.8';
+      s.src = 'engine.js?v=19.9';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -46,6 +46,7 @@
     spousePension: 0, spousePensionStartAge: 65, enableSpousePensionCOLA: false,
 
     enablePartTime: false, partTimeIncome: 0, partTimeStartAge: 65, partTimeEndAge: 70,  // annual
+    partTimeOwner: 'user',   // V19.9 (B6): whose earnings the SS earnings test applies to (user | spouse)
 
     enableWindfall: false, windfallAmount: 0, windfallAge: 70,
     enableRothConversion: false, rothConversionAmount: 0, rothConversionStartAge: 65, rothConversionEndAge: 72,
@@ -90,7 +91,7 @@
   var ENUMS = {
     savingsDest: ['pretax', 'roth', 'split'], spouseSavingsDest: ['pretax', 'roth', 'split'],
     employerContributionDest: ['pretax', 'roth'], spouseEmployerContributionDest: ['pretax', 'roth'],
-    housingType: ['own', 'rent']
+    housingType: ['own', 'rent'], partTimeOwner: ['user', 'spouse']
   };
   function normalizeParams(raw) {
     raw = (raw && typeof raw === 'object') ? raw : {};
@@ -151,6 +152,9 @@
       partTimeIncome: m.enablePartTime ? (m.partTimeIncome || 0) : 0,
       partTimeStartAge: m.partTimeStartAge || m.retireAge,
       partTimeEndAge: m.partTimeEndAge || m.endAge,
+      // V19.9 (B6): which partner earns it — the SS earnings test hits only that person's benefit.
+      // A single household with no partner is always 'user'.
+      partTimeOwner: (partner && m.partTimeOwner === 'spouse') ? 'spouse' : 'user',
 
       enableWindfall: !!m.enableWindfall,
       windfallAmount: m.enableWindfall ? (m.windfallAmount || 0) : 0,
@@ -292,26 +296,55 @@
     var goal = m.legacyGoal || 0;
     var base = (baseRate != null) ? baseRate : successOf(runPaths(real), goal);
     var moves = [];
-    var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2 })), goal);
-    moves.push({ id: 'delay', title: 'Delay retirement 2 years',
-      detail: 'Retire at ' + (m.retireAge + 2) + ' instead of ' + m.retireAge,
-      note: 'at ' + (m.retireAge + 2), rate: r1, delta: r1 - base });
+    // V19.9 (A3): accumulate ONLY the patches we actually show, so "all together" can never
+    // include a change no card lists (previously it always moved BOTH claim ages to 70 even
+    // when the SS card was hidden or applied to only one partner).
+    var combinedPatch = {};
+
+    // Delay retirement — capped at the Try Changes dial max (80). Measure and label at the
+    // SAME capped age the lever applies, and hide entirely when no delay is possible
+    // (previously it advertised "retire at 82" on an already-80 plan the UI could not move).
+    var RETIRE_CAP = 80;
+    var delayedRet = Math.min(RETIRE_CAP, m.retireAge + 2);
+    if (delayedRet > m.retireAge) {
+      var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: delayedRet })), goal);
+      var delayYrs = delayedRet - m.retireAge;
+      moves.push({ id: 'delay', title: 'Delay retirement ' + delayYrs + (delayYrs === 1 ? ' year' : ' years'),
+        detail: 'Retire at ' + delayedRet + ' instead of ' + m.retireAge,
+        note: 'at ' + delayedRet, rate: r1, delta: r1 - base });
+      combinedPatch.retireAge = delayedRet;
+    }
+
+    // Cut spending 10% (always available)
     var newSpend = Math.round(real.lifestyleSpending * 0.9 / 1000) * 1000;
     var r2 = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: newSpend })), goal);
     moves.push({ id: 'spend', title: 'Cut spending 10%',
       detail: '$' + Math.round(newSpend / 1000) + 'k/yr instead of $' + Math.round(real.lifestyleSpending / 1000) + 'k',
       note: '$' + Math.round(newSpend / 1000) + 'k/yr', rate: r2, delta: r2 - base });
-    if (m.ssClaimAge < 70) {
-      // Both partners delay (V18.10 unification) — same fields Rework's suggested move sets.
-      var r3 = successOf(runPaths(Object.assign({}, real, { userClaimAge: 70, spouseClaimAge: 70 })), goal);
+    combinedPatch.lifestyleSpending = newSpend;
+
+    // Wait until 70 for SS — eligible if EITHER existing partner claims before 70. The scored
+    // patch moves ONLY the partner(s) actually below 70, and the card wording names them, so
+    // tapping the card stages exactly what was scored and "all together" matches the cards.
+    var userEarly = m.ssClaimAge < 70;
+    var spouseEarly = m.hasPartner && m.spouseClaimAge < 70;
+    if (userEarly || spouseEarly) {
+      var ssPatch = {};
+      if (userEarly) ssPatch.userClaimAge = 70;
+      if (spouseEarly) ssPatch.spouseClaimAge = 70;
+      var r3 = successOf(runPaths(Object.assign({}, real, ssPatch)), goal);
+      var ssDetail;
+      if (userEarly && spouseEarly) ssDetail = 'Claim at 70 instead of ' + m.ssClaimAge + '/' + m.spouseClaimAge + ' (both of you)';
+      else if (userEarly) ssDetail = 'You claim at 70 instead of ' + m.ssClaimAge;
+      else ssDetail = 'Spouse claims at 70 instead of ' + m.spouseClaimAge;
       moves.push({ id: 'ss', title: 'Wait until 70 for Social Security',
-        detail: 'Claim at 70 instead of ' + m.ssClaimAge + (m.hasPartner ? ' (both of you)' : ''),
-        note: 'delayed', rate: r3, delta: r3 - base });
+        detail: ssDetail, note: 'delayed', rate: r3, delta: r3 - base });
+      Object.assign(combinedPatch, ssPatch);
     }
+
     var combined = null;
     if (opts.includeCombined) {
-      var rc = successOf(runPaths(Object.assign({}, real, { retireAge: real.retireAge + 2,
-        lifestyleSpending: newSpend, userClaimAge: 70, spouseClaimAge: 70 })), goal);
+      var rc = successOf(runPaths(Object.assign({}, real, combinedPatch)), goal);
       combined = { rate: rc, delta: rc - base };
     }
     return { base: base, moves: moves, combined: combined };
@@ -384,7 +417,10 @@
     });
   }
   function tableViewOf(result) {
+    // V19.9 (A2): carry the latching everDepleted / firstDepletionAge so the table banner can
+    // state "ran out at age X" even when a later recovery cleared depletionAge (V19.5 semantics).
     return { rows: tableRowsOf(result.log), depletionAge: result.depletionAge,
+      everDepleted: !!result.everDepleted, firstDepletionAge: result.firstDepletionAge,
       solvent: !!result.solvent, finalBalance: result.finalBalance };
   }
   function buildYearTables(real, sortedResults) {
@@ -405,7 +441,8 @@
         medianLegacy: 0, roughLegacy: 0, strongLegacy: 0, sustainableSpending: 0, runwayYears: 0,
         paycheck: { total: 0, ss: 0, pension: 0, portfolio: 0 },
         path: [], incomeByYear: [], allocByYear: [], paths: [], totalSavings: 0, yearTables: null,
-        depletionSummary: { everDepletedShare: 0, firstDepletionMedianAge: null } };
+        depletionSummary: { everDepletedShare: 0, firstDepletionMedianAge: null },
+        medianDepletion: { everDepleted: false, firstDepletionAge: null, recovered: false, endAge: m.endAge } };
     }
     var real = mapToReal(m, m.numPaths || 5000);
     var goal = m.legacyGoal || 0;            // flat future-dollar target the plan must end at/above
@@ -429,23 +466,34 @@
     // copy, and include wages + taxes so the source bars reconcile to spending + taxes exactly.
     var userRetIdx = Math.max(0, m.retireAge - m.currentAge);
     var spouseRetIdx = m.hasPartner ? Math.max(0, (m.spouseRetireAge || 0) - (m.spouseAge || 0)) : 0;
-    var retIdx = Math.max(userRetIdx, spouseRetIdx);
-    var ry = medianLog[Math.min(retIdx, medianLog.length - 1)] || {};
-    // V19.5 (F-SURPLUS fix): net out surplusBanked -- the engine now deposits leftover
-    // guaranteed income (RMD/SS beyond spending+taxes) back into taxable, so that
-    // portion never actually left the portfolio to fund this year's outflow. Without
-    // this the paycheck bars would overshoot spending+taxes in surplus years.
-    var portfolioDraw = (ry.rmd || 0) + (ry.wdTaxable || 0) + (ry.wdPreTax || 0) + (ry.wdRoth || 0) - (ry.surplusBanked || 0);
+    var retIdxRaw = Math.max(userRetIdx, spouseRetIdx);
+    // V19.9 (B4): if the later partner's retirement falls BEYOND the plan horizon, there is no
+    // fully-retired year to feature — the capped row still contains wages. Flag that so the UI
+    // says the fully-retired paycheck is unavailable instead of labeling a still-working year
+    // "once fully retired".
+    var fullyRetired = retIdxRaw <= (medianLog.length - 1);
+    var retIdx = Math.min(retIdxRaw, medianLog.length - 1);
+    var ry = medianLog[retIdx] || {};
+    // V19.9 (B4): present the paycheck as GROSS sources vs EXPLICIT uses (the V19.5 fix had netted
+    // banked surplus INTO the portfolio segment, which went negative in surplus years and broke the
+    // bar — positive segments then summed past 100%). Gross portfolio outflow = RMD + discretionary
+    // withdrawals; leftover guaranteed income is a separate "saved back to portfolio" USE. By the
+    // V19.9 (B1) household-cash identity, gross sources == spending + taxes + saved exactly.
+    var grossPortfolio = (ry.rmd || 0) + (ry.wdTaxable || 0) + (ry.wdPreTax || 0) + (ry.wdRoth || 0);
+    var surplusSaved = (ry.surplusBanked || 0);
+    var srcTotal = (ry.ssIncome || 0) + (ry.pensionIncome || 0) + (ry.partTimeIncome || 0) + (ry.wages || 0) + grossPortfolio;
     var taxesMo = (ry.taxBill || 0) / 12;
     var spendingMo = (ry.spending || 0) / 12;
     var paycheck = {
-      total: spendingMo + taxesMo,                 // total monthly outflow; SS+pension+wages+portfolio sum to this
+      total: srcTotal / 12,                        // gross monthly sources = spending + taxes + saved
       ss: (ry.ssIncome || 0) / 12,
       pension: ((ry.pensionIncome || 0) + (ry.partTimeIncome || 0)) / 12,
       wages: (ry.wages || 0) / 12,
-      portfolio: portfolioDraw / 12,
+      portfolio: grossPortfolio / 12,
       taxes: taxesMo,
       spending: spendingMo,
+      saved: surplusSaved / 12,                    // leftover guaranteed income saved back (a USE)
+      fullyRetired: fullyRetired,
       atAge: (ry.age != null ? ry.age : m.retireAge)
     };
 
@@ -458,19 +506,66 @@
     // effect on successRate or any existing field.
     var roughLegacy = Math.max(0, results[Math.floor(n * 0.10)].finalBalance);
     var strongLegacy = Math.max(0, results[Math.floor(n * 0.90)].finalBalance);
-    var runwayYears = (p50.depletionAge !== null ? p50.depletionAge : m.endAge) - m.retireAge;
+    // V19.9 (A2, recovery-semantics): the runway and "lasts the full plan" claims must use the
+    // LATCHING everDepleted / firstDepletionAge facts, not the end-state depletionAge — which
+    // V19.5 clears when a windfall or banked surplus revives a broke balance. A median path that
+    // hit $0 at 61 and recovered by 65 has depletionAge === null; reading that alone reported a
+    // full-plan runway for a plan that plainly ran out. Base the runway on the FIRST time the
+    // median path ran dry, and carry a recovered flag so displays can state both facts.
+    var mFirstDep = (p50.everDepleted && p50.firstDepletionAge != null) ? p50.firstDepletionAge : null;
+    var mRunwayEndAge = (mFirstDep != null) ? mFirstDep
+      : (p50.depletionAge !== null ? p50.depletionAge : m.endAge);
+    var runwayYears = mRunwayEndAge - m.retireAge;
+    var medianDepletion = {
+      everDepleted: !!p50.everDepleted,
+      firstDepletionAge: mFirstDep,
+      recovered: !!(p50.everDepleted && p50.depletionAge === null),
+      endAge: m.endAge
+    };
 
-    // Sustainable spending: spending level that holds ~90% success (fast bisection
-    // on the real engine — kept light so live recompute stays responsive)
-    var sustainableSpending;
-    var bp = Math.max(50, Math.round((real.numPaths || 5000) * 250 / 1500));  // bisection sample = same share of the path count as the old 250/1500, so it tracks the slider
-    var lo = 20000, hi = Math.max(80000, real.lifestyleSpending * 2);
-    for (var k = 0; k < 9; k++) {
-      var mid = (lo + hi) / 2;
-      var s = successOf(runPaths(Object.assign({}, real, { lifestyleSpending: mid, numPaths: bp })), goal);
-      if (s < 90) hi = mid; else lo = mid;
+    // Sustainable spending (V19.9, B2): the highest everyday-spending level whose success stays
+    // at/above the target. Success decreases monotonically in spending, so this is a clean
+    // bisection — but the old version had three honesty bugs the audit caught:
+    //   (1) it ASSUMED $20k was a feasible floor and never checked, so a plan that scores 0/100
+    //       even at $20k still displayed "$20,000 safe";
+    //   (2) it capped the ceiling at max($80k, 2×spending) and never expanded it, understating
+    //       plans that stay safe well above that;
+    //   (3) it reported the figure with no honesty about precision.
+    // Fix: bracket adaptively (walk the floor DOWN toward $0 when even $20k fails; expand the
+    // ceiling UP while it still passes) and bisect — all at the FAST sample so live recompute
+    // stays ~1s (per Cris's V19.9 decision: a fast, clearly-labeled ESTIMATE rather than a slow
+    // full-count verification that tripled recompute time). If no level — down to $0 — reaches
+    // the target, report unavailable (null) rather than a false floor. The figure is labeled an
+    // estimate in the UI (a "~" prefix and "estimate" wording) so it's never read as exact.
+    var SUSTAIN_TARGET = 90;
+    var full = real.numPaths || 5000;
+    var bp = Math.max(50, Math.round(full * 250 / 1500));      // fast bracketing/bisection sample
+    var SPEND_CAP = 2000000;                                   // sane upper bound for the ceiling walk
+    function sAt(spend) {
+      return successOf(runPaths(Object.assign({}, real, { lifestyleSpending: spend, numPaths: bp })), goal);
     }
-    sustainableSpending = Math.round(lo / 1000) * 1000;
+    var lo = 20000, hi = Math.max(80000, Math.round(real.lifestyleSpending * 2));
+    var bracketOk = true;
+    if (sAt(lo) < SUSTAIN_TARGET) {
+      // Even $20k/yr misses the target — walk the floor down toward $0.
+      var downs = [10000, 5000, 2000, 0];
+      var placed = false;
+      for (var di = 0; di < downs.length; di++) {
+        if (sAt(downs[di]) >= SUSTAIN_TARGET) { hi = (di === 0 ? lo : downs[di - 1]); lo = downs[di]; placed = true; break; }
+      }
+      if (!placed) bracketOk = false;   // nothing down to $0 reaches the target
+    } else {
+      // The floor passes — expand the ceiling up while it also still passes.
+      while (sAt(hi) >= SUSTAIN_TARGET && hi < SPEND_CAP) { lo = hi; hi = Math.min(SPEND_CAP, hi * 2); }
+    }
+    var sustainableSpending = null;      // null => no level meets the target ("unavailable")
+    if (bracketOk) {
+      for (var k = 0; k < 9; k++) {
+        var mid = (lo + hi) / 2;
+        if (sAt(mid) >= SUSTAIN_TARGET) lo = mid; else hi = mid;
+      }
+      sustainableSpending = Math.floor(lo / 1000) * 1000;   // round down so the estimate leans safe
+    }
 
     // Per-year series from the median path
     var path = buildBalancePath(medianLog, m);
@@ -503,7 +598,7 @@
       roughLegacy: roughLegacy, strongLegacy: strongLegacy,
       paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
-      yearTables: yearTables, depletionSummary: depletionSummary
+      yearTables: yearTables, depletionSummary: depletionSummary, medianDepletion: medianDepletion
     }, v);
   }
 

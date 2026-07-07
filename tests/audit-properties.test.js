@@ -234,24 +234,34 @@ test('2c. FIXED F-ROTHCONV-PHANTOM: only the executed conversion is taxed', () =
     `ordIncome ${Math.round(y.ordIncome)} exceeds the whole $100k account: phantom conversion income`);
 });
 
-// FINDING F-PT-EARNTEST-ATTRIB: the single part-time income channel is always
-// attributed to the USER for the SS earnings test (engine 1921 passes ptIncome only
-// to the user's benefit; the spouse's benefit is never tested, 1924). A household
-// whose part-timer is the spouse still sees the USER's early benefit reduced.
-test('2c. FINDING F-PT-EARNTEST-ATTRIB: earnings test only ever hits the user benefit', { todo: 'audit finding F-PT-EARNTEST-ATTRIB' }, () => {
-  const base = auditParams({
-    currentAge: 63, retireAge: 63, endAge: 66, spouseAge: 63, spouseRetireAge: 63,
-    taxableBalance: 2000000, lifestyleSpending: 60000,
-    userSS: 20000, userClaimAge: 62, spouseSS: 20000, spouseClaimAge: 62,
-    enablePartTime: true, partTimeIncome: 40000, partTimeStartAge: 63, partTimeEndAge: 66,
-    stockReturn: 0, bondReturn: 0, taxableGainRatio: 0
-  });
-  const r = simulatePath(base, 0);
-  // Both partners have identical SS at 62 and are under FRA; the SAME household
-  // part-time income should not reduce ONLY the user's half. Combined benefit shows
-  // one reduction of (40000-24480)/2 = 7760 applied once (to the user):
-  const combinedNoTest = 2 * 20000 * 0.70;
-  close(r.log[0].ssIncome, combinedNoTest, 'household benefit should not depend on which partner earns the paycheck');
+// FINDING F-PT-EARNTEST-ATTRIB -- FIXED (V19.9, B6): part-time income now carries an OWNER
+// (params.partTimeOwner). The SS earnings test reduces only THAT person's benefit, and the
+// start/stop ages are read against the earner's age. Before the fix the single channel was always
+// attributed to the USER, so a spouse-earned paycheck wrongly reduced the user's early benefit.
+//
+// Use an ASYMMETRIC pair (different benefits) so mis-attribution changes the HOUSEHOLD total —
+// a symmetric pair would hide the bug because reducing either identical benefit costs the same.
+test('2c. FIXED F-PT-EARNTEST-ATTRIB: earnings test hits the owner, not always the user', () => {
+  function household(owner) {
+    const p = auditParams({
+      currentAge: 63, retireAge: 63, endAge: 66, spouseAge: 63, spouseRetireAge: 63,
+      taxableBalance: 2000000, lifestyleSpending: 60000,
+      userSS: 40000, userClaimAge: 62, spouseSS: 10000, spouseClaimAge: 62,
+      enablePartTime: true, partTimeIncome: 40000, partTimeStartAge: 63, partTimeEndAge: 66,
+      partTimeOwner: owner, stockReturn: 0, bondReturn: 0, taxableGainRatio: 0,
+    });
+    return simulatePath(p, 0).log[0].ssIncome;
+  }
+  const userOwned = household('user');
+  const spouseOwned = household('spouse');
+  // Attribution now MATTERS: the two households differ (they were identical while the bug forced
+  // every reduction onto the user).
+  assert.ok(Math.abs(userOwned - spouseOwned) > 500,
+    `attribution should change the household total, got user=${Math.round(userOwned)} spouse=${Math.round(spouseOwned)}`);
+  // Reducing the SMALLER (spouse) benefit loses less to the earnings test (it floors at $0), so a
+  // spouse-owned paycheck leaves a HIGHER household benefit than a user-owned one.
+  assert.ok(spouseOwned > userOwned,
+    `spouse-owned should preserve more household benefit, got user=${Math.round(userOwned)} spouse=${Math.round(spouseOwned)}`);
 });
 
 test('2c. glide path convention: allocation steps toward the target but final year sits one step short', () => {

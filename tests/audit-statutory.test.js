@@ -32,9 +32,10 @@ const ORACLE = {
   NIIT: { Single: 200000, MFJ: 250000 },
   IRMAA_T: { Single: [109000, 137000, 171000, 205000, 500000], MFJ: [218000, 274000, 342000, 410000, 750000] },
   // CMS 2026: Part B standard $202.90; tier premiums 1.4x/2.0x/2.6x/3.2x/3.4x
-  // => monthly B surcharges 81.20/202.90/324.60/446.40/487.00.
+  // => monthly B surcharges 81.20/202.90/324.60/446.30/487.00.
   // Part D IRMAA adders: 14.50/37.50/60.40/83.30/91.00.
-  IRMAA_SURCHARGE: [95.70, 240.40, 385.00, 529.70, 578.00],
+  // (V19.9: tier-4 B is 446.30 -> combined 529.60; the V19.5 446.40/529.70 was an error.)
+  IRMAA_SURCHARGE: [95.70, 240.40, 385.00, 529.60, 578.00],
   SS_EARNINGS_LIMIT: 24480,     // under-FRA annual exempt amount, $1 per $2 over
   LIMIT_401K: 24500, CATCHUP: 8000, SUPER_CATCHUP: 11250,
   TOTAL_PLAN: 72000, COMP_LIMIT: 360000, ROTH_CATCHUP_WAGES: 150000,
@@ -128,8 +129,8 @@ test('2b. state tax approximation: flat rate on ord+gains minus federal SD', () 
 test('2b. IRMAA: every 2026 tier boundary ±$1, both statuses', () => {
   for (const status of ['Single', 'MFJ']) {
     const T = ORACLE.IRMAA_T[status];
-    // Engine's published-2026 surcharges (tier 4 fixed to $529.70 in V19.5, F-IRMAA-T4)
-    const engineSurcharges = [95.70, 240.40, 385.00, 529.70, 578.00];
+    // Engine's published-2026 surcharges (tier 4 corrected to $529.60 in V19.9; V19.5's $529.70 was wrong)
+    const engineSurcharges = [95.70, 240.40, 385.00, 529.60, 578.00];
     close(calculateIRMAA(T[0] - 1, status, 1), 0, `${status} below first threshold`);
     close(calculateIRMAA(T[0], status, 1), 0, `${status} at first threshold (<= is base)`);
     for (let t = 0; t < 4; t++) {
@@ -145,9 +146,10 @@ test('2b. IRMAA: every 2026 tier boundary ±$1, both statuses', () => {
   }
 });
 
-// FINDING F-IRMAA-T4 -- FIXED (V19.5): CMS 2026 tier-4 combined Part B + Part D
-// surcharge is 446.40 + 83.30 = $529.70/mo; engine previously used $529.60.
-test('2b. FIXED F-IRMAA-T4: tier-4 surcharge matches CMS 2026 exactly', () => {
+// FINDING F-IRMAA-T4 -- CORRECTED (V19.9): CMS 2026 tier-4 combined Part B + Part D
+// surcharge is 446.30 + 83.30 = $529.60/mo. V19.5 changed this to $529.70 citing Part B
+// 446.40, which was wrong per the official CMS 2026 fact sheet; V19.9 restores $529.60.
+test('2b. F-IRMAA-T4: tier-4 surcharge matches CMS 2026 exactly ($529.60)', () => {
   close(calculateIRMAA(411000, 'MFJ', 1), ORACLE.IRMAA_SURCHARGE[3] * 12, 'MFJ tier 4 vs CMS');
 });
 

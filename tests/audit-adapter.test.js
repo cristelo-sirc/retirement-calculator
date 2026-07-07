@@ -17,7 +17,7 @@ const close = (a, b, msg, tol = 0.01) =>
 const ENGINE_PARAM_NAMES = new Set([
   'numPaths', 'currentAge', 'retireAge', 'endAge', 'spouseAge', 'spouseRetireAge',
   'userSS', 'userClaimAge', 'spouseSS', 'spouseClaimAge', 'enableSpousalBenefit',
-  'enablePartTime', 'partTimeIncome', 'partTimeStartAge', 'partTimeEndAge',
+  'enablePartTime', 'partTimeIncome', 'partTimeStartAge', 'partTimeEndAge', 'partTimeOwner',
   'enableWindfall', 'windfallAmount', 'windfallAge',
   'userPreTaxBalance', 'userRothBalance', 'spousePreTaxBalance', 'spouseRothBalance',
   'taxableBalance', 'currentSalary', 'userSavingsRate', 'userEmployerContributionRate',
@@ -153,8 +153,15 @@ test('2d. computeMoves: deterministic, deltas = rate - base, combined only when 
   const noCombined = computeMoves(params, a.base, {});
   assert.equal(noCombined.combined, null, 'combined absent by default');
   assert.equal(noCombined.base, a.base, 'passed-in baseRate is reused');
-  const at70 = computeMoves({ ...params, ssClaimAge: 70 }, null, {});
-  assert.ok(!at70.moves.some(m => m.id === 'ss'), 'SS move skipped when already claiming at 70');
+  // V19.9 (A3): SS move eligibility is now PER-PARTNER. It is skipped only when every existing
+  // partner already claims at 70 — not (as before) whenever the USER claims at 70, which hid the
+  // move even though the spouse could still delay (and "all together" moved the spouse anyway).
+  const bothAt70 = computeMoves({ ...params, hasPartner: true, ssClaimAge: 70, spouseClaimAge: 70 }, null, {});
+  assert.ok(!bothAt70.moves.some(m => m.id === 'ss'), 'SS move skipped when BOTH partners claim at 70');
+  const singleAt70 = computeMoves({ ...params, hasPartner: false, ssClaimAge: 70 }, null, {});
+  assert.ok(!singleAt70.moves.some(m => m.id === 'ss'), 'SS move skipped for a single person at 70');
+  const userAt70SpouseEarly = computeMoves({ ...params, hasPartner: true, ssClaimAge: 70, spouseClaimAge: 62 }, null, {});
+  assert.ok(userAt70SpouseEarly.moves.some(m => m.id === 'ss'), 'SS move present when spouse still claims before 70');
 });
 
 test('2d. paycheck reconciliation: sources equal spending + taxes (≤$1/mo) on withdrawal-funded fixtures', () => {
@@ -185,13 +192,14 @@ test('2d. paycheck reconciliation: sources equal spending + taxes (≤$1/mo) on 
   }
 });
 
-// FINDING F-SURPLUS -- FIXED (V19.5, adapter face of engine finding C09, per Cris's
-// explicit go-ahead 2026-07-04): in a surplus year — guaranteed income above spending
-// + taxes — the paycheck's sources used to exceed its outflow, because the engine
-// discarded the excess instead of banking it. The engine now banks surplus cash into
-// taxable every year, so the "portfolio" side of the paycheck (which nets withdrawals
-// against banked surplus) reconciles again even in RMD-heavy/income-rich years.
-test('2d. FIXED F-SURPLUS: paycheck sources reconcile to outflow in surplus years', () => {
+// FINDING F-SURPLUS -- paycheck presentation. V19.5 banked surplus but the adapter NETTED it
+// into the portfolio segment, which went NEGATIVE in surplus years and broke the bar (positive
+// segments summed past 100%). V19.9 (B4) presents GROSS sources vs EXPLICIT uses: gross portfolio
+// outflow (RMD + discretionary withdrawals, never negative) on the sources side, and leftover
+// guaranteed income as a separate "saved back to portfolio" USE. The invariant becomes
+//   gross sources == spending + taxes + saved
+// (by the V19.9 household-cash identity), and the portfolio segment is always >= 0.
+test('2d. F-SURPLUS: paycheck uses gross sources; portfolio >= 0; sources = spending+taxes+saved', () => {
   const res = engine.compute({
     ...engine.DEFAULTS, numPaths: 500, hasPartner: false,
     currentAge: 76, retireAge: 77, endAge: 90,
@@ -201,9 +209,11 @@ test('2d. FIXED F-SURPLUS: paycheck sources reconcile to outflow in surplus year
     stockVol: 0, bondVol: 0
   });
   const pc = res.paycheck;
+  assert.ok(pc.portfolio >= -0.5, `portfolio segment must be >= 0, got ${pc.portfolio}`);
+  assert.ok((pc.saved || 0) > 0.5, 'this RMD-heavy income-rich year should bank a surplus');
   const sources = pc.ss + pc.pension + pc.wages + pc.portfolio;
-  const outflow = pc.spending + pc.taxes;
-  close(sources, outflow, 'RMD-heavy surplus year now reconciles', 1);
+  const uses = pc.spending + pc.taxes + (pc.saved || 0);
+  close(sources, uses, 'gross sources reconcile to spending + taxes + saved', 1);
 });
 
 // V19.7: the "How It Could Play Out" outcomes strip reads roughLegacy/strongLegacy
