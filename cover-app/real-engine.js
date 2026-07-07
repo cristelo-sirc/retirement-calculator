@@ -1,4 +1,4 @@
-// real-engine.js — V19.9 adapter
+// real-engine.js — V19.10 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.9';
+      s.src = 'engine.js?v=19.10';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -45,8 +45,10 @@
     pension: 0, pensionStartAge: 65, enablePensionCOLA: false,              // annual
     spousePension: 0, spousePensionStartAge: 65, enableSpousePensionCOLA: false,
 
-    enablePartTime: false, partTimeIncome: 0, partTimeStartAge: 65, partTimeEndAge: 70,  // annual
-    partTimeOwner: 'user',   // V19.9 (B6): whose earnings the SS earnings test applies to (user | spouse)
+    enablePartTime: false, partTimeIncome: 0, partTimeStartAge: 65, partTimeEndAge: 70,  // annual — YOUR part-time channel
+    // V19.10: second, independent part-time channel for the partner (supersedes V19.9's
+    // partTimeOwner selector — old plans with partTimeOwner:'spouse' are migrated in normalizeParams).
+    spouseEnablePartTime: false, spousePartTimeIncome: 0, spousePartTimeStartAge: 65, spousePartTimeEndAge: 70,  // annual
 
     enableWindfall: false, windfallAmount: 0, windfallAge: 70,
     enableRothConversion: false, rothConversionAmount: 0, rothConversionStartAge: 65, rothConversionEndAge: 72,
@@ -76,6 +78,7 @@
     ssClaimAge: [62, 70], spouseClaimAge: [62, 70],
     pensionStartAge: [40, 100], spousePensionStartAge: [40, 100],
     partTimeStartAge: [40, 100], partTimeEndAge: [40, 110],
+    spousePartTimeStartAge: [40, 100], spousePartTimeEndAge: [40, 110],
     windfallAge: [0, 110], rothConversionStartAge: [0, 110], rothConversionEndAge: [0, 110],
     spendingReductionAge: [0, 110], mortgageLastAge: [0, 110],
     inflation: [0, 20], healthcareInflation: [0, 30],
@@ -91,10 +94,24 @@
   var ENUMS = {
     savingsDest: ['pretax', 'roth', 'split'], spouseSavingsDest: ['pretax', 'roth', 'split'],
     employerContributionDest: ['pretax', 'roth'], spouseEmployerContributionDest: ['pretax', 'roth'],
-    housingType: ['own', 'rent'], partTimeOwner: ['user', 'spouse']
+    housingType: ['own', 'rent']
   };
   function normalizeParams(raw) {
     raw = (raw && typeof raw === 'object') ? raw : {};
+    // V19.10 migration: plans saved under V19.9's single-channel model with
+    // partTimeOwner:'spouse' meant "this income is the PARTNER's job". Move those
+    // values onto the new partner channel (unless the plan already uses it) so the
+    // household keeps the identical income stream and earnings-test attribution.
+    // (Trigger: owner says spouse AND the new spouse channel isn't actively in use. partTimeOwner
+    // only exists in V19.9-era plans, which predate the spouse channel, so a truthy
+    // spouseEnablePartTime alongside it can only mean the migration already ran.)
+    if (raw.partTimeOwner === 'spouse' && !raw.spouseEnablePartTime) {
+      raw = Object.assign({}, raw, {
+        spouseEnablePartTime: raw.enablePartTime, spousePartTimeIncome: raw.partTimeIncome,
+        spousePartTimeStartAge: raw.partTimeStartAge, spousePartTimeEndAge: raw.partTimeEndAge,
+        enablePartTime: false, partTimeIncome: 0
+      });
+    }
     var out = {}, notes = [];
     Object.keys(DEFAULTS).forEach(function (k) {
       var dv = DEFAULTS[k], v = raw[k];
@@ -147,14 +164,16 @@
       spouseSS: partner ? (m.spouseSS || 0) : 0, spouseClaimAge: m.spouseClaimAge || 67,
       enableSpousalBenefit: partner ? !!m.enableSpousalBenefit : false,
 
-      // Part-time / other steady income (engine has one such channel)
+      // Part-time / other steady income — V19.10: one channel PER PARTNER. Each gates on its
+      // earner's age and the SS earnings test hits only that person's benefit.
       enablePartTime: !!m.enablePartTime,
       partTimeIncome: m.enablePartTime ? (m.partTimeIncome || 0) : 0,
       partTimeStartAge: m.partTimeStartAge || m.retireAge,
       partTimeEndAge: m.partTimeEndAge || m.endAge,
-      // V19.9 (B6): which partner earns it — the SS earnings test hits only that person's benefit.
-      // A single household with no partner is always 'user'.
-      partTimeOwner: (partner && m.partTimeOwner === 'spouse') ? 'spouse' : 'user',
+      spouseEnablePartTime: partner ? !!m.spouseEnablePartTime : false,
+      spousePartTimeIncome: (partner && m.spouseEnablePartTime) ? (m.spousePartTimeIncome || 0) : 0,
+      spousePartTimeStartAge: m.spousePartTimeStartAge || m.spouseRetireAge || m.retireAge,
+      spousePartTimeEndAge: m.spousePartTimeEndAge || m.endAge,
 
       enableWindfall: !!m.enableWindfall,
       windfallAmount: m.enableWindfall ? (m.windfallAmount || 0) : 0,

@@ -51,3 +51,32 @@ test('B3. an already-consistent edit produces no adjustment notes (banner stays 
   const norm = ME.normalizeParams(clean);
   assert.equal(norm.notes.length, 0, 'a valid edit reports nothing to adjust');
 });
+
+// V19.10: plans saved under V19.9's single-channel model with partTimeOwner:'spouse' must
+// migrate onto the new partner channel — same income stream, same earnings-test attribution.
+test('V19.10. old partTimeOwner:spouse plans migrate onto the partner channel', () => {
+  const old = Object.assign({}, ME.DEFAULTS, {
+    hasPartner: true, spouseAge: 58,
+    enablePartTime: true, partTimeIncome: 24000, partTimeStartAge: 62, partTimeEndAge: 68,
+    partTimeOwner: 'spouse',
+  });
+  const p = ME.normalizeParams(old).params;
+  assert.equal(p.spouseEnablePartTime, true, 'partner channel switched on');
+  assert.equal(p.spousePartTimeIncome, 24000, 'amount moved to partner channel');
+  assert.equal(p.spousePartTimeStartAge, 62, 'start age moved');
+  assert.equal(p.spousePartTimeEndAge, 68, 'end age moved');
+  assert.equal(p.enablePartTime, false, 'user channel switched off (no double-counting)');
+  assert.equal(p.partTimeIncome, 0, 'user amount zeroed');
+  assert.equal('partTimeOwner' in p, false, 'retired key dropped from normalized params');
+  // Idempotent after migration (the V19.9-B3 shell contract must keep holding).
+  assert.deepEqual(ME.normalizeParams(p).params, p, 'migrated params are stable');
+
+  // An old plan where the USER was the earner must pass through untouched.
+  const oldUser = Object.assign({}, ME.DEFAULTS, {
+    enablePartTime: true, partTimeIncome: 24000, partTimeOwner: 'user',
+  });
+  const pu = ME.normalizeParams(oldUser).params;
+  assert.equal(pu.enablePartTime, true, 'user channel preserved');
+  assert.equal(pu.partTimeIncome, 24000, 'user amount preserved');
+  assert.equal(pu.spouseEnablePartTime, false, 'partner channel stays off');
+});

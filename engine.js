@@ -1948,17 +1948,16 @@
                     const spousePensionMult = params.enableSpousePensionCOLA ? inflation : 1;
                     if (currentYearAge >= params.pensionAge) otherIncome += params.pension * userPensionMult;
                     if (spouseCurrentAge >= params.spousePensionAge && params.spouseAge > 0) otherIncome += params.spousePension * spousePensionMult;
-                    // V19.9 (B6): part-time income belongs to a specific earner (params.partTimeOwner,
-                    // 'user' or 'spouse'). It gates on THAT person's age, and — critically — the SS
-                    // earnings test reduces only THAT person's benefit. Previously the single channel
-                    // always gated on and was tested against the USER, so a household whose part-timer
-                    // was the spouse still saw the user's early benefit wrongly reduced.
-                    const ptOwnerIsSpouse = (params.partTimeOwner === 'spouse') && (params.spouseAge > 0);
-                    const ptOwnerAge = ptOwnerIsSpouse ? spouseCurrentAge : currentYearAge;
-                    let ptIncome = 0;
-                    if (params.enablePartTime && ptOwnerAge >= params.partTimeStartAge && ptOwnerAge <= params.partTimeEndAge) ptIncome = params.partTimeIncome * inflation;
-                    const userPtEarnings = ptOwnerIsSpouse ? 0 : ptIncome;
-                    const spousePtEarnings = ptOwnerIsSpouse ? ptIncome : 0;
+                    // V19.10: TWO independent part-time channels, one per partner (supersedes the
+                    // V19.9 B6 single-channel partTimeOwner selector). Each channel gates on ITS
+                    // earner's age window, and — critically — the SS earnings test reduces only THAT
+                    // person's benefit. Household cash and ordinary income use the sum, exactly as
+                    // the single channel did, so downstream tax/cash-flow logic is unchanged.
+                    let userPtEarnings = 0;
+                    if (params.enablePartTime && currentYearAge >= params.partTimeStartAge && currentYearAge <= params.partTimeEndAge) userPtEarnings = params.partTimeIncome * inflation;
+                    let spousePtEarnings = 0;
+                    if (params.spouseAge > 0 && params.spouseEnablePartTime && spouseCurrentAge >= params.spousePartTimeStartAge && spouseCurrentAge <= params.spousePartTimeEndAge) spousePtEarnings = params.spousePartTimeIncome * inflation;
+                    const ptIncome = userPtEarnings + spousePtEarnings;
 
                     // Calculate individual SS benefits
                     let userSSBenefit = calculateSSBenefit(params.userSS, params.userClaimAge, currentYearAge, FRA, SS_COLA, userPtEarnings, SS_EARNINGS_LIMIT * inflation, inflation);

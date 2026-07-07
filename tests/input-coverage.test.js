@@ -45,6 +45,11 @@ const HELP_ALIASES = {
   spousePensionStartAge: 'pensionStartAge',
   enableSpousePensionCOLA: 'pensionCOLA',
   enablePartTime: 'partTime',
+  // V19.10: partner's part-time channel shares the user channel's help entries.
+  spouseEnablePartTime: 'partTime',
+  spousePartTimeIncome: 'partTimeIncome',
+  spousePartTimeStartAge: 'partTimeStartAge',
+  spousePartTimeEndAge: 'partTimeEndAge',
   enableGlidePath: 'glidePath',
   enableRothConversion: 'rothConversion',
   enableTCJASunset: 'tcjaSunset',

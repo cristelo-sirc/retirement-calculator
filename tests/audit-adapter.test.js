@@ -17,7 +17,9 @@ const close = (a, b, msg, tol = 0.01) =>
 const ENGINE_PARAM_NAMES = new Set([
   'numPaths', 'currentAge', 'retireAge', 'endAge', 'spouseAge', 'spouseRetireAge',
   'userSS', 'userClaimAge', 'spouseSS', 'spouseClaimAge', 'enableSpousalBenefit',
-  'enablePartTime', 'partTimeIncome', 'partTimeStartAge', 'partTimeEndAge', 'partTimeOwner',
+  // V19.10: two part-time channels, one per partner (partTimeOwner retired)
+  'enablePartTime', 'partTimeIncome', 'partTimeStartAge', 'partTimeEndAge',
+  'spouseEnablePartTime', 'spousePartTimeIncome', 'spousePartTimeStartAge', 'spousePartTimeEndAge',
   'enableWindfall', 'windfallAmount', 'windfallAge',
   'userPreTaxBalance', 'userRothBalance', 'spousePreTaxBalance', 'spouseRothBalance',
   'taxableBalance', 'currentSalary', 'userSavingsRate', 'userEmployerContributionRate',
