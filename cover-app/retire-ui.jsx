@@ -54,11 +54,10 @@ const FIELD_INFO = {
   pension: { help: 'Your annual pension, if you have one.', detail: 'Guaranteed yearly income from an employer or government pension (monthly amount × 12). Counts alongside Social Security as income you don’t have to draw from savings.' },
   spousePension: { help: 'Your partner’s annual pension, if any.', detail: 'Guaranteed yearly pension income for your partner (monthly amount × 12).' },
   pensionCOLA: { help: 'Does the pension rise with inflation?', detail: 'A cost-of-living adjustment keeps the pension’s buying power steady over time. Most private pensions are fixed (leave off); many government and military pensions have a COLA (turn on).' },
-  partTime: { help: 'Steady extra income in retirement.', detail: 'Part-time work, an annuity, or rental income — anything dependable over a set age range. It reduces what you draw from the portfolio while it lasts. Set the amount and the years it runs.' },
+  partTime: { help: 'Steady extra income in retirement.', detail: 'Part-time work, an annuity, or rental income — anything dependable over a set age range. It reduces what you draw from the portfolio while it lasts. Couples get one channel each: if the earner claims Social Security before full retirement age, this income can temporarily reduce THEIR OWN benefit (never their partner’s).' },
   partTimeIncome: { help: 'How much that income pays per year.', detail: 'The annual amount, in today’s dollars. The plan grows it with inflation over the years you specify.' },
-  partTimeStartAge: { help: 'When this income begins.', detail: 'The first age at which the extra income is received.' },
-  partTimeEndAge: { help: 'When this income stops.', detail: 'The last age at which the extra income is received — for lifelong income like an annuity, set this to your planning age.' },
-  partTimeOwner: { help: 'Which of you earns this income.', detail: 'Only matters for the Social Security earnings test: if the earner claims Social Security before full retirement age, this income can temporarily reduce THEIR benefit (not their partner’s). The start/stop ages above are read against the earner’s age.' },
+  partTimeStartAge: { help: 'When this income begins.', detail: 'The first age at which the extra income is received — measured against the earner’s own age.' },
+  partTimeEndAge: { help: 'When this income stops.', detail: 'The last age at which the extra income is received — for lifelong income like an annuity, set this to the planning age. Measured against the earner’s own age.' },
 
   savingsDest: { help: 'Where your contributions land.', detail: 'Pre-tax (traditional 401k/IRA) lowers today’s taxes but is taxed on withdrawal; Roth is taxed now but tax-free later. Split puts half in each. This shapes your future tax bill, not how much you save.' },
 
