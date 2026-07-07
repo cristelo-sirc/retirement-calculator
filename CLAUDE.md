@@ -16,7 +16,7 @@ the V19.6 section below).
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.8
+**Current Version:** 19.9
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -149,7 +149,7 @@ When a new field is added to the simulation, it must be propagated to ALL consum
 RMDs are withdrawn first, separately from discretionary pre-tax. In the tax convergence loop: `userPreTax = userPreTax_startOfYear - userRmd - withdrawals_converged.userPreTax`. The `wdPreTax` field represents only the discretionary portion beyond RMD.
 
 ### RMD Start Age Is 75 (SECURE 2.0, Born 1960+)
-Per the SECURE 2.0 Act, RMDs begin at age 75 for individuals born in 1960 or later. `getDistributionPeriod()` returns 0 for ages < 75. Distribution periods extend through age 110 (floor of 3.5 beyond).
+Per the SECURE 2.0 Act, RMDs begin at age 75 for individuals born in 1960 or later. `getDistributionPeriod()` returns 0 for ages < 75. Distribution periods extend through age 119 with an explicit 2.0 for ages 120+ (V19.5, F-RMD-110 fix, verified against 26 CFR 1.401(a)(9)-9 Table 2). An earlier version of this note said the divisor floored at 3.5 beyond age 110 &mdash; that described pre-V19.5 behavior and is no longer correct.
 
 ### SSA Early Claiming Is Tiered, Not Flat
 The SSA reduction for claiming before FRA uses two tiers:
@@ -250,7 +250,7 @@ Every engine input is now editable in the Compass Questionnaire; nothing runs on
 
 **No engine impact** (UI/placement only). **Cache-buster:** `engine.js?v=18.3` + `?v=18.3` on all `cover-app/*.jsx` includes; titles bumped to V18.3. Engine.js UNCHANGED.
 
-**Note (carried from V18.2 audit, still open):** the untouched-defaults scenario scores ~42/100, not the ~93% an older doc line implied; that figure referred to a specific saved scenario, not `DEFAULTS`. Pre-existing, unrelated to V18.2/V18.3 (engine math unchanged). Reconciliation deferred pending Cris's direction.
+**Note (carried from V18.2 audit):** the untouched-defaults scenario scored ~42/100 at the time of V18.2/V18.3; that older figure is superseded &mdash; since the V18.11 contribution-accumulation fix the `DEFAULTS` score has been **64/100** (the current regression-gate value across V19.x). The ~93% an even older doc line implied referred to a specific saved scenario, not `DEFAULTS`.
 
 ---
 
@@ -1293,3 +1293,108 @@ Changes, Charts, Input Data) on both viewports; zero console errors throughout.
 **Cache-buster:** `engine.js?v=19.8` + `?v=19.8` on all `cover-app/*` includes in both shells; both HTML
 titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.8. `engine.js`
 UNCHANGED.
+
+---
+
+## V19.9 &mdash; Deep-review fix batch (AUDIT-2026-07-06-DEEP-REVIEW): 4 release-blockers + P2/P3 + 1 new input
+
+Fourth intentional `engine.js` math release (after V18.11, V19.5, V19.6). Addresses
+`AUDIT-2026-07-06-DEEP-REVIEW.md` in one batch, per Cris's instruction to fix everything in one pass.
+Two-tier verification (Cris's explicit choice): Tier A (app-only) got light verification; the engine-math
+release-blockers (B1&ndash;B4, B6) each got targeted permanent invariant tests. Suite grew **86 &rarr; 95
+tests, all passing, 0 todo** (the F-PT-EARNTEST-ATTRIB todo is now a real passing test). `DEFAULTS` score
+**unchanged at 64** (regression gate held through every change).
+
+### Tier A (UI / copy / adapter-exposition; zero Monte Carlo math change)
+
+- **A1 &mdash; IRMAA tier-4 corrected: $529.70 &rarr; $529.60** (`engine.js`). CMS 2026 tier-4 is Part B
+  **$446.30** + Part D $83.30 = **$529.60**; V19.5 changed it to $529.70 citing Part B 446.40, which was
+  wrong per the official CMS 2026 fact sheet (re-verified live 2026-07-06). Test oracle in
+  `audit-statutory.test.js` corrected too. **This reverses a V19.5 "fix"** &mdash; documented as a dated
+  correction, not a silent rewrite.
+- **A2 &mdash; recovery-semantics display (audit P1 #4), display-only.** Plans that went broke then
+  recovered read "money lasts the full plan" while scoring 0/100, because runway/longevity/banner display
+  logic still read the end-state `depletionAge` (which V19.5 clears on recovery) instead of the V19.6
+  latching `everDepleted`/`firstDepletionAge`. Adapter now exposes `medianDepletion`
+  `{everDepleted, firstDepletionAge, recovered, endAge}` and an honest `runwayYears` (based on the median
+  path's FIRST depletion); `cvOutcomes` (shared desktop+mobile) and the year-table banner
+  (`retire-charts.jsx`) state both facts on recovery. No dollar changed.
+- **A3 &mdash; move-card boundary honesty (audit P2).** `computeMoves()` and the Rework levers now hide the
+  "delay retirement" move when the 80-cap leaves no room, and decide SS-move eligibility PER-PARTNER (was
+  user-only, so "all together" silently moved a spouse the card never listed). Cards, bars, and staged
+  drafts derive from the same applicable-patch set.
+- **A4 &mdash; future-dollar labels (audit P2).** Rough/median/strong ending balances and the legacy goal
+  are labeled future (nominal) dollars, with a note pointing to the Charts today's-dollars toggle. Copy only.
+- **A5 &mdash; accessibility (audit P2/P3).** Primary desktop nav is now real `<button>`s (tab stop,
+  Enter/Space, `aria-current`); the Results masthead was lifted OUT of the 900px hero section so it stays
+  sticky down the whole page; `ink70` darkened 60%&rarr;65% opacity (`#1a1815a6`) to clear WCAG AA (measured
+  5.28:1 / 5.11:1 on the two creams, vs the sub-4.5:1 before); `aria-pressed` added to the year-table
+  segmented controls.
+- **A6 &mdash; responsive polish (audit P3).** Mobile tab selection now syncs to the shared shell `screen`
+  so crossing the desktop/mobile breakpoint keeps the same screen; the giant Results score uses
+  `clamp(200px,26vw,360px)` so it stops dominating at the 769px breakpoint; welcome masthead gap + "No. 5"
+  wrap fixed; mobile paycheck note rewritten as a standalone sentence.
+- **A7 &mdash; CI test gate + scratch cleanup.** `.github/workflows/deploy.yml` gains a required `test` job
+  (`node --test tests/*.test.js`) that `build` depends on, so a red suite can't publish. `_harness.js`/`_h2.js`
+  gitignored. **NOTE:** the workflow file needs Cris's web-UI commit (the deploy token lacks `workflow` scope).
+
+### Tier B (engine math / broad surface; each with a permanent invariant test)
+
+- **B1 &mdash; tax convergence + household-cash invariant (audit P1 #2). `engine.js` math changed.** The
+  convergence loop hard-stopped after 5 passes even when unconverged, so tax-heavy years (e.g. large Roth
+  conversions) left thousands of dollars of spending/tax UNFUNDED while the path was still solvent (the audit
+  repro: $1M pre-tax / $200k spend / $500k conversion left a $4,011 shortfall). Fix: raised the pass cap to
+  100 and converge only when BOTH tax and need are stable within $1; normal years still break in 3&ndash;5
+  passes (no perf cost). **New permanent invariant** (`audit-cash-identity.test.js`): for every fully-retired
+  solvent year, `guaranteed income + portfolio withdrawals == spending + taxes + surplus banked` within $2,
+  across a scenario grid. The audit repro now funds to $0.52. This is the lens that was missing when the bug
+  shipped (portfolio conservation stayed true throughout).
+- **B2 &mdash; sustainable-spending solver rebuilt (audit P1 #1).** Old solver assumed $20k was feasible
+  (reported "$20,000 safe" for 0/100 plans), capped the ceiling at max($80k, 2&times;spend) and never
+  expanded it, and reported an unverified figure. Rebuilt with **adaptive bracketing** (walks the floor down
+  toward $0; expands the ceiling up to a $2M cap while it still passes) and returns **null ("None")** when no
+  level reaches ~90%. **Cris's speed/accuracy decision:** the figure is a FAST bisection ESTIMATE at the
+  sample count (keeps live recompute ~1s) rather than a full-count-verified number (which tripled recompute
+  time), and is LABELED an estimate ("~" prefix + "estimate for ~90% success"). Test:
+  `sustainable-spending.test.js`.
+- **B3 &mdash; shared parameter normalization (audit P1 #3). Broadest UI surface.** Cross-field rules
+  (age ordering, ranges) were enforced only inside a private copy in `compute()`, so the form could show
+  current age 65 / retirement 65 while the engine used 66 &mdash; displayed, persisted, saved, and computed
+  params disagreed. Fix: BOTH HTML shells now normalize every params write at the single `setParams`
+  boundary (`normalizeParams`), so displayed == persisted == saved-file == `results.params`, always. When a
+  dependent field is auto-corrected, a friendly note (`cvAdjustMessage`, surfaced in both questionnaire
+  layouts) tells the user what changed. Invariant relies on `normalizeParams` idempotence (tested,
+  `param-normalization.test.js`).
+- **B4 &mdash; paycheck surplus + horizon (audit P2). `engine.js` UNCHANGED; adapter + UI.** V19.5 netted
+  banked surplus INTO the portfolio segment, which went negative in surplus years and broke the bar (positive
+  segments summed past 100%). Now presented as GROSS sources vs EXPLICIT uses: gross portfolio outflow
+  (RMD + discretionary, never negative) as a source, leftover guaranteed income as a separate "saved back to
+  portfolio" use; `total` = gross sources = spending + taxes + saved (the B1 identity). The year-table shows a
+  surplus year's negative net as a green "+$X saved" deposit, not a confusing "-$143,925 withdrawal". Also, if
+  the later partner's retirement falls beyond the plan horizon, `paycheck.fullyRetired=false` and the UI says
+  a fully-retired paycheck is unavailable instead of labeling a still-working year "once fully retired".
+- **B5 &mdash; FRA-year SS earnings test disclosed (audit P2), per Cris: disclose, don't build.** The engine
+  always applies the under-FRA earnings limit and does not model the special rule for the single year a person
+  REACHES FRA (needs birth month the annual model lacks). Disclosed in the SS claim-age tooltip, an
+  `engine.js` comment at `SS_EARNINGS_LIMIT`, and the README &mdash; no longer presented as exact.
+- **B6 &mdash; per-person part-time SS attribution BUILT (audit P2), per Cris: build now. `engine.js` math
+  changed.** New `partTimeOwner` input (user | spouse), exposed in both questionnaire layouts (couples only),
+  mapped through the adapter, with a `FIELD_INFO` tooltip and full `input-coverage` coverage. The engine gates
+  the part-time channel on the OWNER's age and applies the SS earnings test to only the OWNER's benefit
+  (previously always the user, so a spouse-earned paycheck wrongly reduced the user's early benefit). The
+  former `todo` test is now a real passing test (`audit-properties.test.js`) using an asymmetric-benefit pair
+  to prove attribution actually changes the household total.
+
+### Validation
+Full suite **95 tests, 95 pass, 0 fail, 0 todo**. `DEFAULTS` re-scored **64** at every stage (regression
+gate). New permanent tests: household-cash identity (B1), sustainable-spending feasibility/ceiling/estimate
+(B2), param-normalization idempotence + identity (B3), gross-source paycheck reconciliation (B4), per-owner
+earnings-test attribution (B6). All five JSX files Babel-transform clean; both HTML inline scripts transform;
+`node --check` on both plain-JS files. Live browser audit: see the deploy log for the desktop 1680px + mobile
+~500px pass against the deployed GitHub Pages URL.
+
+**Cache-buster:** `engine.js?v=19.9` + `?v=19.9` on all `cover-app/*` includes in both shells; both HTML
+titles, `real-engine.js` header, saved-plan stamp (`19.9`), and on-screen kickers/tags reconciled to 19.9.
+`engine.js` math IS changed (B1 tax-loop cap, B6 earnings-test attribution, A1 IRMAA constant; A2 exposition
+via adapter). The audit report and this batch's fix plan (`V19.9-FIX-PLAN.md`) are kept local (gitignored
+`*.md`), not published.

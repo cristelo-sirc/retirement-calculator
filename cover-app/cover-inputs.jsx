@@ -191,7 +191,7 @@ const CVI_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI',
   'KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH',
   'OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => ({ v: s, label: s }));
 
-function CoverInputs(props) { const { mode = 'essentials', params: extP, setParams: extSP, freshStart } = props || {};
+function CoverInputs(props) { const { mode = 'essentials', params: extP, setParams: extSP, freshStart, adjustNote } = props || {};
   const [localParams, setLocalParams] = React.useState(window.MockEngine.DEFAULTS); const params = extP || localParams; const setParams = extSP || setLocalParams;
   const results = React.useMemo(() => window.MockEngine.compute(params), [params]);
   const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
@@ -208,7 +208,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag="V19.8"
+    <window.CoverChrome active="quiz" tag="V19.9"
       rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
@@ -222,6 +222,14 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             ? 'Every input your results use, in plain language. Hover any “i” for the why behind it; sensible defaults cover anything you skip.'
             : 'Answer the essentials; open “Show more” in any section for the finer dials. Every field explains itself, and your results update as you go.'}
         </p>
+
+        {adjustNote && adjustNote.length > 0 && (
+          <div style={{ maxWidth: 760, margin: '0 auto 20px', padding: '10px 14px',
+            border: `1px solid ${cvi.amber}`, background: cvi.amberSoft, color: cvi.ink,
+            fontFamily: cvi.body, fontSize: 13.5, lineHeight: 1.5 }}>
+            {window.cvAdjustMessage(adjustNote)}
+          </div>
+        )}
 
         {!freshStart && (
           <div style={{ maxWidth: 760, margin: '0 auto 36px' }}>
@@ -317,6 +325,8 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             params.enablePartTime && <CField key="pti" field="partTimeIncome" label="Amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
             params.enablePartTime && <CField key="pts" field="partTimeStartAge" label="From age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} theme={theme} />,
             params.enablePartTime && <CField key="pte" field="partTimeEndAge" label="To age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} theme={theme} />,
+            partner && params.enablePartTime && <CSelect key="pto" field="partTimeOwner" label="Who earns it" value={params.partTimeOwner} onChange={v => update('partTimeOwner', v)} theme={theme}
+              options={[{ v: 'user', label: 'You' }, { v: 'spouse', label: 'Your partner' }]} />,
           ].filter(Boolean)}>
           <CField field="ssBenefit" label={partner ? 'Your SS / yr (at 67)' : 'SS / yr (at 67)'} value={params.ssBenefit} step={1000} min={0} max={80000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} theme={theme} />
           <CField field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} theme={theme} />

@@ -307,14 +307,14 @@ function YearByYearTable({ results, theme: th }) {
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex' }} role="group" aria-label="Market storyline">
           {VIEWS.map(o => (
-            <button key={o.id} onClick={() => setView(o.id)} style={segBtn(view === o.id)}>{o.label}</button>
+            <button key={o.id} onClick={() => setView(o.id)} aria-pressed={view === o.id} style={segBtn(view === o.id)}>{o.label}</button>
           ))}
         </div>
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex' }} role="group" aria-label="Dollar basis">
           {[{ id: false, label: 'Future dollars' }, { id: true, label: "Today's dollars" }].map(o => (
-            <button key={String(o.id)} onClick={() => setTodays(o.id)} style={segBtn(todays === o.id)}>{o.label}</button>
+            <button key={String(o.id)} onClick={() => setTodays(o.id)} aria-pressed={todays === o.id} style={segBtn(todays === o.id)}>{o.label}</button>
           ))}
         </div>
         <button onClick={() => setOpen(false)} style={{ marginLeft: 'auto', background: 'transparent',
@@ -325,10 +325,13 @@ function YearByYearTable({ results, theme: th }) {
       <div style={{ fontSize: 13, color: th.ink70, fontFamily: th.body, margin: '0 0 14px', lineHeight: 1.5 }}>
         {VIEWS.find(o => o.id === view).blurb}
       </div>
-      {v.depletionAge != null && (
+      {(v.everDepleted && v.firstDepletionAge != null) && (
         <div style={{ padding: '10px 14px', marginBottom: 14, border: `1px solid ${th.clay}`,
           background: th.claySoft, color: th.clay, fontFamily: th.body, fontSize: 13.5 }}>
-          In this storyline, the money runs out at age {v.depletionAge}.
+          {/* V19.9 (A2): trigger on the latching everDepleted, not the end-state depletionAge
+              (which V19.5 clears on recovery). If it recovered, say both facts. */}
+          In this storyline, the money runs out at age {v.firstDepletionAge}
+          {v.depletionAge == null ? ', then later recovers on new income.' : '.'}
         </div>
       )}
       <div style={{ maxHeight: 430, overflowY: 'auto', border: `1px solid ${th.ink}`, background: th.paper }}>
@@ -355,7 +358,14 @@ function YearByYearTable({ results, theme: th }) {
                   <td style={tdStyle}>{r.wages ? fmt$(d(r.wages, r.inflation)) : '—'}</td>
                   <td style={tdStyle}>{r.ss ? fmt$(d(r.ss, r.inflation)) : '—'}</td>
                   <td style={tdStyle}>{r.pensionOther ? fmt$(d(r.pensionOther, r.inflation)) : '—'}</td>
-                  <td style={tdStyle}>{r.withdrawals ? fmt$(d(r.withdrawals, r.inflation)) : '—'}</td>
+                  {/* V19.9 (B4): a NEGATIVE net portfolio flow is a surplus year — guaranteed income
+                      exceeded needs and the leftover was saved BACK into the portfolio. Show it as an
+                      explicit deposit, not a confusing "-$143,925" under "withdrawals". */}
+                  <td style={tdStyle}>{
+                    r.withdrawals > 0.5 ? fmt$(d(r.withdrawals, r.inflation))
+                    : r.withdrawals < -0.5 ? <span style={{ color: th.sage }}>+{fmt$(d(-r.withdrawals, r.inflation))} saved</span>
+                    : '—'
+                  }</td>
                   <td style={tdStyle}>{r.expenses ? fmt$(d(r.expenses, r.inflation)) : '—'}</td>
                   <td style={tdStyle}>{r.taxes ? fmt$(d(r.taxes, r.inflation)) : '—'}</td>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt$(d(r.endBalance, endFactor(i)))}</td>
@@ -369,7 +379,8 @@ function YearByYearTable({ results, theme: th }) {
         Each row covers the year that begins at that age; End balance is measured on the following
         birthday and matches the next row's Start balance. Wages are take-home pay after retirement
         contributions. Expenses combine everyday spending, housing, and healthcare. Portfolio
-        withdrawals include required minimum distributions.
+        withdrawals include required minimum distributions; in a year your guaranteed income covers
+        everything, the leftover is shown in green as saved back into the portfolio.
         {view === 'average' && (' The Average view usually finishes above the projection chart’s median line: '
           + 'a steady ride beats a bumpy one with the same average return when you’re withdrawing.')}
         {todays && ' Today’s dollars remove assumed inflation so amounts are comparable to your budget now.'}

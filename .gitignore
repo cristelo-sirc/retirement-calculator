@@ -29,3 +29,7 @@ deploy-token*
 
 # Node tooling (local-only; used for JSX syntax checks, never deployed)
 node_modules/
+
+# V19.9 (A7): local scratch harnesses — obsolete absolute paths / stale field assumptions.
+_harness.js
+_h2.js

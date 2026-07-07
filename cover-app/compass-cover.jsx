@@ -12,7 +12,10 @@ const cvStyles = {
   paper: '#f6f2ea',
   paperWarm: '#efe9dc',
   ink: '#1a1815',
-  ink70: '#1a181599',
+  // V19.9 (A5): ink70 was 0x99 (60% opacity) = ~4.48:1 on cream / ~4.33:1 on warm cream — under
+  // the 4.5:1 AA floor on the warm background (the V19.8 change improved it but still fell short).
+  // 0xa6 (65%) measures 5.28:1 / 5.11:1 — clears AA with margin on both. Shared by all four files.
+  ink70: '#1a1815a6',
   ink50: '#1a181580',
   ink20: '#1a181530',
   rule: '#d8cfbe',
@@ -72,9 +75,28 @@ window.cvDangerLine = cvDangerLine;
 function cvPaycheckNote(params, atAge) {
   if (!params || !params.hasPartner || atAge == null) return '';
   if (atAge === params.retireAge) return '';
-  return ' — that’s when your partner also stops working, not your own retirement age';
+  // V19.9 (A6): a standalone sentence, not a mid-sentence em-dash interruption. Callers render
+  // it as its own trailing sentence so the main line reads cleanly on a narrow phone column.
+  return 'That’s when your partner also stops working — not your own retirement age.';
 }
 window.cvPaycheckNote = cvPaycheckNote;
+
+// V19.9 (B3): friendly wording for the "we adjusted these to stay consistent" note the shell
+// raises when normalizing an edit changed a dependent field (age ordering / out-of-range).
+function cvAdjustMessage(notes) {
+  if (!notes || !notes.length) return '';
+  var labels = {
+    currentAge: 'your age', retireAge: 'your retirement age', endAge: 'the plan-to age',
+    spouseAge: "your partner's age", spouseRetireAge: "your partner's retirement age",
+    ssClaimAge: 'your Social Security claim age', spouseClaimAge: "your partner's claim age",
+    numPaths: 'the number of simulation paths', stockAllocation: 'your stock allocation',
+    glidePathEndStock: 'your ending stock allocation',
+  };
+  var seen = [], out = [];
+  notes.forEach(function (k) { if (seen.indexOf(k) === -1) { seen.push(k); out.push(labels[k] || k); } });
+  return 'We adjusted ' + out.join(', ') + ' to keep your entries in order and within range.';
+}
+window.cvAdjustMessage = cvAdjustMessage;
 
 // V19.7: shared data builders for the "Your Plan at a Glance" and "How It Could Play
 // Out" blocks. Desktop (compass-cover.jsx) and mobile (cover-mobile.jsx) render these
@@ -95,11 +117,12 @@ function cvGlanceFacts(params, results) {
       sub: 'claim age' },
     { label: 'Everyday spending', value: fmt(p.spending, { compact: true }) + '/yr',
       sub: 'excl. housing & healthcare' },
-    { label: 'Safe to spend', value: fmt(r.sustainableSpending, { compact: true }) + '/yr',
-      sub: 'for near-certain odds' },
+    { label: 'Safe to spend',
+      value: (r.sustainableSpending != null ? '~' + fmt(r.sustainableSpending, { compact: true }) + '/yr' : 'None'),
+      sub: (r.sustainableSpending != null ? 'estimate for ~90% success' : 'no level reaches ~90% here') },
     { label: 'Legacy goal',
       value: (p.legacyGoal || 0) > 0 ? fmt(p.legacyGoal, { compact: true }) : 'None set',
-      sub: (p.legacyGoal || 0) > 0 ? 'target left at the end' : 'no target set' },
+      sub: (p.legacyGoal || 0) > 0 ? 'target left at the end (future $)' : 'no target set' },
     { label: 'Plan horizon', value: 'Ages ' + startAge + '–' + p.endAge,
       sub: (p.endAge - startAge) + ' years' + (couple ? ' (your timeline)' : '') },
     { label: 'Monthly paycheck', value: fmt(pc.total || 0) + '/mo',
@@ -118,14 +141,22 @@ function cvOutcomes(results) {
   var r = results || {};
   var fmt = window.MockEngine.formatCurrency;
   var d = r.depletionSummary || {};
-  var retireAge = r.params ? r.params.retireAge : null;
   var endAge = r.params ? r.params.endAge : null;
-  var lastsThroughAge = (retireAge != null) ? retireAge + (r.runwayYears || 0) : null;
-  var middleDepletes = (endAge != null && lastsThroughAge != null) ? lastsThroughAge < endAge : false;
   var everShare = Math.round(d.everDepletedShare || 0);
+  // V19.9 (A2): base the longevity claim on the median path's LATCHING depletion facts, not on
+  // runwayYears derived from the end-state depletionAge (which V19.5 clears on recovery). Reserve
+  // "lasts the full plan" for a median path that never hit $0; if it depleted then recovered, say
+  // BOTH facts instead of falsely claiming it lasted.
+  var md = r.medianDepletion || {};
   var longevityLine;
-  if (middleDepletes) {
-    longevityLine = 'In the middle outcome, the money runs out around age ' + lastsThroughAge + '.';
+  if (!md.everDepleted) {
+    longevityLine = 'In the middle outcome, the money lasts the full plan' +
+      (endAge != null ? ' (through age ' + endAge + ')' : '') + '.';
+  } else if (md.recovered && md.firstDepletionAge != null) {
+    longevityLine = 'In the middle outcome, the money runs out around age ' + md.firstDepletionAge +
+      ', then later recovers on new income (a windfall or leftover guaranteed income).';
+  } else if (md.firstDepletionAge != null) {
+    longevityLine = 'In the middle outcome, the money runs out around age ' + md.firstDepletionAge + '.';
   } else {
     longevityLine = 'In the middle outcome, the money lasts the full plan' +
       (endAge != null ? ' (through age ' + endAge + ')' : '') + '.';
@@ -147,7 +178,11 @@ function cvOutcomes(results) {
         body: 'A favorable run of returns leaves about this.' }
     ],
     longevityLine: longevityLine,
-    riskLine: riskLine
+    riskLine: riskLine,
+    // V19.9 (A4): these end balances are NOMINAL future dollars — not inflation-adjusted, so
+    // they look larger than their real spending power. Disclose it and point to the Charts
+    // table's today's-dollars toggle rather than silently letting them read as today's money.
+    basisNote: 'These ending balances are in future dollars (the actual amount that year, not adjusted for inflation) — so they buy less than the same number today. The year-by-year table on Charts has a today’s-dollars toggle.'
   };
 }
 window.cvOutcomes = cvOutcomes;
@@ -197,6 +232,9 @@ function CoverOutcomes({ results }) {
         color: cvStyles.ink70, lineHeight: 1.6 }}>
         {o.longevityLine} {o.riskLine}
       </div>
+      <div style={{ fontSize: 12, color: cvStyles.ink70, lineHeight: 1.55, marginTop: 10, fontStyle: 'italic' }}>
+        {o.basisNote}
+      </div>
     </div>
   );
 }
@@ -219,7 +257,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.8', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.9', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -354,18 +392,22 @@ function CoverDesktop(props) {
       width: '100%', height: '100%', background: cvStyles.paper, color: cvStyles.ink,
       fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden',
     }}>
-      {/* ===== COVER ===== */}
-      <section style={{ height: 900, minHeight: 900, padding: '0 64px 40px', boxSizing: 'border-box',
-        display: 'flex', flexDirection: 'column', position: 'relative' }}>
-        {/* V19.1: sticky so the nav is reachable without scrolling back to the top */}
-        <div style={{ position: 'sticky', top: 0, zIndex: 5, background: cvStyles.paper, paddingTop: 34 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14 }}>
-            <div style={{ fontFamily: cvStyles.display, fontSize: 34, lineHeight: 1 }}>Compass</div>
-            <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
-          </div>
-          <CoverNav active="cover" emphasizeQuiz={!dirty} />
+      {/* V19.9 (A5): the masthead+nav is now a DIRECT child of the scroll container. It used to
+          be nested inside the 900px hero <section>, so position:sticky only held WITHIN that
+          section — once the reader scrolled into the Results article below, the nav scrolled off
+          (contradicting the V19.1 "stays in view" note). Lifted out, its containing block is the
+          full page, so it stays pinned the whole way down Results. */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: cvStyles.paper, padding: '34px 64px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14 }}>
+          <div style={{ fontFamily: cvStyles.display, fontSize: 34, lineHeight: 1 }}>Compass</div>
+          <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
         </div>
+        <CoverNav active="cover" emphasizeQuiz={!dirty} />
+      </div>
+      {/* ===== COVER ===== */}
+      <section style={{ minHeight: 780, padding: '0 64px 40px', boxSizing: 'border-box',
+        display: 'flex', flexDirection: 'column', position: 'relative' }}>
         <div style={{ marginTop: 16 }}>
           <CoverSaveLoadCallout params={params} setParams={setParams}
             prompt="Have a saved plan? Load it — or save this one to a file." primary="save" compact />
@@ -404,10 +446,13 @@ function CoverDesktop(props) {
               {window.InfoTip && <window.InfoTip text={CV_CHANCE_TOOLTIP} label="how the score counts" theme={cvStyles} />}
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center' }}>
-              <div style={{ fontFamily: cvStyles.display, fontSize: 360, lineHeight: 0.82,
+              {/* V19.9 (A6): clamp the giant score so it scales down toward the 769px breakpoint
+                  (where a fixed 360px dominated the two-column layout) but still reads 360px on a
+                  wide desktop. */}
+              <div style={{ fontFamily: cvStyles.display, fontSize: 'clamp(200px, 26vw, 360px)', lineHeight: 0.82,
                 color: cvStyles.ink, letterSpacing: '-0.03em', fontVariantNumeric: 'tabular-nums',
                 transition: 'color 300ms' }}>{results.successRate}</div>
-              <div style={{ fontFamily: cvStyles.display, fontSize: 64, color: cvStyles.ink50,
+              <div style={{ fontFamily: cvStyles.display, fontSize: 'clamp(40px, 5vw, 64px)', color: cvStyles.ink50,
                 marginTop: 36 }}>/100</div>
             </div>
             <div style={{ width: 220, height: 5, background: vc, margin: '4px auto 14px',
@@ -439,6 +484,14 @@ function CoverDesktop(props) {
             </h2>
             <div>
               <CoverPaycheck paycheck={results.paycheck} />
+              {results.paycheck.fullyRetired === false && (
+                <p style={{ fontSize: 13, lineHeight: 1.55, color: cvStyles.clay, marginTop: 12,
+                  border: `1px solid ${cvStyles.clay}`, background: cvStyles.claySoft, padding: '8px 12px' }}>
+                  Heads up: one of you is still working at the end of this plan, so there isn’t a
+                  fully-retired year to show here — this snapshot still includes wages. Extend the plan
+                  horizon past both retirement ages to see a fully-retired paycheck.
+                </p>
+              )}
               <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, marginTop: 18 }}>
                 Social Security arrives first, inflation-protected and certain. The rest is sold from
                 your portfolio each year — the part a bad market sequence can squeeze.
@@ -500,7 +553,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.8</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.9</div>
         </div>
       </section>
     </div>
@@ -544,7 +597,8 @@ function CoverPaycheck({ paycheck }) {
       </div>
       {paycheck.taxes > 0.5 && (
         <div style={{ fontSize: 12, color: cvStyles.ink70, marginTop: 8 }}>
-          Total includes {fmt(paycheck.taxes)}/mo for taxes; {fmt(paycheck.spending)}/mo is what you actually spend.
+          Total includes {fmt(paycheck.taxes)}/mo for taxes; {fmt(paycheck.spending)}/mo is what you actually spend
+          {paycheck.saved > 0.5 ? `; ${fmt(paycheck.saved)}/mo of leftover guaranteed income is saved back to your portfolio` : ''}.
         </div>
       )}
     </div>
@@ -587,22 +641,25 @@ function CoverNav({ active, emphasizeQuiz }) {
     <nav style={{ display: 'flex', gap: 26, justifyContent: 'center', alignItems: 'center', paddingTop: 14, flexWrap: 'wrap' }}>
       {tabs.map(t => {
         const isCTA = emphasizeQuiz && t.id === 'quiz' && active !== 'quiz';
+        // V19.9 (A5): primary nav items are real <button>s, not <span>s — so they get a tab
+        // stop, Enter/Space activation, and a screen-reader-visible role/current state. Button
+        // defaults are reset so the visual design is unchanged.
         if (isCTA) return (
-          <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)}
-            style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
+          <button key={t.id} type="button" onClick={() => window._coverNav && window._coverNav(t.id)}
+            style={{ cursor: 'pointer', border: 'none', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
               textTransform: 'uppercase', fontWeight: 600, color: cvStyles.paper, background: cvStyles.sage,
               padding: '6px 14px', borderRadius: 99 }}>
-            Start here · {t.label}</span>
+            Start here · {t.label}</button>
         );
         return (
-          // V19.8: 10.5px/ink50 (~3.3:1 contrast) was too small/light for primary nav;
-          // bumped to 13px and inactive color darkened to ink70 (~4.5:1).
-          <span key={t.id} onClick={() => window._coverNav && window._coverNav(t.id)} style={{ cursor: 'pointer', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
+          <button key={t.id} type="button" onClick={() => window._coverNav && window._coverNav(t.id)}
+            aria-current={active === t.id ? 'page' : undefined}
+            style={{ cursor: 'pointer', background: 'transparent', border: 'none', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
             textTransform: 'uppercase', paddingBottom: 7,
             color: active === t.id ? cvStyles.ink : cvStyles.ink70,
             fontWeight: active === t.id ? 600 : 400,
             borderBottom: active === t.id ? `2px solid ${cvStyles.ink}` : '2px solid transparent' }}>
-            {t.label}</span>
+            {t.label}</button>
         );
       })}
     </nav>
@@ -660,12 +717,22 @@ function CoverAdjust(props) {
   const filedShort = dirty ? 'as filed' : 'as sample';
 
   // Idempotent lever targets — pressing again just re-sets the same value.
+  // V19.9 (A3): match the Results/Try-Changes cards exactly — hide the delay lever when the
+  // 80-cap leaves no room to move, and move ONLY the partner(s) actually claiming before 70
+  // (a spouse already at 70 is never silently touched). Same applicability as computeMoves().
+  const _delayedRet = Math.min(80, params.retireAge + 2);
+  const _userEarly = params.ssClaimAge < 70;
+  const _spouseEarly = params.hasPartner && params.spouseClaimAge < 70;
+  const _ssTitle = (_userEarly && _spouseEarly) ? 'Claim SS at 70 (both of you)'
+    : _userEarly ? 'You claim SS at 70' : 'Spouse claims SS at 70';
   const levers = [
-    { id: 'delay', title: 'Retire 2 years later', apply: () => setField('retireAge', Math.min(80, params.retireAge + 2)), active: sc.retireAge === Math.min(80, params.retireAge + 2) },
+    ...(_delayedRet > params.retireAge ? [{ id: 'delay',
+      title: 'Retire ' + (_delayedRet - params.retireAge) + (_delayedRet - params.retireAge === 1 ? ' year later' : ' years later'),
+      apply: () => setField('retireAge', _delayedRet), active: sc.retireAge === _delayedRet }] : []),
     { id: 'spend', title: 'Spend 10% less', apply: () => setField('spending', Math.round(params.spending * 0.9 / 1000) * 1000), active: sc.spending === Math.round(params.spending * 0.9 / 1000) * 1000 },
-    { id: 'ss', title: params.hasPartner ? 'Claim SS at 70 (both of you)' : 'Claim SS at 70',
-      apply: () => setSc(s => ({ ...s, ssClaimAge: 70, ...(params.hasPartner ? { spouseClaimAge: 70 } : {}) })),
-      active: sc.ssClaimAge === 70 && (!params.hasPartner || sc.spouseClaimAge === 70) },
+    ...((_userEarly || _spouseEarly) ? [{ id: 'ss', title: _ssTitle,
+      apply: () => setSc(s => ({ ...s, ...(_userEarly ? { ssClaimAge: 70 } : {}), ...(_spouseEarly ? { spouseClaimAge: 70 } : {}) })),
+      active: (!_userEarly || sc.ssClaimAge === 70) && (!_spouseEarly || sc.spouseClaimAge === 70) }] : []),
   ];
 
   // V19.1: a move card tapped on Cover arrives here with props.stageLever set to that
@@ -685,7 +752,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.8">
+    <CoverChrome active="rework" tag="V19.9">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -800,7 +867,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.8">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.9">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -847,7 +914,7 @@ function CoverCharts(props) {
           paddingTop: 32, borderTop: `1px solid ${cvStyles.rule}` }}>
           <CoverBigStat big={`${results.successRate}`} unit="/100" label="Plans that succeed" />
           <CoverBigStat big={fmt(results.medianLegacy, { compact: true })} label={`Median legacy at ${params.endAge}`} />
-          <CoverBigStat big={fmt(results.sustainableSpending, { compact: true })} label="Safe to spend / yr" />
+          <CoverBigStat big={results.sustainableSpending != null ? '~' + fmt(results.sustainableSpending, { compact: true }) : 'None'} label="Safe to spend / yr (est.)" />
           <CoverBigStat big={`${results.runwayYears}`} unit="yrs" label="Runway in retirement" />
         </div>
 
@@ -912,9 +979,12 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
       <div style={{ maxWidth: 560, width: '100%', margin: '0 auto', minHeight: '100%',
         padding: 'clamp(28px,6vw,64px) 24px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14, marginBottom: 'clamp(28px,6vw,52px)' }}>
-          <div style={{ fontFamily: cvStyles.display, fontSize: 'clamp(28px,7vw,34px)', lineHeight: 1 }}>Compass</div>
-          <div style={{ ...cvKicker }}>The Retirement Issue · No. 5</div>
+          gap: 16, borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14, marginBottom: 'clamp(28px,6vw,52px)' }}>
+          {/* V19.9 (A6): keep the wordmark from butting into the issue label at ~390px, and stop
+              "No. 5" wrapping — the gap plus a shrink-to-fit, nowrap issue label fixes both. */}
+          <div style={{ fontFamily: cvStyles.display, fontSize: 'clamp(28px,7vw,34px)', lineHeight: 1, flex: '0 0 auto' }}>Compass</div>
+          <div style={{ ...cvKicker, fontSize: 'clamp(9px,2.4vw,12px)', letterSpacing: '0.12em',
+            textAlign: 'right', whiteSpace: 'nowrap', flex: '0 1 auto' }}>The Retirement Issue · No. 5</div>
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ ...cvKicker, marginBottom: 14 }}>Welcome</div>
@@ -937,7 +1007,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.8</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.9</div>
       </div>
     </div>
   );

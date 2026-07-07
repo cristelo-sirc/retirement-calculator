@@ -1,5 +1,18 @@
 # Change log
 
+## 19.9.0 — 2026-07-06
+
+- Fixed the tax calculation so every fully-retired year is funded exactly. Previously, in tax-heavy years (for example a large Roth conversion), the calculation could stop before it finished and leave thousands of dollars of spending or taxes unfunded while still marking the plan on track. Money in the accounts always balanced, but the household's cash didn't; now income plus withdrawals equals spending plus taxes plus any saved surplus, to the dollar.
+- Rebuilt "Safe to spend." It used to show "$20,000" even for a plan that scored 0/100 at that spending, and it could understate strong plans. Now it shows **None** when no spending level reaches about 90% success, expands above its old cap for well-funded plans, and is clearly labeled an estimate.
+- Made what you see match what the app uses. If an edit makes two values contradict (for example, raising your current age to your retirement age), the dependent value is corrected immediately and everywhere — on screen, in the saved file, and in the calculation — with a short note telling you what changed. Before, the screen could show one thing while the engine quietly used another.
+- Fixed plans that go broke and later recover so they no longer claim "the money lasts the full plan." They now say both facts: it ran out around age X, then recovered later. The year-by-year table and the danger-age line use the same honest wording.
+- Added a "who earns it" choice to part-time income for couples. The Social Security earnings test now reduces only that person's benefit, instead of always reducing yours even when your partner is the one working.
+- Fixed the retirement paycheck in surplus years (when guaranteed income covers everything): it no longer breaks the bar with a negative slice, and instead shows the leftover as saved back into your portfolio. If one partner is still working at the plan's end, the paycheck now says a fully-retired snapshot isn't available yet instead of mislabeling a still-working year.
+- Corrected the 2026 Medicare IRMAA top-tier surcharge to the official $529.60 (a July 2026 change had set it to $529.70 in error).
+- Disclosed, in the app and the README, that the special Social Security earnings limit for the single year you reach full retirement age is not modeled.
+- Accessibility and layout: the main navigation is now keyboard-operable and stays in view down the whole Results page, small labels are darker for readability, the big score scales down on smaller screens, and switching between phone and desktop keeps you on the same screen.
+- Added automated checks for each of the accuracy fixes above (household-cash funding, the spending estimate, the see-what-the-engine-uses guarantee, the surplus paycheck, and per-earner Social Security). The built-in sample still reads 64/100.
+
 ## 19.8.0 — 2026-07-05
 
 - Split the "Tight" verdict band into two: scores 80–89 still read "Tight," but 65–79 now reads "Shaky" — a plainer signal that a meaningful share of futures run out of money, since that band used to share a word with scores as high as 89. "On Track" (90+) and "At Risk" (under 65) are unchanged. This only changes labels and color, not how any plan is scored.

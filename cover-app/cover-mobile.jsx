@@ -151,7 +151,15 @@
         </div>
         {paycheck.taxes > 0.5 && (
           <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 7, lineHeight: 1.4 }}>
-            Includes {ME.formatCurrency(paycheck.taxes)}/mo for taxes; {ME.formatCurrency(paycheck.spending)}/mo is what you spend.
+            Includes {ME.formatCurrency(paycheck.taxes)}/mo for taxes; {ME.formatCurrency(paycheck.spending)}/mo is what you spend
+            {paycheck.saved > 0.5 ? `; ${ME.formatCurrency(paycheck.saved)}/mo saved back to your portfolio` : ''}.
+          </div>
+        )}
+        {paycheck.fullyRetired === false && (
+          <div style={{ fontSize: 11.5, color: cm.clay, marginTop: 7, lineHeight: 1.4,
+            border: `1px solid ${cm.clay}`, background: cm.claySoft, padding: '7px 10px' }}>
+            One of you is still working at the plan’s end, so this still includes wages — extend the
+            plan horizon past both retirement ages to see a fully-retired paycheck.
           </div>
         )}
       </div>
@@ -205,6 +213,10 @@
         </div>
         <p style={{ fontSize: 12.5, lineHeight: 1.55, color: cm.ink70, marginTop: 12, textWrap: 'pretty' }}>
           {o.longevityLine} {o.riskLine}
+        </p>
+        {/* V19.9 (A4): disclose these are nominal future dollars. */}
+        <p style={{ fontSize: 11.5, lineHeight: 1.5, color: cm.ink70, marginTop: 8, fontStyle: 'italic', textWrap: 'pretty' }}>
+          {o.basisNote}
         </p>
       </section>
     );
@@ -263,8 +275,12 @@
         <section style={{ marginBottom: 26 }}>
           <div style={{ ...mKick, marginBottom: 10 }}>Your paycheck, explained</div>
           <p style={{ fontFamily: cm.display, fontSize: 19, lineHeight: 1.4, margin: '0 0 14px', color: cm.ink }}>
-            At {results.paycheck.atAge}{window.cvPaycheckNote ? window.cvPaycheckNote(params, results.paycheck.atAge) : ''}, {partner ? "you'll both" : "you'll"} need{' '}
+            At {results.paycheck.atAge}, {partner ? "you'll both" : "you'll"} need{' '}
             {ME.formatCurrency(results.paycheck.total)}/mo.
+            {(window.cvPaycheckNote && window.cvPaycheckNote(params, results.paycheck.atAge))
+              ? <span style={{ display: 'block', fontFamily: cm.body, fontSize: 12.5, color: cm.ink70,
+                  marginTop: 6, lineHeight: 1.45 }}>{window.cvPaycheckNote(params, results.paycheck.atAge)}</span>
+              : null}
           </p>
           <MPaycheck paycheck={results.paycheck} />
         </section>
@@ -306,7 +322,7 @@
     );
   }
 
-  function QuizView({ params, update, setParams, vc, partner, results, hideReturning, dirty }) {
+  function QuizView({ params, update, setParams, vc, partner, results, hideReturning, dirty, adjustNote }) {
     const [adv, setAdv] = React.useState(false);
     return (
       <div style={{ padding: '24px 20px 28px' }}>
@@ -317,6 +333,13 @@
           margin: '0 auto 24px', maxWidth: 320, textWrap: 'pretty' }}>
           Every input your results use, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
         </p>
+
+        {adjustNote && adjustNote.length > 0 && (
+          <div style={{ marginBottom: 22, padding: '10px 12px', border: `1px solid ${cm.amber}`,
+            background: cm.amberSoft, color: cm.ink, fontFamily: cm.body, fontSize: 12.5, lineHeight: 1.5 }}>
+            {window.cvAdjustMessage(adjustNote)}
+          </div>
+        )}
 
         {!hideReturning && (
           <div style={{ marginBottom: 26 }}>
@@ -396,6 +419,8 @@
           {params.enablePartTime && <MStep field="partTimeIncome" label="Amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
           {params.enablePartTime && <MStep field="partTimeStartAge" label="From age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} />}
           {params.enablePartTime && <MStep field="partTimeEndAge" label="To age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} />}
+          {partner && params.enablePartTime && <MSelect field="partTimeOwner" label="Who earns it" value={params.partTimeOwner} onChange={v => update('partTimeOwner', v)}
+            options={[{ v: 'user', label: 'You' }, { v: 'spouse', label: 'Your partner' }]} />}
         </MGroup>
 
         <MGroup title="Your home">
@@ -492,6 +517,10 @@
     // user leaves the Questionnaire tab, treat any later visit as a normal return.
     const [suppressReturning, setSuppressReturning] = React.useState(!!props.freshStart);
     React.useEffect(() => { if (tab !== 'quiz' && suppressReturning) setSuppressReturning(false); }, [tab]);
+    // V19.9 (A6): report the active tab up to the shared shell `screen` so switching tabs on
+    // the phone and then widening back to desktop lands on the SAME screen (previously the phone
+    // owned its tab locally and the desktop always reverted to Results across the breakpoint).
+    React.useEffect(() => { if (props.onTabChange) props.onTabChange(tab); }, [tab]);
     const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
     const results = React.useMemo(() => ME.compute(params), [params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
@@ -522,7 +551,7 @@
         <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
           {tab === 'cover'
             ? <CoverView results={results} vc={vc} partner={partner} dirty={dirty} goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
-            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} hideReturning={suppressReturning} dirty={dirty} />}
+            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} hideReturning={suppressReturning} dirty={dirty} adjustNote={props.adjustNote} />}
         </main>
 
         {/* bottom tab nav */}
@@ -533,7 +562,7 @@
             return (
             // V19.8: 11px/ink50 was too small/light for primary nav; bumped to 13px,
             // inactive color darkened to ink70.
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, textAlign: 'center',
+            <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined} style={{ flex: 1, textAlign: 'center',
               padding: '14px 0 10px', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
               cursor: 'pointer', background: cta ? cm.sage : 'none', border: 'none', fontFamily: cm.body,
               color: cta ? cm.paper : (tab === t.id ? cm.ink : cm.ink70), fontWeight: (cta || tab === t.id) ? 600 : 400,

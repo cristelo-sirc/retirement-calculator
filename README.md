@@ -8,15 +8,27 @@ projection with a plain-English verdict.
 
 ## Current release
 
-**V19.0** uses an explicit elapsed-year timeline. The balance shown at today’s age is exactly the
-balance entered by the user. Each later balance belongs to the following birthday, so a projection
-from age 50 through age 53 contains three years of returns and cash flows—not four.
+**V19.9** is a deep-review accuracy and honesty batch. The app is organized into four screens:
+**Input Data** (the questionnaire), **Results** (score, verdict, plan-at-a-glance, paycheck,
+outcomes), **Try Changes** (test moves before committing), and **Charts** (projection + year-by-year
+table). Highlights of this release:
 
-V19 also adds explicit prior-year W-2 wage fields for the 2026 Roth catch-up rule, allows employer
-contributions to be modeled as traditional or Roth, and verifies that every saved-plan setting has
-an explained desktop and phone input.
+- The tax loop now runs to full convergence, so every fully-retired year is funded exactly (income
+  plus withdrawals equals spending plus taxes plus any saved surplus).
+- "Safe to spend" no longer reports a false floor: it shows **None** when no spending level reaches
+  about 90% success, expands above the old cap for well-funded plans, and is labeled an estimate.
+- What you see always matches what the engine uses and what a saved file contains — dependent values
+  (like ages) are reconciled the moment you edit, with a note when something is adjusted.
+- Recovery-after-broke plans no longer claim "the money lasts the full plan"; they state both that it
+  ran out and that it later recovered.
+- Part-time income now carries an earner (you or your partner), so the Social Security earnings test
+  affects only that person's benefit.
+- The 2026 Medicare IRMAA tier-4 surcharge is corrected to the official $529.60, and accessibility
+  and responsive-layout fixes improve nav, contrast, and small-screen behavior.
 
-See [CHANGELOG.md](CHANGELOG.md) for the complete release history.
+Earlier, **V19.0** established the explicit elapsed-year timeline (the balance shown at today's age is
+exactly what you entered; each later balance belongs to the following birthday). See
+[CHANGELOG.md](CHANGELOG.md) for the complete release history.
 
 ## How the model works
 
@@ -37,11 +49,25 @@ model individual mortality, survivor transitions, long-term-care events, investm
 state-specific tax rule. RMD age 75 and Social Security full retirement age 67 are intentional
 audience assumptions for people born in 1960 or later.
 
+Additional disclosed limitations:
+
+- **Ending balances and the legacy goal are future (nominal) dollars** — not adjusted for inflation,
+  so they buy less than the same number today. The Charts year-by-year table has a today's-dollars
+  toggle.
+- **"Safe to spend" is a fast estimate**, not a full-precision figure; it is labeled as such.
+- **The full-retirement-age-year Social Security earnings test is not modeled.** Compass always
+  applies the standard under-67 earnings limit and does not apply the more generous special rule for
+  the single year a person reaches full retirement age (that rule needs a birth month the annual
+  model does not track). Only affects people who claim before 67 while still earning.
+- The flat state-tax rate does not honor state-specific Social Security or pension exemptions.
+
 ## Verification
 
-The automated checks cover timeline boundaries, contribution growth and limits, tax and Medicare
-baselines, Social Security, housing, healthcare, saved-plan compatibility, exact numerical entry,
-and complete input/help coverage.
+The automated checks (95 tests) cover timeline boundaries, contribution growth and limits, tax and
+Medicare baselines, Social Security, housing, healthcare, saved-plan compatibility, exact numerical
+entry, and complete input/help coverage. V19.9 adds permanent invariants for the household-cash
+identity (every retired year is funded), the sustainable-spending solver, shared parameter
+normalization, gross-source paycheck reconciliation, and per-earner Social Security attribution.
 
 ```sh
 node --test tests/*.test.js
@@ -66,7 +92,7 @@ pull-request review gate and should be used only with explicit approval.
 - `index.html` / `cover.html` — browser entry pages.
 - `engine.js` — retirement simulation and financial calculations.
 - `cover-app/real-engine.js` — adapter between the interface and calculation engine.
-- `cover-app/` — questionnaire, Cover, Rework, Projection, and chart components.
+- `cover-app/` — the Input Data, Results, Try Changes, and Charts screen components.
 - `tests/` — executable financial, adapter, entry, and input-coverage checks.
 - `CLAUDE.md` — detailed architecture, decisions, lessons, and version history.
 - `CLAUDE-legacy.md` — pre-V18 architecture and history.

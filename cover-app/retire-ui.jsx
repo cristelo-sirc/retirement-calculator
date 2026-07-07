@@ -46,7 +46,7 @@ const FIELD_INFO = {
     help: 'Your annual Social Security at full age (67).',
     detail: 'Your estimated yearly benefit at full retirement age (67) — take the monthly figure on your Social Security statement at ssa.gov and multiply by 12. Claiming earlier reduces it; waiting until 70 increases it about 8% per year.',
   },
-  ssClaimAge: { help: 'The age you start Social Security.', detail: 'Benefits begin in the yearly period that starts at this age. You can claim from 62 to 70; waiting past 67 increases the annual benefit.' },
+  ssClaimAge: { help: 'The age you start Social Security.', detail: 'Benefits begin in the yearly period that starts at this age. You can claim from 62 to 70; waiting past 67 increases the annual benefit. Note: if you claim before full retirement age (67) AND have part-time earnings, the plan applies the standard under-67 earnings test ($1 withheld per $2 over the annual limit). It does NOT model the more generous special rule for the single year you REACH 67, so benefits in that one transition year may be modeled slightly low.' },
   spouseSS: { help: 'Your partner’s annual benefit at age 67.', detail: 'Your partner’s estimated yearly Social Security at their full retirement age. Couples can stagger claim ages to balance income and survivor benefits.' },
   spouseClaimAge: { help: 'The age your partner starts Social Security.', detail: 'Benefits begin in the yearly period that starts at this age. Set it independently from yours; delaying the higher earner can improve the survivor benefit.' },
   enableSpousalBenefit: { help: 'Pay the spousal Social Security benefit.', detail: 'When on, the lower earner can receive up to half of the higher earner’s full benefit if that exceeds their own. Worth enabling when one partner earned much more than the other.' },
@@ -58,6 +58,7 @@ const FIELD_INFO = {
   partTimeIncome: { help: 'How much that income pays per year.', detail: 'The annual amount, in today’s dollars. The plan grows it with inflation over the years you specify.' },
   partTimeStartAge: { help: 'When this income begins.', detail: 'The first age at which the extra income is received.' },
   partTimeEndAge: { help: 'When this income stops.', detail: 'The last age at which the extra income is received — for lifelong income like an annuity, set this to your planning age.' },
+  partTimeOwner: { help: 'Which of you earns this income.', detail: 'Only matters for the Social Security earnings test: if the earner claims Social Security before full retirement age, this income can temporarily reduce THEIR benefit (not their partner’s). The start/stop ages above are read against the earner’s age.' },
 
   savingsDest: { help: 'Where your contributions land.', detail: 'Pre-tax (traditional 401k/IRA) lowers today’s taxes but is taxed on withdrawal; Roth is taxed now but tax-free later. Split puts half in each. This shapes your future tax bill, not how much you save.' },
 
