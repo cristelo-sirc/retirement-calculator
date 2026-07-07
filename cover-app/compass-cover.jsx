@@ -257,7 +257,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.9', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.10', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -553,7 +553,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.9</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.10</div>
         </div>
       </section>
     </div>
@@ -752,7 +752,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.9">
+    <CoverChrome active="rework" tag="V19.10">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -867,7 +867,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.9">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.10">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1007,7 +1007,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.9</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.10</div>
       </div>
     </div>
   );

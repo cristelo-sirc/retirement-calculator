@@ -234,34 +234,68 @@ test('2c. FIXED F-ROTHCONV-PHANTOM: only the executed conversion is taxed', () =
     `ordIncome ${Math.round(y.ordIncome)} exceeds the whole $100k account: phantom conversion income`);
 });
 
-// FINDING F-PT-EARNTEST-ATTRIB -- FIXED (V19.9, B6): part-time income now carries an OWNER
-// (params.partTimeOwner). The SS earnings test reduces only THAT person's benefit, and the
-// start/stop ages are read against the earner's age. Before the fix the single channel was always
-// attributed to the USER, so a spouse-earned paycheck wrongly reduced the user's early benefit.
+// FINDING F-PT-EARNTEST-ATTRIB -- FIXED (V19.9 B6, superseded V19.10): part-time income is now
+// TWO independent channels, one per partner. The SS earnings test reduces only the earning
+// partner's benefit, and each channel's start/stop ages are read against ITS earner's age.
 //
 // Use an ASYMMETRIC pair (different benefits) so mis-attribution changes the HOUSEHOLD total —
 // a symmetric pair would hide the bug because reducing either identical benefit costs the same.
-test('2c. FIXED F-PT-EARNTEST-ATTRIB: earnings test hits the owner, not always the user', () => {
-  function household(owner) {
-    const p = auditParams({
-      currentAge: 63, retireAge: 63, endAge: 66, spouseAge: 63, spouseRetireAge: 63,
-      taxableBalance: 2000000, lifestyleSpending: 60000,
-      userSS: 40000, userClaimAge: 62, spouseSS: 10000, spouseClaimAge: 62,
-      enablePartTime: true, partTimeIncome: 40000, partTimeStartAge: 63, partTimeEndAge: 66,
-      partTimeOwner: owner, stockReturn: 0, bondReturn: 0, taxableGainRatio: 0,
-    });
-    return simulatePath(p, 0).log[0].ssIncome;
-  }
-  const userOwned = household('user');
-  const spouseOwned = household('spouse');
-  // Attribution now MATTERS: the two households differ (they were identical while the bug forced
+test('2c. FIXED F-PT-EARNTEST-ATTRIB: earnings test hits the earning partner only (V19.10 channels)', () => {
+  const base = {
+    currentAge: 63, retireAge: 63, endAge: 66, spouseAge: 63, spouseRetireAge: 63,
+    taxableBalance: 2000000, lifestyleSpending: 60000,
+    userSS: 40000, userClaimAge: 62, spouseSS: 10000, spouseClaimAge: 62,
+    stockReturn: 0, bondReturn: 0, taxableGainRatio: 0,
+  };
+  const household = (extra) => simulatePath(auditParams({ ...base, ...extra }), 0).log[0].ssIncome;
+  const userOwned = household({
+    enablePartTime: true, partTimeIncome: 40000, partTimeStartAge: 63, partTimeEndAge: 66 });
+  const spouseOwned = household({
+    spouseEnablePartTime: true, spousePartTimeIncome: 40000,
+    spousePartTimeStartAge: 63, spousePartTimeEndAge: 66 });
+  // Attribution MATTERS: the two households differ (they were identical while the bug forced
   // every reduction onto the user).
   assert.ok(Math.abs(userOwned - spouseOwned) > 500,
     `attribution should change the household total, got user=${Math.round(userOwned)} spouse=${Math.round(spouseOwned)}`);
   // Reducing the SMALLER (spouse) benefit loses less to the earnings test (it floors at $0), so a
-  // spouse-owned paycheck leaves a HIGHER household benefit than a user-owned one.
+  // spouse-earned paycheck leaves a HIGHER household benefit than a user-earned one.
   assert.ok(spouseOwned > userOwned,
     `spouse-owned should preserve more household benefit, got user=${Math.round(userOwned)} spouse=${Math.round(spouseOwned)}`);
+});
+
+// V19.10: BOTH partners can work part-time simultaneously, each with own amount and years.
+test('2c. V19.10 two channels: both jobs pay in, each earnings test is independent', () => {
+  const base = {
+    currentAge: 63, retireAge: 63, endAge: 66, spouseAge: 63, spouseRetireAge: 63,
+    taxableBalance: 2000000, lifestyleSpending: 60000,
+    userSS: 40000, userClaimAge: 62, spouseSS: 10000, spouseClaimAge: 62,
+    stockReturn: 0, bondReturn: 0, taxableGainRatio: 0,
+  };
+  const run = (extra) => simulatePath(auditParams({ ...base, ...extra }), 0).log[0];
+  // Both amounts sit ABOVE the SS earnings-test exempt amount ($24,480 in the engine's 2026
+  // baseline) so each job produces a nonzero reduction of its earner's early-claimed benefit.
+  const userJob = { enablePartTime: true, partTimeIncome: 30000, partTimeStartAge: 63, partTimeEndAge: 66 };
+  const spouseJob = { spouseEnablePartTime: true, spousePartTimeIncome: 40000,
+    spousePartTimeStartAge: 63, spousePartTimeEndAge: 66 };
+  const both = run({ ...userJob, ...spouseJob });
+  const onlyUser = run(userJob);
+  const onlySpouse = run(spouseJob);
+  const none = run({});
+  // Income sums: household part-time income equals the two jobs added together.
+  assert.ok(Math.abs(both.partTimeIncome - 70000) < 1,
+    `both jobs should pay $70k combined, got ${Math.round(both.partTimeIncome)}`);
+  // Earnings tests are independent: the combined household's SS reduction equals the sum of
+  // each job's own reduction (no cross-contamination between partners).
+  const redUser = none.ssIncome - onlyUser.ssIncome;      // user's job reduces only user's benefit
+  const redSpouse = none.ssIncome - onlySpouse.ssIncome;  // spouse's job reduces only spouse's
+  const redBoth = none.ssIncome - both.ssIncome;
+  assert.ok(redUser > 0 && redSpouse > 0, 'each early-claimed benefit should see its own reduction');
+  assert.ok(Math.abs(redBoth - (redUser + redSpouse)) < 1,
+    `reductions should be independent and additive: both=${Math.round(redBoth)} vs sum=${Math.round(redUser + redSpouse)}`);
+  // Each channel gates on ITS earner's age window: spouse job outside the spouse's window pays $0.
+  const lateSpouse = run({ ...spouseJob, spousePartTimeStartAge: 65 });
+  assert.ok(Math.abs(lateSpouse.partTimeIncome) < 1,
+    'spouse channel must gate on the spouse\'s own start age');
 });
 
 test('2c. glide path convention: allocation steps toward the target but final year sits one step short', () => {

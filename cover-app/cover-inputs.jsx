@@ -208,7 +208,7 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag="V19.9"
+    <window.CoverChrome active="quiz" tag="V19.10"
       rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
@@ -321,12 +321,14 @@ function CoverInputs(props) { const { mode = 'essentials', params: extP, setPara
             partner && <CField key="spen" field="spousePension" label="Partner's pension / yr" value={params.spousePension} step={1000} min={0} max={200000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
             partner && params.spousePension > 0 && <CField key="spena" field="pensionStartAge" label="Partner's pension starts at" value={params.spousePensionStartAge} min={50} max={75} onChange={v => update('spousePensionStartAge', v)} theme={theme} />,
             partner && params.spousePension > 0 && <CToggle key="spenc" field="pensionCOLA" label="Partner's pension has COLA" value={params.enableSpousePensionCOLA} onChange={v => update('enableSpousePensionCOLA', v)} theme={theme} />,
-            <CToggle key="ptt" field="partTime" label="Part-time / other income" value={params.enablePartTime} onChange={v => update('enablePartTime', v)} theme={theme} />,
+            <CToggle key="ptt" field="partTime" label={partner ? 'Your part-time / other income' : 'Part-time / other income'} value={params.enablePartTime} onChange={v => update('enablePartTime', v)} theme={theme} />,
             params.enablePartTime && <CField key="pti" field="partTimeIncome" label="Amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
             params.enablePartTime && <CField key="pts" field="partTimeStartAge" label="From age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} theme={theme} />,
             params.enablePartTime && <CField key="pte" field="partTimeEndAge" label="To age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} theme={theme} />,
-            partner && params.enablePartTime && <CSelect key="pto" field="partTimeOwner" label="Who earns it" value={params.partTimeOwner} onChange={v => update('partTimeOwner', v)} theme={theme}
-              options={[{ v: 'user', label: 'You' }, { v: 'spouse', label: 'Your partner' }]} />,
+            partner && <CToggle key="sptt" field="partTime" label="Partner's part-time / other income" value={params.spouseEnablePartTime} onChange={v => update('spouseEnablePartTime', v)} theme={theme} />,
+            partner && params.spouseEnablePartTime && <CField key="spti" field="partTimeIncome" label="Amount / yr" value={params.spousePartTimeIncome} step={1000} min={0} max={200000} onChange={v => update('spousePartTimeIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />,
+            partner && params.spouseEnablePartTime && <CField key="spts" field="partTimeStartAge" label="From partner's age" value={params.spousePartTimeStartAge} min={params.spouseAge} max={params.endAge} onChange={v => update('spousePartTimeStartAge', v)} theme={theme} />,
+            partner && params.spouseEnablePartTime && <CField key="spte" field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} theme={theme} />,
           ].filter(Boolean)}>
           <CField field="ssBenefit" label={partner ? 'Your SS / yr (at 67)' : 'SS / yr (at 67)'} value={params.ssBenefit} step={1000} min={0} max={80000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} theme={theme} />
           <CField field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} theme={theme} />

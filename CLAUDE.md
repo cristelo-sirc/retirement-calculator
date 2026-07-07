@@ -16,7 +16,7 @@ the V19.6 section below).
 Pre-V18 UI architecture (legacy imperative-DOM app: render functions, dashboard layout, mobile/iOS
 behaviors, full v9.9&ndash;v17.6 version history) is archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.9
+**Current Version:** 19.10
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -1398,3 +1398,53 @@ titles, `real-engine.js` header, saved-plan stamp (`19.9`), and on-screen kicker
 `engine.js` math IS changed (B1 tax-loop cap, B6 earnings-test attribution, A1 IRMAA constant; A2 exposition
 via adapter). The audit report and this batch's fix plan (`V19.9-FIX-PLAN.md`) are kept local (gitignored
 `*.md`), not published.
+
+---
+
+## V19.10 &mdash; Per-partner part-time income channels (two channels, partTimeOwner retired)
+
+Fifth intentional `engine.js` math release (after V18.11, V19.5, V19.6, V19.9). Builds the full
+two-channel model the F-PT-EARNTEST-ATTRIB backlog entry originally sketched, superseding V19.9's
+B6 single-channel `partTimeOwner` selector. Approved by Cris 2026-07-07 from a plan with scope,
+risks, and validation; shipped as one batch.
+
+**Engine (`engine.js` math IS changed, one localized block).** The V19.9 owner-switch block is
+replaced by two independent computations: the user's channel (`enablePartTime` / `partTimeIncome` /
+`partTimeStartAge` / `partTimeEndAge` &mdash; names unchanged) gates on the USER's age window, and a
+new spouse channel (`spouseEnablePartTime` / `spousePartTimeIncome` / `spousePartTimeStartAge` /
+`spousePartTimeEndAge`) gates on the SPOUSE's age window. Each partner's SS earnings test receives
+only THEIR own earnings (the two `calculateSSBenefit` call sites already took per-person earnings
+since V19.9). Household cash, ordinary income, and the logged `partTimeIncome` pathLog field all
+use the SUM, so every downstream consumer (tax convergence, surplus banking, paycheck, year table)
+is unchanged. The legacy DOM app's part-time controls (single channel) still work: the undefined
+spouse params are falsy, so the spouse channel is simply $0 there.
+
+**Adapter (`real-engine.js`).** Four new DEFAULTS keys (spouse channel), RANGES for the two new
+ages, `partTimeOwner` removed from ENUMS/DEFAULTS, and mapToReal emits both channels (spouse channel
+zeroed for singles). **Migration in `normalizeParams`:** a plan with `partTimeOwner: 'spouse'` and
+no actively-used spouse channel has its user-channel values MOVED to the spouse channel (user channel
+zeroed) &mdash; same income stream, same attribution, no double-counting. Trigger is
+`raw.partTimeOwner === 'spouse' && !raw.spouseEnablePartTime` (NOT `=== undefined`: plans merged
+over DEFAULTS arrive with the key already present as `false` &mdash; caught by the migration test on
+its first run). `partTimeOwner` itself is dropped by the known-keys merge, which also makes the
+migration idempotent. Old user-owned and single plans pass through byte-identical.
+
+**UI (both questionnaire layouts).** The user's toggle relabels to "Your part-time / other income"
+for couples; a partner block (toggle + Amount / yr + "From partner's age" + "To partner's age")
+renders for couples only, styled identically to the user's. The "Who earns it" selector is gone.
+Partner fields alias to the shared FIELD_INFO help entries (pension-block precedent) via
+HELP_ALIASES in `tests/input-coverage.test.js`; the partTime tooltips now explain per-person
+earnings-test attribution; the `partTimeOwner` FIELD_INFO entry is removed.
+
+**Tests (97 total, 97 pass, 0 todo; was 95).** The V19.9 attribution test is rewritten for the
+two-channel model; new: both jobs pay simultaneously (household = sum), the two earnings-test
+reductions are independent and ADDITIVE (each measured against a no-jobs baseline; both amounts
+chosen above the $24,480 exempt amount so each produces a nonzero reduction), the spouse channel
+gates on the spouse's own start age, and the partTimeOwner:'spouse' migration (values moved,
+user channel zeroed, idempotent, user-owned plans untouched). `audit-adapter.test.js`'s
+ENGINE_PARAM_NAMES contract swaps `partTimeOwner` for the four new names. **DEFAULTS still 64/100**
+(regression gate) &mdash; the new channel defaults OFF everywhere.
+
+**Cache-buster:** `engine.js?v=19.10` + `?v=19.10` on all `cover-app/*` includes in both shells;
+both HTML titles, `real-engine.js` header, saved-plan stamp (`19.10`), and on-screen kickers/tags
+reconciled to 19.10.

@@ -1,5 +1,12 @@
 # Change log
 
+## 19.10.0 — 2026-07-07
+
+- Part-time income is now one channel per partner. Instead of V19.9's single income with a "who earns it" choice, couples get two independent part-time / other-income sections — yours and your partner's — each with its own on/off switch, annual amount, and start/stop ages. A household where both of you work part-time (different amounts, different years) can finally be modeled as it really is.
+- Each income is timed against its earner's own age, and the Social Security earnings test reduces only the earner's own early-claimed benefit — never the partner's. The two reductions are fully independent.
+- Plans saved under V19.9 with "who earns it" set to your partner are migrated automatically on load: the same income stream simply moves to the partner's new section. Plans where you were the earner, and all single-person plans, are unchanged.
+- Added automated checks: both jobs pay into the household simultaneously, the two earnings-test reductions are independent and additive, each channel gates on its own earner's age, and old saved plans migrate correctly. The built-in sample still reads 64/100.
+
 ## 19.9.0 — 2026-07-06
 
 - Fixed the tax calculation so every fully-retired year is funded exactly. Previously, in tax-heavy years (for example a large Roth conversion), the calculation could stop before it finished and leave thousands of dollars of spending or taxes unfunded while still marking the plan on track. Money in the accounts always balanced, but the household's cash didn't; now income plus withdrawals equals spending plus taxes plus any saved surplus, to the dollar.

@@ -415,12 +415,14 @@
           {partner && <MStep field="spousePension" label="Partner's pension / yr" value={params.spousePension} step={1000} min={0} max={200000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} />}
           {partner && params.spousePension > 0 && <MStep field="pensionStartAge" label="Partner's pension starts at" value={params.spousePensionStartAge} min={50} max={75} onChange={v => update('spousePensionStartAge', v)} />}
           {partner && params.spousePension > 0 && <MToggle field="pensionCOLA" label="Partner's pension has COLA" value={params.enableSpousePensionCOLA} onChange={v => update('enableSpousePensionCOLA', v)} />}
-          <MToggle field="partTime" label="Part-time / other income" value={params.enablePartTime} onChange={v => update('enablePartTime', v)} />
+          <MToggle field="partTime" label={partner ? 'Your part-time / other income' : 'Part-time / other income'} value={params.enablePartTime} onChange={v => update('enablePartTime', v)} />
           {params.enablePartTime && <MStep field="partTimeIncome" label="Amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
           {params.enablePartTime && <MStep field="partTimeStartAge" label="From age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} />}
           {params.enablePartTime && <MStep field="partTimeEndAge" label="To age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} />}
-          {partner && params.enablePartTime && <MSelect field="partTimeOwner" label="Who earns it" value={params.partTimeOwner} onChange={v => update('partTimeOwner', v)}
-            options={[{ v: 'user', label: 'You' }, { v: 'spouse', label: 'Your partner' }]} />}
+          {partner && <MToggle field="partTime" label="Partner's part-time / other income" value={params.spouseEnablePartTime} onChange={v => update('spouseEnablePartTime', v)} />}
+          {partner && params.spouseEnablePartTime && <MStep field="partTimeIncome" label="Amount / yr" value={params.spousePartTimeIncome} step={1000} min={0} max={200000} onChange={v => update('spousePartTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
+          {partner && params.spouseEnablePartTime && <MStep field="partTimeStartAge" label="From partner's age" value={params.spousePartTimeStartAge} min={params.spouseAge} max={params.endAge} onChange={v => update('spousePartTimeStartAge', v)} />}
+          {partner && params.spouseEnablePartTime && <MStep field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} />}
         </MGroup>
 
         <MGroup title="Your home">
