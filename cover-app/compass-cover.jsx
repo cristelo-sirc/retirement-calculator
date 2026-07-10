@@ -609,17 +609,24 @@ function CoverPaycheck({ paycheck }) {
 //  replaced by CoverOutcomes / "How It Could Play Out".)
 
 function CoverSlider({ label, value, onChange, min, max, step = 1, display, accent, last }) {
+  // V19.11: the visible label was a plain <span>, with no programmatic link to the <input>, so
+  // a screen reader announced the control only as "slider" with no name and no readable value.
+  // aria-labelledby ties it to the visible label text (no duplicate hidden label needed);
+  // aria-valuetext substitutes the already-formatted display string (e.g. "$120,000") for the
+  // raw numeric value a screen reader would otherwise read out.
+  const labelId = React.useId();
   return (
     <div style={{ marginBottom: last ? 0 : 20 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         marginBottom: 8 }}>
-        <span style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
+        <span id={labelId} style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
           color: cvStyles.ink70 }}>{label}</span>
         <span style={{ fontFamily: cvStyles.display, fontSize: 24, color: cvStyles.ink,
           fontVariantNumeric: 'tabular-nums' }}>{display}</span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
+        aria-labelledby={labelId} aria-valuetext={String(display)}
         style={{ width: '100%', accentColor: accent, color: accent }} />
     </div>
   );

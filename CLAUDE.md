@@ -5,19 +5,22 @@
 ## Project Overview
 
 Browser-based retirement planning calculator with Monte Carlo simulations. As of **V18.0** the
-front end is a React "Compass" app: `index.html` / `cover.html` are thin shells that load the
+front end is a React "Compass" app: `index.html` is a thin shell that loads the
 components in `cover-app/`, backed by the **real Monte Carlo engine** (`engine.js`) through the
 `real-engine.js` adapter. `engine.js` is reused as a pure math library &mdash; only its DOM init is
-bypassed. **Note:** five releases intentionally modify `engine.js` math: **V18.11** (contribution accumulation, IRMAA per-person + 2yr lookback, growing caps), **V19.5** (deep engine-accuracy audit), **V19.6** (additive &ldquo;ever went broke&rdquo; flag), **V19.9**, and **V19.10**. V19.9/V19.10 are detailed below; earlier releases are summarized in the Version History section and detailed in `CLAUDE-legacy.md`.
+bypassed. **Note (V19.11):** the app previously shipped a second, byte-identical entry page
+(`cover.html`, a leftover staging URL from the V18 redesign) &mdash; removed in V19.11 since nothing
+in the code, tests, or deploy pipeline referenced it and keeping two files in sync was a standing
+drift risk. There is now exactly one entry page. **Note:** five releases intentionally modify `engine.js` math: **V18.11** (contribution accumulation, IRMAA per-person + 2yr lookback, growing caps), **V19.5** (deep engine-accuracy audit), **V19.6** (additive &ldquo;ever went broke&rdquo; flag), **V19.9**, and **V19.10**. V19.9/V19.10 are detailed below; earlier releases are summarized in the Version History section and detailed in `CLAUDE-legacy.md`.
 
 Pre-V18 UI architecture (legacy imperative-DOM app, full v9.9&ndash;v17.6 history) AND the detailed
 V18.0&ndash;V19.8 release sections (moved 2026-07-07) are archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.10
+**Current Version:** 19.11
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
-**Tech Stack:** HTML5, CSS3, React + Babel (CDN), Chart.js v3.9.1, localStorage (`compassParams`)
+**Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/` as of V19.11; previously CDN), Chart.js v3.9.1, localStorage (`compassParams`)
 **Encoding:** Use HTML entities (`&mdash;` `&rarr;` `&middot;`) not Unicode to prevent mojibake
 
 **Documentation map:** `README.md` is the short public orientation; `CHANGELOG.md` is the concise release
@@ -89,7 +92,7 @@ Audit thoroughness should align with scope of changes and professional standards
 4. Let GitHub Pages deploy the merged `main` checkpoint
 5. Live browser test against the deployed URL &mdash; desktop and mobile
 6. Comprehensive audit (pre/post) confirming outcomes, not just implementation
-7. Version increment with systematic updates to ALL version references (incl. the `engine.js?v=` cache-buster in `real-engine.js` &mdash; without it browsers can serve a stale engine against new HTML)
+7. Version increment: run `node scripts/bump-version.mjs <new-version>` (added 2026-07-07) &mdash; it updates ALL 17 live version references at once (both `<title>` tags, every `?v=` cache-buster, and the `engine.js?v=` cache-buster in `real-engine.js` &mdash; without that one browsers can serve a stale engine against new HTML). Never bump versions by hand; manual bumps shipped a 19.10/19.10b mix.
 
 `scripts/deploy.sh` is an emergency direct-to-`main` fallback, not the standard workflow. It bypasses the
 pull-request review gate and broadly mirrors the local project folder, so use it only with explicit approval
@@ -425,3 +428,63 @@ ENGINE_PARAM_NAMES contract swaps `partTimeOwner` for the four new names. **DEFA
 **Cache-buster:** `engine.js?v=19.10` + `?v=19.10` on all `cover-app/*` includes in both shells;
 both HTML titles, `real-engine.js` header, saved-plan stamp (`19.10`), and on-screen kickers/tags
 reconciled to 19.10.
+
+---
+
+## V19.11 &mdash; Production hardening batch (self-hosted vendor libs, single entry page, failure screen, a11y)
+
+Approved by Cris 2026-07-10 from the "Production hardening" backlog item, scoped down to the five
+lowest-risk pieces after working through trade-offs together; `engine.js` math is UNCHANGED (no
+Tier B item touched). Two backlog ideas (extracting the engine from the legacy DOM file; moving
+heavy comparison work off the main thread) were deliberately left deferred &mdash; no user-visible
+payoff for the accuracy risk in the first case, no observed symptom yet in the second.
+
+- **Self-hosted vendor libraries.** `index.html` previously loaded React, ReactDOM, and Babel from
+  `unpkg.com` on every visit &mdash; if that third-party host ever had an outage, the app would not
+  start, and we had zero control over it. The exact pinned versions (React/ReactDOM 18.3.1, Babel
+  standalone 7.29.0) now ship inside the repo under `vendor/`. Provenance: downloaded the official
+  npm tarballs directly from `registry.npmjs.org` (reachable from the sandbox; `unpkg.com`,
+  `cdnjs.cloudflare.com`, and `cdn.jsdelivr.net` are not) and verified each tarball's sha1 against
+  npm's own published `shasum` before extracting anything &mdash; all three matched exactly. The
+  extracted `babel.min.js` was additionally confirmed byte-identical to the file the CDN had been
+  serving (its sha384 matches the `integrity` hash already in the pre-V19.11 `index.html`), since
+  Babel standalone ships one build regardless of dev/prod. New `integrity` (SRI) hashes were
+  computed for all three vendored files and kept on the `<script>` tags as a tripwire against the
+  local copy itself ever getting corrupted.
+- **Switched React/ReactDOM to their production builds** (was the development build of each,
+  meant for in-progress coding and noticeably larger/slower; behavior is identical, the only loss
+  is React's own console warnings, which we don't need in the shipped app).
+- **Engine-load failure screen.** `index.html`'s app-shell script used to await
+  `window._engineReady` (set by `real-engine.js`, resolves `true`/`false`, never hangs) and always
+  rendered `<App/>` regardless of the result &mdash; so if `engine.js` itself failed to load, the
+  app looked fine until the first screen tried to compute a plan and crashed. Now a `false` result
+  renders a plain "Something did not load, please check your connection and refresh" screen
+  instead. A second, independent plain-JS safety net (no React/Babel dependency, since those are
+  exactly what might have failed) shows the same message via `onerror` on the vendor `<script>`
+  tags themselves, guarded by a `root.dataset.appRendered` flag so it never clobbers a working app.
+- **Removed the second front door (`cover.html`).** Traced its origin: a staging URL from the V18
+  redesign, kept afterward only so old bookmarks wouldn't 404. Verified with `grep` that nothing in
+  the code, tests, or `.github/workflows/deploy.yml` referenced it &mdash; only documentation
+  mentioned it. Cris's call: delete outright, no redirect (small trusted audience, actively
+  developed). `scripts/bump-version.mjs`'s `FILES` list updated to drop it (previously bumped both
+  files' version strings in lockstep).
+- **Accessibility:** the one remaining unlabeled control (the age/spending dials on the "Try
+  Changes" screen, `CoverSlider` in `compass-cover.jsx`) now has `aria-labelledby` tied to its
+  visible label and an `aria-valuetext` carrying the already-formatted display value (e.g.
+  "$120,000") instead of the raw number.
+- **Housekeeping found and folded in:** `scripts/bump-version.mjs` (documented since 2026-07-07 as
+  the standard release step) had never actually been pushed to GitHub &mdash; it only existed as a
+  local file in the project folder. Confirmed via `git ls-tree` against every branch on the remote
+  (none had it). Committed for the first time in this batch; a fresh clone of the repo now matches
+  what the docs have described all along.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged count &mdash; no engine/adapter logic
+touched, so no new invariant tests were needed). `DEFAULTS` regression gate confirmed still **64**
+(`audit-adapter.test.js` asserts this directly). All five JSX files and the one inline
+`<script type="text/babel">` block in `index.html` re-verified to Babel-transform clean (via
+`@babel/standalone`, already vendored, run headlessly in Node against every file); `node --check`
+clean on `engine.js`, `real-engine.js`, `numeric-entry.js`, and `bump-version.mjs`.
+
+**Cache-buster:** `engine.js?v=19.11` + `?v=19.11` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and on-screen kickers/tags reconciled to 19.11. Single entry page now
+(`cover.html` deleted), so `bump-version.mjs` only touches `index.html` + `real-engine.js`.

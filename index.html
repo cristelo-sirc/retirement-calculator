@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Compass &middot; The Retirement Issue &middot; V19.10</title>
+  <title>Compass &middot; The Retirement Issue &middot; V19.11</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -14,23 +14,44 @@
     ::-webkit-scrollbar { width: 10px; height: 10px; }
     ::-webkit-scrollbar-thumb { background: rgba(26,24,21,0.2); border-radius: 5px; }
   </style>
-  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <!-- V19.11: self-hosted (was CDN via unpkg.com) so the app never depends on an outside
+       server to load. Production builds (smaller/faster than the dev builds these replaced;
+       dev builds print extra console warnings we don't need in the shipped app). Exact
+       official npm files, verified byte-for-byte against npm's published checksums before
+       being added to this repo — see CLAUDE.md V19.11 for the verification record. -->
+  <script src="vendor/react.production.min.js" integrity="sha384-DGyLxAyjq0f9SPpVevD6IgztCFlnMF6oW/XQGmfe+IsZ8TqEiDrcHkMLKI6fiB/Z" onerror="window._vendorLoadFailed('React')"></script>
+  <script src="vendor/react-dom.production.min.js" integrity="sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1" onerror="window._vendorLoadFailed('ReactDOM')"></script>
+  <script src="vendor/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" onerror="window._vendorLoadFailed('Babel')"></script>
+
+  <!-- V19.11: plain (non-React, non-Babel) safety net. If any script on this page fails to
+       load, this shows a clear message instead of leaving the visitor staring at a stuck
+       "Running your plan..." spinner or a blank page. Deliberately has zero dependencies on
+       React/Babel above, since those are exactly what might have failed to load. -->
+  <script>
+    window._vendorLoadFailed = function (name) {
+      console.error('Failed to load ' + name);
+      var root = document.getElementById('root');
+      if (!root || root.dataset.appRendered === 'true') return; // don't clobber a working app
+      root.innerHTML = '<div style="max-width:520px;margin:15vh auto;padding:32px;' +
+        'font-family:Inter,-apple-system,system-ui,sans-serif;text-align:center;color:#1a1815;">' +
+        '<div style="font-size:15px;font-weight:600;margin-bottom:8px;">Something did not load</div>' +
+        '<div style="font-size:14px;color:#1a1815b3;">Please check your connection and refresh the page.</div></div>';
+    };
+  </script>
 
   <!-- Real engine adapter: defines window.MockEngine and loads engine.js (math) after DOMContentLoaded -->
-  <script src="cover-app/real-engine.js?v=19.10"></script>
+  <script src="cover-app/real-engine.js?v=19.11"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- The mockup design components (the exact handoff UI) -->
-  <script src="cover-app/numeric-entry.js?v=19.10"></script>
-  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.10"></script>
-  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.10"></script>
-  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.10"></script>
-  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.10b"></script>
-  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.10b"></script>
+  <script src="cover-app/numeric-entry.js?v=19.11"></script>
+  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.11"></script>
+  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.11"></script>
+  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.11"></script>
+  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.11"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.11"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
@@ -109,14 +130,35 @@
       return <CoverDesktop {...shared} onOpenRework={openReworkWithLever} />;
     }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
+    // V19.11: honest engine-load-failure screen. window._engineReady (set in real-engine.js)
+    // resolves true only if engine.js (the math file) loaded successfully; it resolves false
+    // (never hangs, never rejects) if that script 404s or errors, so this .then always fires
+    // either way. Previously this callback ignored the value and rendered <App/> regardless,
+    // which meant a failed engine.js load left an app that looked fine until it crashed the
+    // moment a screen tried to compute a plan.
+    function EngineLoadError() {
+      return (
+        <div style={{ maxWidth: 520, margin: '15vh auto', padding: 32,
+          fontFamily: 'Inter, sans-serif', textAlign: 'center', color: '#1a1815' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Something did not load</div>
+          <div style={{ fontSize: 14, color: '#1a1815b3' }}>Please check your connection and refresh the page.</div>
+        </div>
+      );
+    }
+
+    const rootEl = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootEl);
     root.render(
       <div style={{ fontFamily: 'Inter, sans-serif', padding: 48, color: '#1a181580',
         fontSize: 13, letterSpacing: '0.16em', textTransform: 'uppercase' }}>
         Running your plan&hellip;
       </div>
     );
-    window._engineReady.then(() => root.render(<App />));
+    window._engineReady.then((engineLoaded) => {
+      if (!engineLoaded) { root.render(<EngineLoadError />); return; }
+      rootEl.dataset.appRendered = 'true'; // tells the plain-JS vendor-failure fallback to stand down
+      root.render(<App />);
+    });
   </script>
 </body>
 </html>

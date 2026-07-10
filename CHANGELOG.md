@@ -1,5 +1,14 @@
 # Change log
 
+## 19.11.0 — 2026-07-10
+
+- The app no longer depends on any outside server to load. It used to fetch React and its code-translator (Babel) from a third-party public host every time someone opened it; if that host ever had an outage, the app wouldn't start. Those files now live inside this project and are served with it. Verified byte-for-byte against the official published files before being added.
+- Faster load: switched from the "development" build of React (larger, with extra console warnings for people writing code) to the "production" build (smaller, no change in behavior).
+- If a required file still fails to load for some other reason (e.g. a bad connection), the app now shows a plain message — "Something did not load, please check your connection and refresh" — instead of leaving the screen stuck on "Running your plan..." forever.
+- Removed a second, duplicate copy of the app's front page (`cover.html`) that dated back to an early redesign and had no remaining purpose; the app has one entry page now. This also removes a long-standing risk of the two copies drifting out of sync.
+- Fixed one remaining slider (the "Try Changes" age/spending dials) that a screen reader announced with no name or readable value.
+- No changes to any calculation, score, or on-screen figure. The built-in sample still reads 64/100.
+
 ## 19.10.0 — 2026-07-07
 
 - Part-time income is now one channel per partner. Instead of V19.9's single income with a "who earns it" choice, couples get two independent part-time / other-income sections — yours and your partner's — each with its own on/off switch, annual amount, and start/stop ages. A household where both of you work part-time (different amounts, different years) can finally be modeled as it really is.
