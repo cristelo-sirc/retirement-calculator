@@ -1,5 +1,12 @@
 # Change log
 
+## 19.12.0 — 2026-07-10
+
+- Reorganized the Input Data questionnaire. Related fields used to all pour into one flat grid per section, so a large section like "Guaranteed income" could hold 18 fields across five topics with nothing visually tying them together, and toggling one setting on or off could reflow everything below it. Fields are now grouped under small labeled headers (for example, Social Security · Your pension · Partner's pension · Your part-time income · Partner's part-time income), so related fields stay together and turning something on or off only moves its own small group.
+- Fixed the two part-time-income "Amount / yr" fields reading identically when both you and your partner have one. They're now "Your amount / yr" and "Partner's amount / yr" — clear at a glance and to a screen reader.
+- Removed an unused, unreachable variant of the questionnaire that was never actually shown to anyone (a leftover from early design exploration). No visible change; the questionnaire you see is unchanged in content, only its section grouping and labels above.
+- No changes to any calculation, score, or on-screen figure. The built-in sample still reads 64/100.
+
 ## 19.11.0 — 2026-07-10
 
 - The app no longer depends on any outside server to load. It used to fetch React and its code-translator (Babel) from a third-party public host every time someone opened it; if that host ever had an outage, the app wouldn't start. Those files now live inside this project and are served with it. Verified byte-for-byte against the official published files before being added.

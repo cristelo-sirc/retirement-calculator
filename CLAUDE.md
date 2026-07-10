@@ -16,7 +16,7 @@ drift risk. There is now exactly one entry page. **Note:** five releases intenti
 Pre-V18 UI architecture (legacy imperative-DOM app, full v9.9&ndash;v17.6 history) AND the detailed
 V18.0&ndash;V19.8 release sections (moved 2026-07-07) are archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.11
+**Current Version:** 19.12
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -498,3 +498,66 @@ clean on `engine.js`, `real-engine.js`, `numeric-entry.js`, and `bump-version.mj
 **Cache-buster:** `engine.js?v=19.11` + `?v=19.11` on all `cover-app/*` includes; HTML title,
 `real-engine.js` header, and on-screen kickers/tags reconciled to 19.11. Single entry page now
 (`cover.html` deleted), so `bump-version.mjs` only touches `index.html` + `real-engine.js`.
+
+---
+
+## V19.12 &mdash; Input Data sub-groups + drop dead essentials mode (UX-FIX-PLAN-2026-07-10 Release 1)
+
+First of three planned UI-only releases from a structured design critique run 2026-07-10 against
+deployed V19.11 (`UX-FIX-PLAN-2026-07-10.md`, local-only, gitignored). `engine.js` and `real-engine.js`
+scoring logic UNCHANGED &mdash; display layer only. Approved by Cris in three decisions: fold the
+dead-mode removal into this release, keep the at-ceiling empty state plain with no Safe-to-spend
+pointer (that's Release 2, not yet built), and no dropping a year-by-year table column to fix its
+clipped END BALANCE (also Release 2/3, not yet built) &mdash; widen the table's container instead when
+that item ships.
+
+- **Input Data reorganized into labeled sub-groups.** Every questionnaire section used to pour its
+  fields into one flat 3-column grid in list order, so unrelated fields shared rows and a toggle
+  reflowed everything below it. `cover-inputs.jsx` (desktop `CSub`) and `cover-mobile.jsx` (mobile
+  `MSub`, newly reused outside the Advanced block) now group related fields under small-caps
+  headers: What you've saved (Accounts / One-time windfall), What comes in (You / Your partner),
+  What goes out (Everyday spending / Healthcare / Later-life changes / Legacy goal & inflation),
+  Guaranteed income (Social Security / Your pension / Partner's pension / Your part-time / Partner's
+  part-time), Investments (Mix today / Glide path / Roth conversions). "The people" and "Your home"
+  stay flat (small, no natural sub-topic split). Conditional fields render inside their own
+  sub-group only, so toggling one reflows just that block.
+- **Removed the dead `mode="essentials"` variant.** `index.html` always rendered
+  `CoverInputs mode="detailed"`; the essentials progressive-disclosure branch (and `CGroup`'s
+  Show-more expander) was unreachable dead code. Deleted along with the `mode` prop entirely;
+  `CoverInputs` no longer takes one.
+- **Fixed a real accessible-name collision.** The two part-time-income "Amount / yr" fields (yours
+  and your partner's) read identically to a screen reader even after the sub-group split, since
+  visual containment alone doesn't create an accessible group name. Two-part fix: the fields are now
+  labeled "Your amount / yr" / "Partner's amount / yr" (with matching "From/To your age" on the user
+  side, mirroring the partner side's existing "From/To partner's age"), and `CSub`/`MSub` gained
+  `role="group"` + `aria-labelledby` (via `React.useId()`) tying every sub-group's fields to its
+  heading as their accessible group name &mdash; the actual ARIA-level fix, not just a copy tweak.
+- No param renames, no `engine.js` or `real-engine.js` changes.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched).
+`DEFAULTS` regression gate confirmed still **64**. Both touched JSX files + `index.html`'s inline
+Babel block transform clean; `node --check` clean on the untouched plain-JS files. Live-audited on
+the deployed GitHub Pages URL at desktop 1680px with an "everything on" couple plan (both pensions,
+both part-time channels, windfall, Roth conversions, spending slow-down, guardrails): every
+sub-group rendered correctly, the two amount/yr fields read distinctly, no console errors. Cris's
+real saved plan (`localStorage['compassParams']`) was backed up before testing and confirmed
+byte-identical after. **Mobile not visually verified this session** &mdash; the Chrome tool's
+`resize_window` was silently ignored (matches the standing lesson that this happens intermittently),
+so no phone-width screenshot could be captured. Mobile code is verified by construction (identical
+`MStep`/`MSub` field wiring to desktop, `input-coverage` test passing for both layouts) but Cris
+should phone-check: open Input Data on a phone, turn on "Me + partner" and both part-time toggles,
+confirm the sub-group headers read clearly and the two amount fields say "Your"/"Partner's".
+
+**PR workflow note:** the GitHub PR-creation URL required a logged-in browser session, which this
+session's Chrome didn't have and credential entry is out of scope for Claude to perform. Followed
+the same pattern already visible in the repo's own merge-commit history (V19.5/V19.8/V19.11): merged
+the release branch into `main` locally in the `/tmp` clone with `git merge --no-ff`, then pushed
+`main` directly, rather than via GitHub's web UI.
+
+**Cache-buster:** `engine.js?v=19.12` + `?v=19.12` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.12 in the same push
+(no repeat of the V19.11 process gap).
+
+**Next up:** Release 2 (honest at-ceiling move handling + slider guides) and Release 3 (copy honesty
++ polish batch, including the year-by-year table width fix), per `UX-FIX-PLAN-2026-07-10.md`. Neither
+started.
