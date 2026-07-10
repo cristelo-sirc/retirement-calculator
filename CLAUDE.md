@@ -477,6 +477,16 @@ payoff for the accuracy risk in the first case, no observed symptom yet in the s
   local file in the project folder. Confirmed via `git ls-tree` against every branch on the remote
   (none had it). Committed for the first time in this batch; a fresh clone of the repo now matches
   what the docs have described all along.
+- **Process gap caught by the post-deploy live check, then fixed same-release:** `bump-version.mjs`
+  only ever rewrites `<title>` tags and `?v=` cache-busters (documented, deliberate scope). It does
+  NOT touch the five hardcoded on-screen version kickers/tags (Welcome and Desktop-cover footers,
+  the Rework/Charts/Questionnaire `CoverChrome` `tag=` prop) or the `real-engine.js` header comment
+  &mdash; those have apparently been reconciled BY HAND every release, and this batch's first push
+  missed them (deployed V19.11 briefly showed a "V19.10" footer/tags while the title and cache-buster
+  correctly read V19.11). Caught by the live-browser check below, fixed in the same release with a
+  second small commit. Flagged here rather than silently patched: a future release should either
+  keep remembering this manual step or (separate, not-yet-approved follow-up) extend
+  `bump-version.mjs` to cover these five spots too so this can't be missed again.
 
 **Validation.** Full suite **97 pass, 0 fail** (unchanged count &mdash; no engine/adapter logic
 touched, so no new invariant tests were needed). `DEFAULTS` regression gate confirmed still **64**
