@@ -194,12 +194,28 @@ function GlidePathChart({ results, theme: th, width = 860, height = 240 }) {
 // V19.3: no longer computes its own odds. Takes precomputed `data` from
 // window.MockEngine.computeMoves() — the SAME full-path-count runs that feed the
 // Results move cards — so a move can never show two different values on two screens.
+// V19.13 (UX-FIX-PLAN Release 2a): at or near the score ceiling every move's bar reads the
+// same width as "Your plan today" — several identical full-width bars, all saying "100," rank
+// changes that buy nothing. Filter to the same >=1-point set the Results cards and Try Changes
+// buttons use (window.cvQualifyingMoves — single source, so this chart can never disagree with
+// the cards about which moves qualify), and when none clear the bar, replace the whole chart
+// with the same honest empty-state line those surfaces show.
 function ScenarioCompareChart({ data, theme: th, labelWidth = 168, baseLabel }) {
   if (!data) return null;
   const base = data.base;
+  const qualifying = window.cvQualifyingMoves ? window.cvQualifyingMoves(data.moves)
+    : data.moves.filter(m => m.delta >= 1).sort((a, b) => b.delta - a.delta);
+  if (qualifying.length === 0) {
+    return (
+      <div style={{ fontSize: 14, lineHeight: 1.6, color: th.ink70, fontFamily: th.body,
+        border: `1px solid ${th.rule}`, background: th.paperWarm, padding: '18px 20px' }}>
+        {window.CV_NO_MOVES_MESSAGE || 'No move we test improves your odds — you’re already at the top of the range.'}
+      </div>
+    );
+  }
   const rows = [
     { id: 'base', label: baseLabel || 'Your plan today', rate: base, note: 'as entered' },
-    ...data.moves.map(m => ({ id: m.id, label: m.title, rate: m.rate, note: m.note })),
+    ...qualifying.map(m => ({ id: m.id, label: m.title, rate: m.rate, note: m.note })),
     ...(data.combined ? [{ id: 'all', label: 'All together', rate: data.combined.rate, note: 'combined' }] : []),
   ];
   return (
@@ -237,6 +253,10 @@ function ScenarioCompareChart({ data, theme: th, labelWidth = 168, baseLabel }) 
       })}
       <div style={{ fontSize: 12, color: th.ink70, marginTop: 4, paddingLeft: labelWidth + 14 }}>
         Dashed line marks your plan’s current odds ({base}/100).
+        {/* V19.13 (Release 2a): shown wherever per-move deltas sit alongside a combined figure,
+            so a 98-99 reading (say +1/+2/+1 that can't sum past 100) doesn't look like broken
+            math — points cannot add past 100 by construction. */}
+        {data.combined ? ' ' + (window.CV_OVERLAP_FOOTNOTE || 'Moves overlap — together they can’t push past 100.') : ''}
       </div>
     </div>
   );

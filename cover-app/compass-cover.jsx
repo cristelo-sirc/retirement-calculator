@@ -240,6 +240,51 @@ function CoverOutcomes({ results }) {
 }
 window.CoverOutcomes = CoverOutcomes;
 
+// V19.13 (UX-FIX-PLAN Release 2, item 2a): the >=1-point rule. A move only "counts" as
+// improving your odds if its measured delta clears a full point — a card reading "+0" can be
+// hiding a real but sub-point delta (e.g. +0.4), and "must buy a whole point" is the honest
+// bar. This is the SINGLE source every surface that lists moves reads from (Results cards, the
+// Cover teaser, Try Changes suggested-move buttons, the Try Changes comparison bars, and the
+// mobile Results cards) so none of them can ever disagree about which moves qualify.
+function cvQualifyingMoves(moves) {
+  return (moves || []).filter(function (m) { return m.delta >= 1; })
+    .sort(function (a, b) { return b.delta - a.delta; });
+}
+window.cvQualifyingMoves = cvQualifyingMoves;
+
+var CV_MOVE_WORDS = { 1: 'One move', 2: 'Two moves', 3: 'Three moves' };
+var CV_MOVE_VERB = { 1: 'buys', 2: 'buy', 3: 'buy' };
+// "Three moves that buy better odds" / "One move that buys better odds" — the same sentence
+// used as the desktop Cover teaser title and the mobile Results section heading, so the two
+// layouts never disagree on wording (same discipline as cvChanceLabel/cvDangerLine).
+function cvMovesTeaserTitle(count) {
+  var words = CV_MOVE_WORDS[count] || (count + ' moves');
+  var verb = CV_MOVE_VERB[count] || 'buy';
+  return words + ' that ' + verb + ' better odds';
+}
+window.cvMovesTeaserTitle = cvMovesTeaserTitle;
+
+// Small-caps kicker above the desktop "ranked" card list — same count, label-style casing.
+function cvMovesRankedKicker(count) {
+  if (count === 0) return 'Already at the Top';
+  var n = { 1: 'One Move', 2: 'Two Moves', 3: 'Three Moves' }[count] || (count + ' Moves');
+  return n + ', Ranked';
+}
+window.cvMovesRankedKicker = cvMovesRankedKicker;
+
+// V19.13 (2a): honest empty-state copy when NO move clears the >=1-point bar. Decided with
+// Cris 2026-07-10: keep it plain, no pointer to Safe-to-spend. Shared by the Results cards
+// list, the mobile Results cards, and the Try Changes bars chart, so the ceiling story reads
+// identically everywhere it appears.
+var CV_NO_MOVES_MESSAGE = 'No move we test improves your odds — you’re already at the top of the range.';
+window.CV_NO_MOVES_MESSAGE = CV_NO_MOVES_MESSAGE;
+
+// V19.13 (2a): shown wherever per-move deltas appear alongside a combined "all together"
+// figure, so a 98–99 reading (say +1/+2/+1 that can't sum past 100) doesn't look like
+// broken math.
+var CV_OVERLAP_FOOTNOTE = 'Moves overlap — together they can’t push past 100.';
+window.CV_OVERLAP_FOOTNOTE = CV_OVERLAP_FOOTNOTE;
+
 function cvVerdictColor(v) {
   return v === 'green' ? cvStyles.sage : v === 'yellow' ? cvStyles.amber
     : v === 'orange' ? cvStyles.rust : cvStyles.clay;
@@ -378,7 +423,8 @@ function CoverDesktop(props) {
   // source the Try Changes bars also read — the cards and the bars can never disagree.
   // The headline successRate is passed in so the base run isn't repeated.
   const moves = React.useMemo(() => window.MockEngine.computeMoves(params, results.successRate), [params, results]);
-  const moveCards = moves.moves.filter(l => l.delta >= 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+  // V19.13 (Release 2a): >=1-point rule, replacing the old >=0 filter — see cvQualifyingMoves.
+  const moveCards = window.cvQualifyingMoves(moves.moves).slice(0, 3);
   const fmt = window.MockEngine.formatCurrency;
   const vc = cvVerdictColor(results.verdict);
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
@@ -421,9 +467,13 @@ function CoverDesktop(props) {
               body={dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and these results fill in with your real plan.'}
               accent={vc} big />
             <CoverGlance params={params} results={results} />
-            <CoverLine kicker="Inside"
-              title="Three moves that buy better odds"
-              body="Small, specific changes — and exactly how many points each is worth." />
+            {/* V19.13 (Release 2a): the teaser hides entirely when no move clears the
+                >=1-point bar — a ceiling plan has nothing to tease here. */}
+            {moveCards.length > 0 && (
+              <CoverLine kicker="Inside"
+                title={window.cvMovesTeaserTitle(moveCards.length)}
+                body="Small, specific changes — and exactly how many points each is worth." />
+            )}
             {!dirty && (
               <button onClick={() => window._coverNav && window._coverNav('quiz')}
                 style={{ alignSelf: 'flex-start', padding: '14px 26px', background: cvStyles.ink, color: cvStyles.paper,
@@ -506,33 +556,44 @@ function CoverDesktop(props) {
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 56,
             alignItems: 'start' }}>
             <div>
-              <div style={{ ...cvKicker, marginBottom: 18 }}>Three Moves, Ranked</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {moveCards.map(l => (
-                  <div key={l.id} role="button" tabIndex={0} onClick={() => openMove(l.id)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMove(l.id); } }}
-                    style={{
-                    display: 'grid', gridTemplateColumns: '1fr auto', gap: 18, alignItems: 'center',
-                    background: cvStyles.paper, width: '100%', cursor: 'pointer',
-                    border: `1px solid ${cvStyles.ink}`, padding: '16px 20px' }}>
-                    <div>
-                      <div style={{ fontFamily: cvStyles.display, fontSize: 21, lineHeight: 1.15 }}>{l.title}</div>
-                      <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 3 }}>{l.detail}</div>
-                      <div style={{ fontSize: 10.5, color: cvStyles.sage, marginTop: 7, fontWeight: 600,
-                        letterSpacing: '0.08em', textTransform: 'uppercase' }}>Draft this on Try Changes →</div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontFamily: cvStyles.display, fontSize: 30, color: cvStyles.sage,
-                        lineHeight: 1 }}>+{l.delta}</div>
-                      <div style={{ ...cvKicker, fontSize: 10.5 }}>points</div>
-                    </div>
+              <div style={{ ...cvKicker, marginBottom: 18 }}>{window.cvMovesRankedKicker(moveCards.length)}</div>
+              {/* V19.13 (Release 2a): honest empty state when no move clears +1 — replaces the
+                  ranked cards + footer instead of showing three "+0" cards. */}
+              {moveCards.length === 0 ? (
+                <div style={{ border: `1px solid ${cvStyles.rule}`, background: cvStyles.paper,
+                  padding: '18px 20px', fontSize: 14, lineHeight: 1.6, color: cvStyles.ink70 }}>
+                  {window.CV_NO_MOVES_MESSAGE}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {moveCards.map(l => (
+                      <div key={l.id} role="button" tabIndex={0} onClick={() => openMove(l.id)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMove(l.id); } }}
+                        style={{
+                        display: 'grid', gridTemplateColumns: '1fr auto', gap: 18, alignItems: 'center',
+                        background: cvStyles.paper, width: '100%', cursor: 'pointer',
+                        border: `1px solid ${cvStyles.ink}`, padding: '16px 20px' }}>
+                        <div>
+                          <div style={{ fontFamily: cvStyles.display, fontSize: 21, lineHeight: 1.15 }}>{l.title}</div>
+                          <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 3 }}>{l.detail}</div>
+                          <div style={{ fontSize: 10.5, color: cvStyles.sage, marginTop: 7, fontWeight: 600,
+                            letterSpacing: '0.08em', textTransform: 'uppercase' }}>Draft this on Try Changes →</div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontFamily: cvStyles.display, fontSize: 30, color: cvStyles.sage,
+                            lineHeight: 1 }}>+{l.delta}</div>
+                          <div style={{ ...cvKicker, fontSize: 10.5 }}>points</div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 14 }}>
-                Tap a move to draft it on <strong style={{ color: cvStyles.ink70 }}>Try Changes</strong> —
-                nothing changes here until you choose to publish it.
-              </div>
+                  <div style={{ fontSize: 12.5, color: cvStyles.ink70, marginTop: 14 }}>
+                    Tap a move to draft it on <strong style={{ color: cvStyles.ink70 }}>Try Changes</strong> —
+                    nothing changes here until you choose to publish it.
+                  </div>
+                </>
+              )}
             </div>
             <div style={{ border: `1px solid ${cvStyles.ink}`, padding: '22px 24px',
               background: cvStyles.paper, display: 'flex', flexDirection: 'column',
@@ -553,7 +614,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.12</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.13</div>
         </div>
       </section>
     </div>
@@ -608,26 +669,99 @@ function CoverPaycheck({ paycheck }) {
 // (CoverReason removed in V19.7 — the "Why the Verdict Reads That Way" band it fed was
 //  replaced by CoverOutcomes / "How It Could Play Out".)
 
-function CoverSlider({ label, value, onChange, min, max, step = 1, display, accent, last }) {
-  // V19.11: the visible label was a plain <span>, with no programmatic link to the <input>, so
-  // a screen reader announced the control only as "slider" with no name and no readable value.
-  // aria-labelledby ties it to the visible label text (no duplicate hidden label needed);
-  // aria-valuetext substitutes the already-formatted display string (e.g. "$120,000") for the
-  // raw numeric value a screen reader would otherwise read out.
+// V19.13 (UX-FIX-PLAN Release 2, item 2b): tick-mark intervals per field type — SS claim ages
+// get a tick every year (the whole 62-70 range is meaningful one year at a time), the spending
+// dial ticks every $25k, and the retire-at dial scales its interval to how wide its range is
+// (2 years on a short runway, 5+ on a long one) so the ticks stay legible instead of a wall of
+// hairlines. "kind" is caller-supplied since the same min/max span means different things for
+// different fields (SS's 8-year span wants yearly ticks; retire-at's rarely does).
+function cvSliderTicks(min, max, kind) {
+  var span = max - min;
+  var step = kind === 'money' ? 25000
+    : kind === 'ss' ? 1
+    : (span <= 10 ? 2 : span <= 30 ? 5 : 10);
+  var ticks = [];
+  for (var v = min; v <= max; v += step) ticks.push(v);
+  if (ticks[ticks.length - 1] !== max) ticks.push(max);
+  return ticks;
+}
+
+function cvSliderEndLabel(val, kind) {
+  return kind === 'money' ? window.MockEngine.formatCurrency(val, { compact: true }) : String(val);
+}
+
+// V19.13 (Release 2b): the bare track had no min/max labels, no tick marks, and a static
+// readout while the questionnaire's identical-looking big numbers are click-to-type — an
+// inconsistency Cris flagged. Fix: end labels under the track, tick marks via the native
+// <input list=datalist> mechanism, and the readout is now a real text input reusing
+// numeric-entry.js's parse/validate/clamp rules (same commit-on-Enter-or-blur behavior as the
+// questionnaire's NumericStepper, minus the +/- buttons a drag control doesn't need).
+function CoverSlider({ label, value, onChange, min, max, step = 1, display, accent, last, kind }) {
+  // V19.11: aria-labelledby ties the range input to the visible label text; aria-valuetext
+  // substitutes the already-formatted display string (e.g. "$120,000") for the raw numeric
+  // value a screen reader would otherwise read out. Both kept intact below.
   const labelId = React.useId();
+  const listId = React.useId();
+  const precision = window.NumericEntry ? window.NumericEntry.stepPrecision(step) : 0;
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(String(value));
+  const ignoreBlurRef = React.useRef(false);
+  const ticks = React.useMemo(() => cvSliderTicks(min, max, kind), [min, max, kind]);
+
+  const commit = () => {
+    const parsed = window.NumericEntry.validateDraft(draft, { min, max, precision });
+    setEditing(false);
+    if (!parsed.ok) { setDraft(String(value)); return; }
+    setDraft(String(parsed.value));
+    if (parsed.value !== value) onChange(parsed.value);
+  };
+
+  const beginEditing = (input) => {
+    if (editing) return;
+    ignoreBlurRef.current = false;
+    setEditing(true);
+    setDraft(String(value));
+    window.requestAnimationFrame(() => input.select());
+  };
+
   return (
     <div style={{ marginBottom: last ? 0 : 20 }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         marginBottom: 8 }}>
         <span id={labelId} style={{ fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase',
           color: cvStyles.ink70 }}>{label}</span>
-        <span style={{ fontFamily: cvStyles.display, fontSize: 24, color: cvStyles.ink,
-          fontVariantNumeric: 'tabular-nums' }}>{display}</span>
+        <input type="text" inputMode={precision > 0 ? 'decimal' : 'numeric'}
+          aria-label={`${label}, type an exact value`} title="Click or tap to type an exact value"
+          value={editing ? draft : String(display)}
+          onFocus={e => beginEditing(e.currentTarget)}
+          onClick={e => beginEditing(e.currentTarget)}
+          onChange={e => { setEditing(true); setDraft(e.target.value); }}
+          onBlur={() => {
+            if (ignoreBlurRef.current) { ignoreBlurRef.current = false; return; }
+            commit();
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); ignoreBlurRef.current = true; commit(); e.currentTarget.blur(); }
+            if (e.key === 'Escape') {
+              ignoreBlurRef.current = true; setEditing(false); setDraft(String(value)); e.currentTarget.blur();
+            }
+          }}
+          style={{ fontFamily: cvStyles.display, fontSize: 24, color: cvStyles.ink,
+            fontVariantNumeric: 'tabular-nums', textAlign: 'right', border: 'none',
+            borderBottom: editing ? `1px solid ${cvStyles.ink}` : '1px solid transparent',
+            background: editing ? 'rgba(26,24,21,0.045)' : 'transparent', outline: 'none',
+            width: '9ch', padding: '0 2px', cursor: 'text' }} />
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        aria-labelledby={labelId} aria-valuetext={String(display)}
+        aria-labelledby={labelId} aria-valuetext={String(display)} list={listId}
         style={{ width: '100%', accentColor: accent, color: accent }} />
+      <datalist id={listId}>{ticks.map(t => <option key={t} value={t} />)}</datalist>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10.5,
+        color: cvStyles.ink50 }}>
+        <span>{cvSliderEndLabel(min, kind)}</span>
+        <span>{cvSliderEndLabel(max, kind)}</span>
+      </div>
     </div>
   );
 }
@@ -732,7 +866,7 @@ function CoverAdjust(props) {
   const _spouseEarly = params.hasPartner && params.spouseClaimAge < 70;
   const _ssTitle = (_userEarly && _spouseEarly) ? 'Claim SS at 70 (both of you)'
     : _userEarly ? 'You claim SS at 70' : 'Spouse claims SS at 70';
-  const levers = [
+  const _possibleLevers = [
     ...(_delayedRet > params.retireAge ? [{ id: 'delay',
       title: 'Retire ' + (_delayedRet - params.retireAge) + (_delayedRet - params.retireAge === 1 ? ' year later' : ' years later'),
       apply: () => setField('retireAge', _delayedRet), active: sc.retireAge === _delayedRet }] : []),
@@ -741,6 +875,12 @@ function CoverAdjust(props) {
       apply: () => setSc(s => ({ ...s, ...(_userEarly ? { ssClaimAge: 70 } : {}), ...(_spouseEarly ? { spouseClaimAge: 70 } : {}) })),
       active: (!_userEarly || sc.ssClaimAge === 70) && (!_spouseEarly || sc.spouseClaimAge === 70) }] : []),
   ];
+  // V19.13 (Release 2a): "possible" isn't the same bar as "worth showing" — a lever that's
+  // applicable but buys under a point (e.g. a plan already near 100) shouldn't be offered as
+  // if it helps. Filter to the same >=1-point set the cards and bars use, keyed off the
+  // FILED plan's own move deltas (movesData, computed above) so id-for-id this always matches.
+  const _qualifyingIds = window.cvQualifyingMoves(movesData.moves).map(function (m) { return m.id; });
+  const levers = _possibleLevers.filter(function (l) { return _qualifyingIds.indexOf(l.id) !== -1; });
 
   // V19.1: a move card tapped on Cover arrives here with props.stageLever set to that
   // card's id. Reuse the exact same "apply" a Rework suggested-move button would run, so
@@ -759,7 +899,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.12">
+    <CoverChrome active="rework" tag="V19.13">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -805,20 +945,20 @@ function CoverAdjust(props) {
                 )}
               </div>
               <CoverSlider label="Retire at" value={sc.retireAge} onChange={v => setField('retireAge', v)}
-                min={params.currentAge + 1} max={80} display={sc.retireAge} accent={vc} />
+                min={params.currentAge + 1} max={80} display={sc.retireAge} accent={vc} kind="retire" />
               <Chip k="retireAge" fromTxt={params.retireAge} toTxt={sc.retireAge} />
               <div style={{ height: 16 }} />
               <CoverSlider label="Other spending / yr" value={sc.spending} onChange={v => setField('spending', v)}
-                min={40000} max={250000} step={5000} display={fmt(sc.spending)} accent={vc} />
+                min={40000} max={250000} step={5000} display={fmt(sc.spending)} accent={vc} kind="money" />
               <Chip k="spending" fromTxt={fmt(params.spending)} toTxt={fmt(sc.spending)} />
               <div style={{ height: 16 }} />
               <CoverSlider label={params.hasPartner ? 'You claim SS at' : 'Claim SS at'} value={sc.ssClaimAge} onChange={v => setField('ssClaimAge', v)}
-                min={62} max={70} display={sc.ssClaimAge} accent={vc} last={!params.hasPartner} />
+                min={62} max={70} display={sc.ssClaimAge} accent={vc} last={!params.hasPartner} kind="ss" />
               <Chip k="ssClaimAge" fromTxt={params.ssClaimAge} toTxt={sc.ssClaimAge} />
               {params.hasPartner && <>
                 <div style={{ height: 16 }} />
                 <CoverSlider label="Spouse claims SS at" value={sc.spouseClaimAge} onChange={v => setField('spouseClaimAge', v)}
-                  min={62} max={70} display={sc.spouseClaimAge} accent={vc} last />
+                  min={62} max={70} display={sc.spouseClaimAge} accent={vc} last kind="ss" />
                 <Chip k="spouseClaimAge" fromTxt={params.spouseClaimAge} toTxt={sc.spouseClaimAge} />
               </>}
               <button onClick={commit} disabled={!anyChange} style={{ width: '100%', marginTop: 22, padding: '14px',
@@ -826,21 +966,29 @@ function CoverAdjust(props) {
                 fontFamily: cvStyles.body, fontSize: 12, letterSpacing: '0.14em', textTransform: 'uppercase',
                 cursor: anyChange ? 'pointer' : 'default', fontWeight: 600 }}>Publish as your new plan</button>
             </div>
-            <div style={{ ...cvKicker, marginBottom: 12 }}>Suggested moves · tap to set</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {levers.map(l => (
-                <button key={l.id} onClick={l.apply} style={{ display: 'flex', alignItems: 'center',
-                  justifyContent: 'space-between', gap: 14, textAlign: 'left',
-                  background: l.active ? cvStyles.sageSoft : cvStyles.paperWarm,
-                  border: `1px solid ${l.active ? cvStyles.sage : cvStyles.rule}`, cursor: 'pointer',
-                  padding: '12px 16px', transition: 'background 150ms' }}>
-                  <span style={{ fontFamily: cvStyles.display, fontSize: 18 }}>{l.title}</span>
-                  <span style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
-                    color: l.active ? cvStyles.sage : cvStyles.ink70, fontWeight: 600 }}>
-                    {l.active ? '✓ Applied' : 'Set'}</span>
-                </button>
-              ))}
-            </div>
+            {/* V19.13 (Release 2a): a lever that's applicable but buys under a point is filtered
+                out above (levers); when NONE qualify, hide the whole block instead of offering
+                buttons that don't move the number — same "hide when empty" treatment as the
+                Cover teaser. */}
+            {levers.length > 0 && (
+              <>
+                <div style={{ ...cvKicker, marginBottom: 12 }}>Suggested moves · tap to set</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {levers.map(l => (
+                    <button key={l.id} onClick={l.apply} style={{ display: 'flex', alignItems: 'center',
+                      justifyContent: 'space-between', gap: 14, textAlign: 'left',
+                      background: l.active ? cvStyles.sageSoft : cvStyles.paperWarm,
+                      border: `1px solid ${l.active ? cvStyles.sage : cvStyles.rule}`, cursor: 'pointer',
+                      padding: '12px 16px', transition: 'background 150ms' }}>
+                      <span style={{ fontFamily: cvStyles.display, fontSize: 18 }}>{l.title}</span>
+                      <span style={{ fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase',
+                        color: l.active ? cvStyles.sage : cvStyles.ink70, fontWeight: 600 }}>
+                        {l.active ? '✓ Applied' : 'Set'}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -874,7 +1022,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.12">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.13">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1014,7 +1162,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.12</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.13</div>
       </div>
     </div>
   );
