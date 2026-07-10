@@ -231,7 +231,10 @@
     // V19.3: exact move deltas at the FULL path count, from the same computeMoves
     // source the desktop Results cards and Try Changes bars read.
     const moves = React.useMemo(() => ME.computeMoves(params, results.successRate), [params, results]);
-    const moveCards = moves.moves.filter(l => l.delta >= 0).sort((a, b) => b.delta - a.delta).slice(0, 3);
+    // V19.13 (Release 2a): >=1-point rule, replacing the old >=0 filter — matches desktop's
+    // cvQualifyingMoves exactly (single source, both layouts read the same helper).
+    const moveCards = window.cvQualifyingMoves ? window.cvQualifyingMoves(moves.moves).slice(0, 3)
+      : moves.moves.filter(l => l.delta >= 1).sort((a, b) => b.delta - a.delta).slice(0, 3);
     return (
       <div style={{ padding: '22px 20px 28px' }}>
         <div style={{ textAlign: 'center', paddingBottom: 22, marginBottom: 22,
@@ -292,22 +295,34 @@
         <MOutcomes results={results} />
 
         <section>
-          <div style={{ ...mKick, marginBottom: 12 }}>Three moves that buy better odds</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {moveCards.map(l => (
-              <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: 14, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '13px 15px' }}>
-                <div>
-                  <div style={{ fontFamily: cm.display, fontSize: 17, lineHeight: 1.15 }}>{l.title}</div>
-                  <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 2 }}>{l.detail}</div>
-                </div>
-                <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
-                  <div style={{ fontFamily: cm.display, fontSize: 26, color: cm.sage, lineHeight: 1 }}>+{l.delta}</div>
-                  <div style={{ ...mKick, fontSize: 10 }}>points</div>
-                </div>
-              </div>
-            ))}
+          {/* V19.13 (Release 2a): dynamic count + honest empty state, matching desktop — see
+              cvMovesTeaserTitle / CV_NO_MOVES_MESSAGE (single-sourced from compass-cover.jsx). */}
+          <div style={{ ...mKick, marginBottom: 12 }}>
+            {moveCards.length > 0
+              ? (window.cvMovesTeaserTitle ? window.cvMovesTeaserTitle(moveCards.length) : 'Moves that buy better odds')
+              : 'Already at the top'}
           </div>
+          {moveCards.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {moveCards.map(l => (
+                <div key={l.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  gap: 14, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '13px 15px' }}>
+                  <div>
+                    <div style={{ fontFamily: cm.display, fontSize: 17, lineHeight: 1.15 }}>{l.title}</div>
+                    <div style={{ fontSize: 11.5, color: cm.ink70, marginTop: 2 }}>{l.detail}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
+                    <div style={{ fontFamily: cm.display, fontSize: 26, color: cm.sage, lineHeight: 1 }}>+{l.delta}</div>
+                    <div style={{ ...mKick, fontSize: 10 }}>points</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 13, lineHeight: 1.55, color: cm.ink70, textWrap: 'pretty' }}>
+              {window.CV_NO_MOVES_MESSAGE || 'No move we test improves your odds — you’re already at the top of the range.'}
+            </p>
+          )}
         </section>
 
         {/* V19.4: mobile stays a two-tab companion (Results + Input Data) — this note
