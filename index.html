@@ -124,7 +124,7 @@
 
       const shared = { params, setParams };
       if (isMobile)             return <CoverMobile {...shared} adjustNote={adjustNote} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} freshStart={freshStart} onTabChange={(id) => setScreen(id)} />;
-      if (screen === 'quiz')    return <CoverInputs mode="detailed" {...shared} adjustNote={adjustNote} freshStart={freshStart} />;
+      if (screen === 'quiz')    return <CoverInputs {...shared} adjustNote={adjustNote} freshStart={freshStart} />;
       if (screen === 'rework')  return <CoverAdjust {...shared} stageLever={stageLever} onLeverStaged={() => setStageLever(null)} />;
       if (screen === 'chart')   return <CoverCharts {...shared} />;
       return <CoverDesktop {...shared} onOpenRework={openReworkWithLever} />;
