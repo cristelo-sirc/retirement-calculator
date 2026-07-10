@@ -89,7 +89,7 @@ pull-request review gate and should be used only with explicit approval.
 
 ## Project map
 
-- `index.html` / `cover.html` — browser entry pages.
+- `index.html` — the browser entry page.
 - `engine.js` — retirement simulation and financial calculations.
 - `cover-app/real-engine.js` — adapter between the interface and calculation engine.
 - `cover-app/` — the Input Data, Results, Try Changes, and Charts screen components.
