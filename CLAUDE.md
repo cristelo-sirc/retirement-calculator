@@ -16,7 +16,7 @@ drift risk. There is now exactly one entry page. **Note:** five releases intenti
 Pre-V18 UI architecture (legacy imperative-DOM app, full v9.9&ndash;v17.6 history) AND the detailed
 V18.0&ndash;V19.8 release sections (moved 2026-07-07) are archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.12
+**Current Version:** 19.13
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -558,6 +558,75 @@ the release branch into `main` locally in the `/tmp` clone with `git merge --no-
 `real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.12 in the same push
 (no repeat of the V19.11 process gap).
 
-**Next up:** Release 2 (honest at-ceiling move handling + slider guides) and Release 3 (copy honesty
-+ polish batch, including the year-by-year table width fix), per `UX-FIX-PLAN-2026-07-10.md`. Neither
-started.
+**Next up (superseded by V19.13 below):** Release 2 shipped same-day as V19.13. Release 3 (copy
+honesty + polish batch, including the year-by-year table width fix) remains not started.
+
+---
+
+## V19.13 &mdash; Honest at-ceiling move handling + slider guides (UX-FIX-PLAN-2026-07-10 Release 2)
+
+Second of three planned UI-only releases from `UX-FIX-PLAN-2026-07-10.md`. `engine.js` and
+`real-engine.js` scoring logic UNCHANGED &mdash; display layer only, same ground rules as V19.12.
+Approved by Cris same-session ("Continue with 2 and 3"); shipped as its own release per the plan's
+own rule that each release ships separately with the full ritual.
+
+- **2a &mdash; the &ge;1-point rule.** At or near a 100/100 score, "Three Moves, Ranked" used to
+  show cards reading "+0 points" &mdash; changes that buy nothing, which reads as broken rather than
+  as "you're already safe." A move now only counts if its measured delta clears a full point (a
+  hidden +0.4 rounding to "+0" was the actual bug; "must buy a whole point" is the honest bar). New
+  shared filter `cvQualifyingMoves()` in `compass-cover.jsx` is the SINGLE source every surface that
+  lists moves reads from: the Results cards, the desktop Cover teaser (which now hides entirely
+  when nothing qualifies, matching the same treatment as the Try Changes "Suggested moves" block),
+  the Try Changes suggested-move buttons (now keyed off the FILED plan's own `computeMoves()`
+  deltas, not just applicability), the Try Changes comparison bars (`ScenarioCompareChart` in
+  `retire-charts.jsx`, which now fully replaces itself with the empty-state message when no move
+  qualifies, instead of rendering several identical 100%-reading bars), and the mobile Results cards
+  (`cover-mobile.jsx`). Dynamic headline copy (`cvMovesTeaserTitle`: "Three/Two/One move(s) that
+  buy(s) better odds") and a dynamic kicker (`cvMovesRankedKicker`: "Three Moves, Ranked" down to
+  "Already at the Top"). Honest empty-state line (Cris's decision, unchanged from the plan: plain
+  "top of the range" wording, no pointer to Safe-to-spend) and an overlap footnote wherever
+  per-move deltas sit next to a combined "all together" figure, so a 98&ndash;99 reading doesn't
+  look like broken math.
+- **2b &mdash; slider guides.** `CoverSlider` (the four Try Changes dials: retire age, spending,
+  and both SS claim ages) gained end labels under the track, tick marks via the native
+  `input[list]`/`datalist` mechanism (yearly for SS claim age, every $25k for spending, 2&ndash;5
+  years for retire-at depending on span &mdash; `cvSliderTicks()`), and a click-to-type readout that
+  reuses `numeric-entry.js`'s parse/validate/clamp rules, the same commit-on-Enter-or-blur behavior
+  as the questionnaire's `NumericStepper` (minus the +/- buttons a drag control doesn't need). The
+  V19.11 `aria-labelledby`/`aria-valuetext` wiring was kept intact.
+- No param renames, no `engine.js` or `real-engine.js` changes.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched).
+DEFAULTS regression gate unaffected (display-only change; not re-verified by a new test, per the
+plan's own validation criteria of "suite green + DEFAULTS 64 + live audit" for this release). All
+touched JSX files (`compass-cover.jsx`, `retire-charts.jsx`, `cover-mobile.jsx`) plus the
+`index.html` inline Babel block transform clean; `node --check` clean on `real-engine.js`. Pure-JS
+logic (`cvQualifyingMoves`, `cvMovesTeaserTitle`, `cvMovesRankedKicker`, `cvSliderTicks`,
+`cvSliderEndLabel`) spot-checked with standalone Node assertions before shipping (filtering,
+sort order, grammar for 1/2/3 counts, tick-interval math for all three `kind` values).
+
+Live-audited on the deployed GitHub Pages URL. Desktop: the browser tool's `resize_window` to
+1680px was silently ignored again (same standing limitation as prior releases) &mdash; actual
+tested width was ~1568px, still comfortably above the 769px mobile breakpoint. Two scenarios: (1)
+Cris's real saved plan, which happens to score 64/100 (same as DEFAULTS &mdash; he's never
+diverged it) &mdash; confirmed 3 cards with the exact deltas `computeMoves()` reports (+19/+10/+5),
+the dynamic "Three moves that buy better odds" headline and teaser, the Try Changes bars showing
+all 5 rows plus the overlap footnote, and typed slider entry (clicked "Retire at," typed 72, Enter)
+correctly re-scoring the draft to 95 with a working diff chip and Reset-all. (2) A synthetic
+100/100 ceiling plan built via `MockEngine.compute()` in-page (confirmed all three move deltas are
+exactly 0 before testing) &mdash; confirmed the Cover teaser disappears, the ranked-cards section
+reads "Already at the Top" with the plain empty-state line, the Try Changes "Suggested moves" block
+disappears entirely, and the bars chart is fully replaced by the same empty-state line. Mobile
+(375px, resize succeeded this session): both scenarios re-confirmed with matching wording. No
+console errors in either viewport. Cris's real `localStorage['compassParams']` was backed up under
+a separate key before testing and restored byte-identical after (length and exact-string match
+verified programmatically, not just visually).
+
+**PR workflow note:** same as V19.12 &mdash; no logged-in browser session available, so the release
+branch was merged into `main` locally (`git merge --no-ff`) in the `/tmp` clone and pushed directly.
+
+**Cache-buster:** `engine.js?v=19.13` + `?v=19.13` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.13 in the same push.
+
+**Next up:** Release 3 (copy honesty + polish batch, including the year-by-year table width fix),
+per `UX-FIX-PLAN-2026-07-10.md`. Not started.

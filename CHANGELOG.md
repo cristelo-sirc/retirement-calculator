@@ -1,5 +1,12 @@
 # Change log
 
+## 19.13.0 — 2026-07-10
+
+- Fixed a trust problem on plans that are already doing great: at 100 (or close to it), the "Three Moves, Ranked" section used to show three cards all reading "+0 points" — changes that don't actually buy you anything. A move now only shows up if it's worth at least a full point. When your plan is already at the top of the range and nothing we test can improve it, you'll see a plain note saying so instead of empty cards. This applies everywhere moves are shown — Results, Try Changes, and the phone view.
+- The "Try Changes" comparison chart had the same problem in reverse: near a perfect score, it could show several bars that all looked identical. Same fix — only real improvements are shown, and a short note now explains that the individual moves overlap, which is why they don't add up past 100.
+- The four sliders on Try Changes (retire age, spending, and Social Security claim ages) now show the low and high end of their range underneath the track, plus small tick marks, so you have a sense of where you're dragging to. You can also click or tap the number next to any slider and type an exact value, the same way you can elsewhere in the app.
+- No changes to any calculation or scoring logic — this release only changes what's displayed and when. The built-in sample still reads 64/100.
+
 ## 19.12.0 — 2026-07-10
 
 - Reorganized the Input Data questionnaire. Related fields used to all pour into one flat grid per section, so a large section like "Guaranteed income" could hold 18 fields across five topics with nothing visually tying them together, and toggling one setting on or off could reflow everything below it. Fields are now grouped under small labeled headers (for example, Social Security · Your pension · Partner's pension · Your part-time income · Partner's part-time income), so related fields stay together and turning something on or off only moves its own small group.
