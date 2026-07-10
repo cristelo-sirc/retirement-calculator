@@ -206,7 +206,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag="V19.11"
+    <window.CoverChrome active="quiz" tag="V19.12"
       rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
