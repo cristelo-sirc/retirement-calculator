@@ -63,8 +63,12 @@ function BalanceFanChart({ results, theme: th, width = 860, height = 320 }) {
           return (
             <g key={f}>
               <line x1={pad.l} x2={W - pad.r} y1={ys(v)} y2={ys(v)} stroke={th.rule} />
+              {/* V19.14 (Release 3, item 3): hand-rolled "$10506k" style read badly at large
+                  balances; reuse the same compact formatter every dollar figure elsewhere in
+                  the app already uses ("$10.5M" / "$40k"). Same fix applied to both this chart
+                  and the fan chart above — same class of issue, same axis pattern. */}
               <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="11.5" fill={th.ink70}
-                fontFamily={th.body}>${Math.round(v / 1000)}k</text>
+                fontFamily={th.body}>{window.MockEngine.formatCurrency(v, { compact: true })}</text>
             </g>
           );
         })}
@@ -126,8 +130,12 @@ function IncomeSourceChart({ results, theme: th, width = 860, height = 300 }) {
           return (
             <g key={f}>
               <line x1={pad.l} x2={W - pad.r} y1={ys(v)} y2={ys(v)} stroke={th.rule} opacity="0.5" />
+              {/* V19.14 (Release 3, item 3): hand-rolled "$10506k" style read badly at large
+                  balances; reuse the same compact formatter every dollar figure elsewhere in
+                  the app already uses ("$10.5M" / "$40k"). Same fix applied to both this chart
+                  and the fan chart above — same class of issue, same axis pattern. */}
               <text x={pad.l - 8} y={ys(v) + 4} textAnchor="end" fontSize="11.5" fill={th.ink70}
-                fontFamily={th.body}>${Math.round(v / 1000)}k</text>
+                fontFamily={th.body}>{window.MockEngine.formatCurrency(v, { compact: true })}</text>
             </g>
           );
         })}

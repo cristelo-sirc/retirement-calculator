@@ -79,14 +79,16 @@
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
-        <div style={{ position: 'relative', borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
-          <select aria-label={label} value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%',
-            fontFamily: cm.display, fontSize: 20, color: cm.ink, background: 'transparent', border: 'none',
-            outline: 'none', cursor: 'pointer', WebkitAppearance: 'none', appearance: 'none',
-            padding: '4px 20px 4px 0' }}>
+        {/* V19.14 (Release 3, item 6): same fix as desktop's CSelect — caret sits right next to
+            the value instead of pinned at the row's far edge, so it reads as one control. */}
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
+          <select aria-label={label} value={value} onChange={e => onChange(e.target.value)} style={{
+            flex: '0 1 auto', minWidth: 0, fontFamily: cm.display, fontSize: 20, color: cm.ink,
+            background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer',
+            WebkitAppearance: 'none', appearance: 'none', padding: '4px 0' }}>
             {options.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
           </select>
-          <span style={{ position: 'absolute', right: 0, bottom: 11, pointerEvents: 'none',
+          <span aria-hidden="true" style={{ marginLeft: 8, pointerEvents: 'none',
             fontSize: 12, color: cm.ink50 }}>▾</span>
         </div>
       </div>
@@ -350,7 +352,7 @@
           margin: '0 0 10px', letterSpacing: '-0.01em' }}>A few questions.</h1>
         <p style={{ fontSize: 13.5, lineHeight: 1.55, color: cm.ink70, textAlign: 'center',
           margin: '0 auto 24px', maxWidth: 320, textWrap: 'pretty' }}>
-          Every input your results use, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip.
+          Every input your results use, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip. Tap a number to type it exactly.
         </p>
 
         {adjustNote && adjustNote.length > 0 && (

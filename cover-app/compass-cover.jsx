@@ -599,12 +599,16 @@ function CoverDesktop(props) {
               background: cvStyles.paper, display: 'flex', flexDirection: 'column',
               justifyContent: 'center', gap: 14 }}>
               <div style={{ ...cvKicker }}>Want to try something else?</div>
+              {/* V19.14 (Release 3, item 1): "Every dial lives on Try Changes" overclaimed —
+                  Try Changes has a curated handful of levers (four for a couple, three solo),
+                  not every possible dial. Reworded to say what it actually is, and made the
+                  count conditional so it's never wrong for either household type. */}
               <div style={{ fontFamily: cvStyles.display, fontSize: 22, lineHeight: 1.3 }}>
-                Every dial lives on Try Changes.
+                {params.hasPartner ? 'Four' : 'Three'} of your biggest levers live on Try Changes.
               </div>
               <div style={{ fontSize: 13, color: cvStyles.ink70, lineHeight: 1.6 }}>
-                This page only ever shows your filed plan. Head to Try Changes to draft any change
-                and watch the odds move — nothing counts here until you publish it.
+                Retirement age, spending{params.hasPartner ? ', and both Social Security claim ages' : ', and your Social Security claim age'} —
+                draft any of them there and watch the odds move. Nothing here changes until you publish it.
               </div>
               <button onClick={() => window._coverNav && window._coverNav('rework')}
                 style={{ alignSelf: 'flex-start', padding: '12px 22px', background: cvStyles.ink,
@@ -614,7 +618,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.13</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.14</div>
         </div>
       </section>
     </div>
@@ -899,7 +903,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.13">
+    <CoverChrome active="rework" tag="V19.14">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -1022,7 +1026,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.13">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.14">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1058,9 +1062,13 @@ function CoverCharts(props) {
           <h2 style={{ fontFamily: cvStyles.display, fontSize: 34, margin: '0 0 8px', letterSpacing: '-0.01em' }}>
             Stocks now, steadier later.
           </h2>
+          {/* V19.14 (Release 3, item 2): this used to always claim "your glide path eases out
+              of stocks," even with the glide-path toggle off — when the chart actually draws a
+              flat line. Copy now describes whichever is true. */}
           <p style={{ fontSize: 14.5, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 620, margin: '0 0 24px' }}>
-            Your glide path eases out of stocks as you age, so a crash late in retirement does less
-            damage when you can least afford it.
+            {params.enableGlidePath
+              ? 'Your glide path eases out of stocks as you age, so a crash late in retirement does less damage when you can least afford it.'
+              : `Your mix stays flat at ${params.stockAllocation}% stocks for the whole plan. Turn on the glide path in Input Data if you'd rather ease out of stocks as you age.`}
           </p>
           <GlidePathChart results={results} theme={theme} width={960} height={240} />
         </div>
@@ -1077,8 +1085,17 @@ function CoverCharts(props) {
             Three storyline views (Average / Rough / Strong markets) + dollars toggle. */}
         <div style={{ marginTop: 48, paddingTop: 36, borderTop: `1px solid ${cvStyles.rule}` }}>
           <div style={{ ...cvKicker, marginBottom: 14 }}>The year-by-year numbers</div>
-          <YearByYearTable results={results} theme={theme} />
         </div>
+      </div>
+      {/* V19.14 (Release 3, item 4): the table clipped its own END BALANCE column — its most
+          important one — even at 1901px, because it inherited this screen's 1040px reading-
+          column cap while there was real headroom outside it. Cris's decision: no column drops.
+          Break just the table out to its own wider 1280px cap (same centering, own wrapper) so
+          all 9 columns fit; verified comfortable at 1280px too. The table's own horizontal
+          scroll (inside YearByYearTable) remains the fallback below that width. Charts is
+          desktop-only (V19.4), so this breakout has no mobile-width concern. */}
+      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 32px 64px' }}>
+        <YearByYearTable results={results} theme={theme} />
       </div>
     </CoverChrome>
   );
@@ -1162,7 +1179,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.13</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.14</div>
       </div>
     </div>
   );
