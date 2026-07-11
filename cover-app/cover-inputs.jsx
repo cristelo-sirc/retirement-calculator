@@ -131,14 +131,19 @@ function CSelect({ field, label, value, onChange, options, theme }) {
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
         textWrap: 'pretty' }}>{info.help}</div>}
-      <div style={{ position: 'relative', borderBottom: `1px solid ${cvi.ink}`, paddingBottom: 6 }}>
+      {/* V19.14 (Release 3, item 6): the caret used to sit pinned at the row's far-right edge
+          while the value text sat at the far left, so a short value ("Roth") read as plain text
+          with a stray triangle way off to the side — nothing tied the two together as one
+          control. Caret now sits immediately next to the value (inline-flex, content-width),
+          so "Roth ▾" reads as a single control regardless of how wide the row is. */}
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${cvi.ink}`, paddingBottom: 6 }}>
         <select aria-label={label} value={value} onChange={e => onChange(e.target.value)} style={{
-          width: '100%', fontFamily: cvi.display, fontSize: 19, color: cvi.ink, background: 'transparent',
-          border: 'none', outline: 'none', cursor: 'pointer', WebkitAppearance: 'none',
-          appearance: 'none', padding: '2px 18px 2px 0' }}>
+          flex: '0 1 auto', minWidth: 0, fontFamily: cvi.display, fontSize: 19, color: cvi.ink,
+          background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer',
+          WebkitAppearance: 'none', appearance: 'none', padding: '2px 0' }}>
           {options.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
         </select>
-        <span style={{ position: 'absolute', right: 0, bottom: 9, pointerEvents: 'none',
+        <span aria-hidden="true" style={{ marginLeft: 6, pointerEvents: 'none',
           fontSize: 11, color: cvi.ink50 }}>▾</span>
       </div>
     </div>
@@ -206,7 +211,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
 
   return (
-    <window.CoverChrome active="quiz" tag="V19.13"
+    <window.CoverChrome active="quiz" tag="V19.14"
       rightExtra={<CviScoreChip score={results.successRate} vc={vc} dirty={dirty} />}>
       <div style={{ maxWidth: 920, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cviKicker, textAlign: 'center', marginBottom: 12 }}>
@@ -216,7 +221,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
           margin: '0 0 14px', letterSpacing: '-0.01em' }}>A few questions.</h1>
         <p style={{ fontSize: 15.5, lineHeight: 1.6, color: cvi.ink70, textAlign: 'center',
           maxWidth: 560, margin: '0 auto 30px' }}>
-          Every input your results use, in plain language. Hover any “i” for the why behind it; sensible defaults cover anything you skip.
+          Every input your results use, in plain language. Hover any “i” for the why behind it; sensible defaults cover anything you skip. Tap any number to type it exactly.
         </p>
 
         {adjustNote && adjustNote.length > 0 && (
@@ -278,8 +283,16 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
             <CField field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" theme={theme} />
             <CSelect field="savingsDest" label="Your contributions go to" value={params.savingsDest} onChange={v => update('savingsDest', v)} theme={theme}
               options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
-            {params.employerContributionRate > 0 && <CSelect field="employerContributionDest" label="Your employer contributions go to" value={params.employerContributionDest} onChange={v => update('employerContributionDest', v)} theme={theme}
-              options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
+            {/* V19.14 (Release 3, item 9): "Your employer contributions go to" wrapped to two
+                lines in this column (confirmed live at 1280px), breaking row alignment with its
+                siblings — the exact case the plan flagged. It's the last field in this sub-group,
+                so spanning two grid columns for extra width doesn't reflow anything after it. */}
+            {params.employerContributionRate > 0 && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <CSelect field="employerContributionDest" label="Your employer contributions go to" value={params.employerContributionDest} onChange={v => update('employerContributionDest', v)} theme={theme}
+                  options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />
+              </div>
+            )}
           </CSub>
           {partner && (
             <CSub title="Your partner">
@@ -289,8 +302,14 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
               <CField field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" theme={theme} />
               <CSelect field="spouseSavingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)} theme={theme}
                 options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
-              {params.spouseEmployerContributionRate > 0 && <CSelect field="spouseEmployerContributionDest" label="Partner's employer contributions go to" value={params.spouseEmployerContributionDest} onChange={v => update('spouseEmployerContributionDest', v)} theme={theme}
-                options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
+              {/* V19.14 (Release 3, item 9): same fix as the user's version above — last field
+                  in this sub-group, so a 2-column span is safe here too. */}
+              {params.spouseEmployerContributionRate > 0 && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <CSelect field="spouseEmployerContributionDest" label="Partner's employer contributions go to" value={params.spouseEmployerContributionDest} onChange={v => update('spouseEmployerContributionDest', v)} theme={theme}
+                    options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />
+                </div>
+              )}
             </CSub>
           )}
         </CGroup>
@@ -393,8 +412,13 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
               onChange={v => update('taxableGainRatio', v)} suffix="%" theme={theme} />
             <CField field="bracketGrowth" label="Tax bracket growth" value={params.bracketGrowth} step={0.1} min={0} max={5}
               onChange={v => update('bracketGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />
-            <CToggle field="tcjaSunset" label="Assume higher future tax rates" value={params.enableTCJASunset}
-              onChange={v => update('enableTCJASunset', v)} theme={theme} />
+            {/* V19.14 (Release 3, item 9): "Assume higher future tax rates" wrapped to two
+                lines (confirmed live at 1280px). Alone in its row already, so a 2-column span
+                just gives it breathing room without touching any sibling. */}
+            <div style={{ gridColumn: 'span 2' }}>
+              <CToggle field="tcjaSunset" label="Assume higher future tax rates" value={params.enableTCJASunset}
+                onChange={v => update('enableTCJASunset', v)} theme={theme} />
+            </div>
           </CSub>
           <CSub title="Market assumptions">
             <CField field="stockReturn" label="Stock return" value={params.stockReturn} step={0.1} min={3} max={12}
@@ -450,10 +474,11 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
               cursor: 'pointer', fontWeight: 600 }}>See your results →</button>
           </div>
         </div>
-
-        <div style={{ marginTop: 24 }}>
-          <window.CoverSaveLoad params={params} setParams={setParams} align="left" />
-        </div>
+        {/* V19.14 (Release 3, item 8): this footer row duplicated the "Returning? Load your
+            saved plan" callout already at the top of this screen — three Save/Load surfaces
+            total across the app (this one, the Input Data top callout, the Results top
+            callout) when one per screen is enough. Removed; the top callout (and the Welcome
+            screen's own Load path) cover the same ground. */}
       </div>
     </window.CoverChrome>
   );
