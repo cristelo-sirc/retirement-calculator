@@ -443,13 +443,16 @@ function CoverDesktop(props) {
           section — once the reader scrolled into the Results article below, the nav scrolled off
           (contradicting the V19.1 "stays in view" note). Lifted out, its containing block is the
           full page, so it stays pinned the whole way down Results. */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: cvStyles.paper, padding: '34px 64px 0' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14 }}>
+      {/* V19.15: the single ink rule now sits BELOW the tabs (matching CoverChrome and the
+          handoff design) — the active tab's 2px underline lands on it. The old layout had
+          the rule between the wordmark and the tab row. */}
+      <div style={{ position: 'sticky', top: 0, zIndex: 10, background: cvStyles.paper,
+        padding: '34px 64px 0', borderBottom: `1px solid ${cvStyles.ink}` }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <div style={{ fontFamily: cvStyles.display, fontSize: 34, lineHeight: 1 }}>Compass</div>
           <div style={{ ...cvKicker }}>The Retirement Issue · May 2026 · No. 5</div>
         </div>
-        <CoverNav active="cover" emphasizeQuiz={!dirty} />
+        <CoverNav active="cover" />
       </div>
       {/* ===== COVER ===== */}
       <section style={{ minHeight: 780, padding: '0 64px 40px', boxSizing: 'border-box',
@@ -618,7 +621,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.14</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.15</div>
         </div>
       </section>
     </div>
@@ -773,50 +776,60 @@ function CoverSlider({ label, value, onChange, min, max, step = 1, display, acce
 // ============================================================================
 // SHARED CHROME + NAV
 // ============================================================================
-function CoverNav({ active, emphasizeQuiz }) {
-  // V19.3: four tabs, plain-job names (per Cris). Internal ids are unchanged so
-  // window._coverNav targets and the app shell's routing keep working.
-  const tabs = [
-    { id: 'quiz', label: 'Input Data' },
-    { id: 'cover', label: 'Results' },
-    { id: 'rework', label: 'Try Changes' },
-    { id: 'chart', label: 'Charts' },
-  ];
+// V19.15: two labeled zones (design_handoff_input_chapters) — "Step 1 · Enter" holds
+// Input Data, "Step 2 · Your plan" holds the three plan tabs, separated by a hairline.
+// Results is prominent by full-ink color only; bold + underline is reserved strictly for
+// the ACTIVE tab. Internal ids are unchanged so window._coverNav routing keeps working.
+// The V19.3 "Start here" CTA pill (emphasizeQuiz) is retired — the Step 1 kicker plus the
+// hero's own "Enter your data" button carry that job now. Tabs stay real <button>s with
+// aria-current (V19.9 A5).
+function CoverNav({ active }) {
+  const navKicker = { fontFamily: cvStyles.body, fontSize: 10, letterSpacing: '0.16em',
+    textTransform: 'uppercase', color: cvStyles.ink70 };
+  const tabBtn = (id, label, prominent) => (
+    <button key={id} type="button" onClick={() => window._coverNav && window._coverNav(id)}
+      aria-current={active === id ? 'page' : undefined}
+      style={{ cursor: 'pointer', background: 'transparent', border: 'none', fontFamily: cvStyles.body,
+        fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '0 2px 8px',
+        color: (active === id || prominent) ? cvStyles.ink : cvStyles.ink70,
+        fontWeight: active === id ? 600 : 400,
+        borderBottom: active === id ? `2px solid ${cvStyles.ink}` : '2px solid transparent' }}>
+      {label}</button>
+  );
   return (
-    <nav style={{ display: 'flex', gap: 26, justifyContent: 'center', alignItems: 'center', paddingTop: 14, flexWrap: 'wrap' }}>
-      {tabs.map(t => {
-        const isCTA = emphasizeQuiz && t.id === 'quiz' && active !== 'quiz';
-        // V19.9 (A5): primary nav items are real <button>s, not <span>s — so they get a tab
-        // stop, Enter/Space activation, and a screen-reader-visible role/current state. Button
-        // defaults are reset so the visual design is unchanged.
-        if (isCTA) return (
-          <button key={t.id} type="button" onClick={() => window._coverNav && window._coverNav(t.id)}
-            style={{ cursor: 'pointer', border: 'none', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
-              textTransform: 'uppercase', fontWeight: 600, color: cvStyles.paper, background: cvStyles.sage,
-              padding: '6px 14px', borderRadius: 99 }}>
-            Start here · {t.label}</button>
-        );
-        return (
-          <button key={t.id} type="button" onClick={() => window._coverNav && window._coverNav(t.id)}
-            aria-current={active === t.id ? 'page' : undefined}
-            style={{ cursor: 'pointer', background: 'transparent', border: 'none', fontFamily: cvStyles.body, fontSize: 13, letterSpacing: '0.14em',
-            textTransform: 'uppercase', paddingBottom: 7,
-            color: active === t.id ? cvStyles.ink : cvStyles.ink70,
-            fontWeight: active === t.id ? 600 : 400,
-            borderBottom: active === t.id ? `2px solid ${cvStyles.ink}` : '2px solid transparent' }}>
-            {t.label}</button>
-        );
-      })}
+    <nav style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 44, paddingTop: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <span style={navKicker}>Step 1 · Enter</span>
+        {tabBtn('quiz', 'Input Data')}
+      </div>
+      <span aria-hidden="true" style={{ width: 1, height: 30, background: cvStyles.rule, marginBottom: 6 }} />
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <span style={navKicker}>Step 2 · Your plan</span>
+        <div style={{ display: 'flex', gap: 24 }}>
+          {tabBtn('cover', 'Results', true)}
+          {tabBtn('rework', 'Try Changes')}
+          {tabBtn('chart', 'Charts')}
+        </div>
+      </div>
     </nav>
   );
 }
 
-function CoverChrome({ active, children, bg, tag, rightExtra }) {
+// V19.15: `fill` mode for the chapter wizard — a fixed-viewport flex column (masthead on
+// top, children own the remaining height with their internal scroll + pinned footer). The
+// other three screens keep the default page-scroll behavior, byte-for-byte. In fill mode
+// the bottom version-tag strip is omitted (the wizard shows its version in the chapter
+// rail instead, keeping an on-screen stamp for cache verification during live tests).
+function CoverChrome({ active, children, bg, tag, rightExtra, fill }) {
   return (
-    <div style={{ width: '100%', height: '100%', background: bg || cvStyles.paper, color: cvStyles.ink,
-      fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden' }}>
+    <div style={fill
+      ? { width: '100%', height: '100%', background: bg || cvStyles.paper, color: cvStyles.ink,
+          fontFamily: cvStyles.body, display: 'flex', flexDirection: 'column', overflow: 'hidden' }
+      : { width: '100%', height: '100%', background: bg || cvStyles.paper, color: cvStyles.ink,
+          fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden' }}>
       <div style={{ padding: '30px 64px 0', background: cvStyles.paper,
-        borderBottom: `1px solid ${cvStyles.ink}`, position: 'sticky', top: 0, zIndex: 5 }}>
+        borderBottom: `1px solid ${cvStyles.ink}`,
+        ...(fill ? { flex: '0 0 auto' } : { position: 'sticky', top: 0, zIndex: 5 }) }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }}>
           <div style={{ fontFamily: cvStyles.display, fontSize: 30, lineHeight: 1 }}>Compass</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -826,8 +839,10 @@ function CoverChrome({ active, children, bg, tag, rightExtra }) {
         </div>
         <CoverNav active={active} />
       </div>
-      {children}
-      <div style={{ ...cvKicker, textAlign: 'center', padding: '36px 0 48px' }}>{tag}</div>
+      {fill
+        ? <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{children}</div>
+        : children}
+      {!fill && <div style={{ ...cvKicker, textAlign: 'center', padding: '36px 0 48px' }}>{tag}</div>}
     </div>
   );
 }
@@ -903,7 +918,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.14">
+    <CoverChrome active="rework" tag="V19.15">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -1026,7 +1041,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.14">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.15">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1179,7 +1194,7 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
           </div>
           {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.14</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.15</div>
       </div>
     </div>
   );

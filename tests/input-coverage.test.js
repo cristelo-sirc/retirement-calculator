@@ -36,9 +36,10 @@ function hasUpdate(source, key) {
 
 const HELP_ALIASES = {
   userPreTax: 'preTax',
-  spousePreTax: 'preTax',
   userRoth: 'roth',
-  spouseRoth: 'roth',
+  // V19.15: spousePreTax / spouseRoth now have their OWN FIELD_INFO entries (the chapter
+  // handoff gives partner accounts owner-specific help lines), so they are no longer
+  // aliased to the user entries — the default key===field mapping applies.
   enableWindfall: 'windfall',
   enableSpendingReduction: 'spendingReduction',
   enablePensionCOLA: 'pensionCOLA',

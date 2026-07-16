@@ -1,15 +1,17 @@
 // cover-mobile.jsx — 07 · Cover · Mobile
-// Phone view of the magazine-cover concept. Two tabs (renamed V19.3 to match desktop):
+// Phone view of the magazine-cover concept. Two screens:
 //   • Results    — the hero success number, verdict, paycheck, and the moves.
-//   • Input Data — the "everything shown" intake, single-column, with an
-//                  Advanced toggle for the assumption-level dials.
-// V19.4 (mobile-parity decision, Option B): mobile deliberately stays this two-tab
-// companion — Try Changes and Charts are desktop-only — but CoverView now discloses
-// that in copy so mobile users know those screens exist rather than assuming they don't.
-// Option A (a native third mobile tab for the fan chart + year-by-year table) was
-// considered and moved to BACKLOG.md as a possible future upgrade, not built.
-// Reuses window.cvStyles / window.FIELD_INFO / window.InfoTip / window.MockEngine
-// and window.CVI_STATES. Loaded after compass-cover.jsx + cover-inputs.jsx.
+//   • Input Data — V19.15: the 8-chapter wizard (design_handoff_input_chapters),
+//                  single-column, with a CONTENTS bottom sheet instead of the
+//                  desktop chapter rail, a sticky Back/Save/Next footer, and NO
+//                  score shown anywhere during entry (no masthead chip, no
+//                  result card — the number appears only on Results).
+// V19.15 masthead: two rows — wordmark + issue line, then "Step 1 · Input Data" /
+// "Step 2 · Your plan" as the screen switcher (the old bottom tab bar is retired).
+// V19.4 (mobile-parity decision, Option B): mobile deliberately stays this two-screen
+// companion — Try Changes and Charts are desktop-only, disclosed in CoverView copy.
+// Reuses window.cvStyles / window.FIELD_INFO / window.InfoTip / window.MockEngine /
+// window.CV_CHAPTERS. Loaded after compass-cover.jsx + cover-inputs.jsx.
 
 (function () {
   const cm = window.cvStyles;
@@ -22,7 +24,7 @@
   const mKick = { fontFamily: cm.body, fontSize: 11.5, letterSpacing: '0.16em',
     textTransform: 'uppercase', color: cm.ink70 };
 
-  // ── Field primitives (full-width, 42px touch targets) ─────────────────────
+  // ── Field primitives (full-width, 44px touch targets per the V19.15 handoff) ──
   function FieldHead({ field, label }) {
     const info = field && FIELD_INFO[field];
     return (
@@ -38,7 +40,8 @@
     );
   }
 
-  const mStepBtn = { width: 42, height: 42, borderRadius: '50%', border: `1px solid ${cm.ink20}`,
+  // V19.15: 42px → 44px circles (handoff's minimum touch target).
+  const mStepBtn = { width: 44, height: 44, borderRadius: '50%', border: `1px solid ${cm.ink20}`,
     background: 'transparent', color: cm.ink, fontSize: 22, lineHeight: 1, display: 'flex',
     alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: '0 0 auto', fontFamily: cm.body };
 
@@ -62,11 +65,12 @@
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
+        {/* V19.15: pill 46×26 → 48×28 (handoff touch-target spec), row ≥44px tall. */}
         <button onClick={() => onChange(!value)} aria-label={label} aria-pressed={value} style={{ display: 'flex', alignItems: 'center', gap: 12,
-          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <span style={{ width: 46, height: 26, borderRadius: 99, background: value ? cm.sage : cm.ink20,
+          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, minHeight: 44 }}>
+          <span style={{ width: 48, height: 28, borderRadius: 99, background: value ? cm.sage : cm.ink20,
             position: 'relative', transition: 'background 180ms', flex: '0 0 auto' }}>
-            <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 22, height: 22,
+            <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 24, height: 24,
               borderRadius: '50%', background: cm.paper, transition: 'left 180ms' }} />
           </span>
           <span style={{ fontFamily: cm.display, fontSize: 19, color: cm.ink }}>{value ? 'On' : 'Off'}</span>
@@ -79,9 +83,8 @@
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
-        {/* V19.14 (Release 3, item 6): same fix as desktop's CSelect — caret sits right next to
-            the value instead of pinned at the row's far edge, so it reads as one control. */}
-        <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8 }}>
+        {/* V19.14 (Release 3, item 6): caret sits right next to the value — one control. */}
+        <div style={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${cm.ink}`, paddingBottom: 8, minHeight: 44 }}>
           <select aria-label={label} value={value} onChange={e => onChange(e.target.value)} style={{
             flex: '0 1 auto', minWidth: 0, fontFamily: cm.display, fontSize: 20, color: cm.ink,
             background: 'transparent', border: 'none', outline: 'none', cursor: 'pointer',
@@ -98,10 +101,10 @@
   function MSegment({ value, onChange }) {
     const opts = [{ v: false, label: 'Just me' }, { v: true, label: 'Me + partner' }];
     return (
-      <div style={{ display: 'flex', border: `1px solid ${cm.ink}`, background: cm.paper }}>
+      <div style={{ display: 'flex', border: `1px solid ${cm.ink}` }}>
         {opts.map((o, i) => (
           <button key={String(o.v)} onClick={() => onChange(o.v)} style={{ flex: 1, fontFamily: cm.body,
-            fontSize: 11.5, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '12px 0',
+            fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', minHeight: 44,
             cursor: 'pointer', border: 'none', fontWeight: 600, borderLeft: i ? `1px solid ${cm.ink}` : 'none',
             background: value === o.v ? cm.ink : 'transparent', color: value === o.v ? cm.paper : cm.ink70 }}>
             {o.label}</button>
@@ -110,23 +113,15 @@
     );
   }
 
-  function MGroup({ title, children }) {
-    return (
-      <div style={{ paddingBottom: 26, marginBottom: 26, borderBottom: `1px solid ${cm.rule}` }}>
-        <div style={{ fontFamily: cm.display, fontSize: 22, marginBottom: 16, letterSpacing: '-0.01em' }}>{title}</div>
-        {children}
-      </div>
-    );
-  }
-
-  // role="group" + aria-labelledby ties the fields below to this heading as
-  // their accessible group name (matches desktop CSub, added in the same
-  // Release 1 pass — 2026-07-10 critique).
+  // Sub-group: serif header with a hairline rule above (V19.15 restyle, matching
+  // desktop CSub). role="group" + aria-labelledby keeps the accessible group name
+  // (V19.12 fix) through the restyle.
   function MSub({ title, children }) {
     const headingId = React.useId();
     return (
-      <div role="group" aria-labelledby={headingId} style={{ marginBottom: 8 }}>
-        <div id={headingId} style={{ ...mKick, marginBottom: 14 }}>{title}</div>
+      <div role="group" aria-labelledby={headingId} style={{ marginBottom: 26 }}>
+        <div id={headingId} style={{ fontFamily: cm.display, fontSize: 19, color: cm.ink,
+          borderTop: `1px solid ${cm.rule}`, paddingTop: 12, marginBottom: 16 }}>{title}</div>
         {children}
       </div>
     );
@@ -228,13 +223,12 @@
     );
   }
 
-  // ── The two views ─────────────────────────────────────────────────────────
+  // ── Results view ──────────────────────────────────────────────────────────
   function CoverView({ results, vc, partner, dirty, goQuiz, params, setParams }) {
     // V19.3: exact move deltas at the FULL path count, from the same computeMoves
     // source the desktop Results cards and Try Changes bars read.
     const moves = React.useMemo(() => ME.computeMoves(params, results.successRate), [params, results]);
-    // V19.13 (Release 2a): >=1-point rule, replacing the old >=0 filter — matches desktop's
-    // cvQualifyingMoves exactly (single source, both layouts read the same helper).
+    // V19.13 (Release 2a): >=1-point rule — matches desktop's cvQualifyingMoves exactly.
     const moveCards = window.cvQualifyingMoves ? window.cvQualifyingMoves(moves.moves).slice(0, 3)
       : moves.moves.filter(l => l.delta >= 1).sort((a, b) => b.delta - a.delta).slice(0, 3);
     return (
@@ -297,8 +291,7 @@
         <MOutcomes results={results} />
 
         <section>
-          {/* V19.13 (Release 2a): dynamic count + honest empty state, matching desktop — see
-              cvMovesTeaserTitle / CV_NO_MOVES_MESSAGE (single-sourced from compass-cover.jsx). */}
+          {/* V19.13 (Release 2a): dynamic count + honest empty state, matching desktop. */}
           <div style={{ ...mKick, marginBottom: 12 }}>
             {moveCards.length > 0
               ? (window.cvMovesTeaserTitle ? window.cvMovesTeaserTitle(moveCards.length) : 'Moves that buy better odds')
@@ -327,10 +320,7 @@
           )}
         </section>
 
-        {/* V19.4: mobile stays a two-tab companion (Results + Input Data) — this note
-            discloses that Try Changes (test your own moves) and Charts (year-by-year
-            table, balance fan chart) exist on desktop, so mobile users know what
-            they're not seeing rather than assuming that's everything. */}
+        {/* V19.4: mobile stays a two-screen companion — disclose what lives on desktop. */}
         <section style={{ marginTop: 26, paddingTop: 20, borderTop: `1px solid ${cm.rule}` }}>
           <p style={{ fontSize: 12, lineHeight: 1.55, color: cm.ink70, textWrap: 'pretty' }}>
             This phone view covers your results and your inputs. Two more screens live on a
@@ -343,228 +333,353 @@
     );
   }
 
-  function QuizView({ params, update, setParams, vc, partner, results, hideReturning, dirty, adjustNote }) {
-    const [adv, setAdv] = React.useState(false);
+  // ── V19.15: the chapter wizard (Input Data) ───────────────────────────────
+  // Same sessionStorage keys as desktop cover-inputs.jsx, so crossing the 769px
+  // breakpoint keeps the reader on the same chapter.
+  const CHAPTER_KEY = 'compassChapter';
+  const VISITED_KEY = 'compassChaptersVisited';
+  const CHAPTERS = () => window.CV_CHAPTERS || [];
+  function loadChapter() {
+    try { const n = parseInt(sessionStorage.getItem(CHAPTER_KEY), 10);
+      if (n >= 0 && n < CHAPTERS().length) return n; } catch (e) {}
+    return 0;
+  }
+  function loadVisited() {
+    try { const v = JSON.parse(sessionStorage.getItem(VISITED_KEY) || '[]');
+      if (Array.isArray(v)) return v.filter(n => Number.isInteger(n) && n >= 0 && n < CHAPTERS().length); } catch (e) {}
+    return [];
+  }
+  function storeChapter(n, visited) {
+    try { sessionStorage.setItem(CHAPTER_KEY, String(n));
+      sessionStorage.setItem(VISITED_KEY, JSON.stringify(visited)); } catch (e) {}
+  }
+
+  function WizardView({ params, update, setParams, partner, hideReturning, adjustNote }) {
+    const chapters = CHAPTERS();
+    const [chapter, setChapter] = React.useState(loadChapter);
+    const [visited, setVisited] = React.useState(loadVisited);
+    const [sheet, setSheet] = React.useState(false);
+    const [saveMsg, setSaveMsg] = React.useState(null); // { text, ok }
+    const scrollRef = React.useRef(null);
+    const saveTimer = React.useRef(null);
+
+    const goTo = (i) => {
+      const next = Math.max(0, Math.min(chapters.length - 1, i));
+      setVisited(prev => {
+        const v = prev.includes(chapter) ? prev : [...prev, chapter];
+        storeChapter(next, v);
+        return v;
+      });
+      setChapter(next);
+      setSheet(false);
+    };
+    // Scroll position resets to top on chapter change (handoff spec).
+    React.useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [chapter]);
+    React.useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
+    const savePlan = () => {
+      const r = window.CompassIO.savePlan(params);
+      setSaveMsg({ text: r.ok ? 'Saved to your downloads.' : (r.error || 'Could not save.'), ok: r.ok });
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => setSaveMsg(null), 5000);
+    };
+    const finish = () => {
+      setVisited(prev => {
+        const v = prev.includes(chapter) ? prev : [...prev, chapter];
+        storeChapter(chapter, v);
+        return v;
+      });
+      if (window._coverNav) window._coverNav('cover');
+    };
+
+    const ch = chapters[chapter];
+    const last = chapter === chapters.length - 1;
+
     return (
-      <div style={{ padding: '24px 20px 28px' }}>
-        <div style={{ ...mKick, textAlign: 'center', marginBottom: 8 }}>Input Data · Detailed</div>
-        <h1 style={{ fontFamily: cm.display, fontSize: 38, lineHeight: 1.05, textAlign: 'center',
-          margin: '0 0 10px', letterSpacing: '-0.01em' }}>A few questions.</h1>
-        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: cm.ink70, textAlign: 'center',
-          margin: '0 auto 24px', maxWidth: 320, textWrap: 'pretty' }}>
-          Every input your results use, in plain language. Tap any “i” for the why; sensible defaults cover anything you skip. Tap a number to type it exactly.
-        </p>
-
-        {adjustNote && adjustNote.length > 0 && (
-          <div style={{ marginBottom: 22, padding: '10px 12px', border: `1px solid ${cm.amber}`,
-            background: cm.amberSoft, color: cm.ink, fontFamily: cm.body, fontSize: 12.5, lineHeight: 1.5 }}>
-            {window.cvAdjustMessage(adjustNote)}
-          </div>
-        )}
-
-        {!hideReturning && (
-          <div style={{ marginBottom: 26 }}>
-            <window.CoverSaveLoadCallout params={params} setParams={setParams}
-              prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
-          </div>
-        )}
-
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ ...mKick, marginBottom: 8 }}>This plan is for</div>
-          <MSegment value={partner} onChange={v => update('hasPartner', v)} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Progress bar */}
+        <div style={{ height: 3, background: 'rgba(26,24,21,0.12)', flex: '0 0 auto' }}>
+          <div style={{ height: 3, background: cm.ink,
+            width: `${((chapter + 1) / chapters.length * 100).toFixed(1)}%`, transition: 'width 300ms' }} />
         </div>
+        {/* Chapter bar — CONTENTS trigger opens the bottom sheet */}
+        <button onClick={() => setSheet(true)} style={{ display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', padding: '0 20px', minHeight: 44, background: cm.paperWarm,
+          border: 'none', borderBottom: `1px solid ${cm.rule}`, cursor: 'pointer', flex: '0 0 auto',
+          fontFamily: cm.body, width: '100%' }}>
+          <span style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase',
+            color: cm.ink70 }}>Chapter {chapter + 1} of {chapters.length}</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10,
+            letterSpacing: '0.14em', textTransform: 'uppercase', color: cm.ink, fontWeight: 600 }}>
+            Contents <span style={{ fontSize: 9 }}>▾</span></span>
+        </button>
 
-        <MGroup title="The people">
-          <MStep field="currentAge" label="Your age" value={params.currentAge} onChange={v => update('currentAge', v)} min={20} max={85} />
-          <MStep field="retireAge" label="You retire at" value={params.retireAge} onChange={v => update('retireAge', v)} min={params.currentAge + 1} max={80} />
-          <MStep field="endAge" label="Plan to age" value={params.endAge} onChange={v => update('endAge', v)} min={params.retireAge + 1} max={110} />
-          {partner && <MStep field="spouseAge" label="Partner's age" value={params.spouseAge} onChange={v => update('spouseAge', v)} min={20} max={85} />}
-          {partner && <MStep field="spouseRetireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} />}
-        </MGroup>
+        {/* Chapter body */}
+        <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 16px', minHeight: 0 }}>
+          {adjustNote && adjustNote.length > 0 && (
+            <div style={{ marginBottom: 20, padding: '10px 12px', border: `1px solid ${cm.amber}`,
+              background: cm.amberSoft, color: cm.ink, fontFamily: cm.body, fontSize: 12.5, lineHeight: 1.5 }}>
+              {window.cvAdjustMessage(adjustNote)}
+            </div>
+          )}
+          {!hideReturning && chapter === 0 && (
+            <div style={{ marginBottom: 22 }}>
+              <window.CoverSaveLoadCallout params={params} setParams={setParams}
+                prompt="Returning? Load your saved plan instead of re-entering." primary="load" compact />
+            </div>
+          )}
 
-        <MGroup title="What you've saved">
-          <MSub title="Accounts">
-            <MStep field="preTax" label={partner ? 'Your pre-tax (401k/IRA)' : 'Pre-tax (401k/IRA)'} value={params.userPreTax} step={10000} min={0} max={5000000} onChange={v => update('userPreTax', v)} format={money} />
-            <MStep field="roth" label={partner ? 'Your Roth' : 'Roth'} value={params.userRoth} step={10000} min={0} max={3000000} onChange={v => update('userRoth', v)} format={money} />
-            <MStep field="taxable" label="Taxable (joint)" value={params.taxable} step={10000} min={0} max={3000000} onChange={v => update('taxable', v)} format={money} />
-            {partner && <MStep field="preTax" label="Partner's pre-tax" value={params.spousePreTax} step={10000} min={0} max={5000000} onChange={v => update('spousePreTax', v)} format={money} />}
-            {partner && <MStep field="roth" label="Partner's Roth" value={params.spouseRoth} step={10000} min={0} max={3000000} onChange={v => update('spouseRoth', v)} format={money} />}
-          </MSub>
-          <MSub title="One-time windfall">
-            <MToggle field="windfall" label="One-time windfall" value={params.enableWindfall} onChange={v => update('enableWindfall', v)} />
-            {params.enableWindfall && <MStep field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000} onChange={v => update('windfallAmount', v)} format={money} />}
-            {params.enableWindfall && <MStep field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge} onChange={v => update('windfallAge', v)} />}
-          </MSub>
-        </MGroup>
+          <h1 style={{ fontFamily: cm.display, fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.01em',
+            margin: '0 0 8px' }}>{ch.title}</h1>
+          <p style={{ fontSize: 13.5, lineHeight: 1.55, color: cm.ink70, margin: '0 0 16px',
+            textWrap: 'pretty' }}>{ch.blurb}</p>
+          <div style={{ background: cm.paperWarm, border: `1px solid ${cm.rule}`, padding: '12px 16px',
+            marginBottom: 26 }}>
+            <div style={{ fontFamily: cm.body, fontSize: 10, letterSpacing: '0.18em',
+              textTransform: 'uppercase', color: cm.ink70, marginBottom: 6 }}>Why we ask</div>
+            <div style={{ fontSize: 13, lineHeight: 1.6, color: cm.ink, textWrap: 'pretty' }}>{ch.why}</div>
+          </div>
 
-        <MGroup title="What comes in">
-          <MSub title="You">
-            <MStep field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} />
-            <MStep field="savingsRate" label="Your contribution rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" />
-            {params.currentAge >= 50 && <MStep field="priorYearWages" label="Your prior-year W-2 wages" value={params.priorYearWages} step={5000} min={0} max={1000000} onChange={v => update('priorYearWages', v)} format={money} />}
-            <MStep field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" />
-            <MSelect field="savingsDest" label="Your contributions go to" value={params.savingsDest} onChange={v => update('savingsDest', v)}
-              options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
-            {params.employerContributionRate > 0 && <MSelect field="employerContributionDest" label="Your employer contributions go to" value={params.employerContributionDest} onChange={v => update('employerContributionDest', v)}
-              options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
-          </MSub>
-          {partner && (
-            <MSub title="Your partner">
-              <MStep field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} />
-              <MStep field="spouseSavingsRate" label="Partner's contribution rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" />
-              {params.spouseAge >= 50 && <MStep field="spousePriorYearWages" label="Partner's prior-year W-2 wages" value={params.spousePriorYearWages} step={5000} min={0} max={1000000} onChange={v => update('spousePriorYearWages', v)} format={money} />}
-              <MStep field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" />
-              <MSelect field="spouseSavingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)}
+          {chapter === 0 && (
+            <div style={{ marginBottom: 26 }}>
+              <div style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.18em',
+                textTransform: 'uppercase', color: cm.ink70, marginBottom: 10 }}>This plan is for</div>
+              <MSegment value={partner} onChange={v => update('hasPartner', v)} />
+              <div style={{ fontSize: 12, color: cm.ink70, marginTop: 8 }}>Partner fields appear in the chapters where they belong.</div>
+            </div>
+          )}
+
+          {/* ── Chapter 1 · The people (flat) ── */}
+          {chapter === 0 && (<React.Fragment>
+            <MStep field="currentAge" label="Your age" value={params.currentAge} onChange={v => update('currentAge', v)} min={20} max={85} />
+            <MStep field="retireAge" label="You retire at" value={params.retireAge} onChange={v => update('retireAge', v)} min={params.currentAge + 1} max={80} />
+            <MStep field="endAge" label="Plan to age" value={params.endAge} onChange={v => update('endAge', v)} min={params.retireAge + 1} max={110} />
+            {partner && <MStep field="spouseAge" label="Partner's age" value={params.spouseAge} onChange={v => update('spouseAge', v)} min={20} max={85} />}
+            {partner && <MStep field="spouseRetireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} />}
+          </React.Fragment>)}
+
+          {/* ── Chapter 2 · What you've saved ── */}
+          {chapter === 1 && (<React.Fragment>
+            <MSub title="Accounts">
+              <MStep field="preTax" label={partner ? 'Your pre-tax (401k/IRA)' : 'Pre-tax (401k/IRA)'} value={params.userPreTax} step={10000} min={0} max={5000000} onChange={v => update('userPreTax', v)} format={money} />
+              <MStep field="roth" label={partner ? 'Your Roth' : 'Roth'} value={params.userRoth} step={10000} min={0} max={3000000} onChange={v => update('userRoth', v)} format={money} />
+              <MStep field="taxable" label="Taxable (joint)" value={params.taxable} step={10000} min={0} max={3000000} onChange={v => update('taxable', v)} format={money} />
+              {partner && <MStep field="spousePreTax" label="Partner's pre-tax" value={params.spousePreTax} step={10000} min={0} max={5000000} onChange={v => update('spousePreTax', v)} format={money} />}
+              {partner && <MStep field="spouseRoth" label="Partner's Roth" value={params.spouseRoth} step={10000} min={0} max={3000000} onChange={v => update('spouseRoth', v)} format={money} />}
+            </MSub>
+            <MSub title="One-time windfall">
+              <MToggle field="windfall" label="One-time windfall" value={params.enableWindfall} onChange={v => update('enableWindfall', v)} />
+              {params.enableWindfall && <MStep field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000} onChange={v => update('windfallAmount', v)} format={money} />}
+              {params.enableWindfall && <MStep field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge} onChange={v => update('windfallAge', v)} />}
+            </MSub>
+          </React.Fragment>)}
+
+          {/* ── Chapter 3 · Salary & contributions ── */}
+          {chapter === 2 && (<React.Fragment>
+            <MSub title="You">
+              <MStep field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} />
+              <MStep field="savingsRate" label="Your contribution rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" />
+              {params.currentAge >= 50 && <MStep field="priorYearWages" label="Your prior-year W-2 wages" value={params.priorYearWages} step={5000} min={0} max={1000000} onChange={v => update('priorYearWages', v)} format={money} />}
+              <MStep field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" />
+              <MSelect field="savingsDest" label="Your contributions go to" value={params.savingsDest} onChange={v => update('savingsDest', v)}
                 options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
-              {params.spouseEmployerContributionRate > 0 && <MSelect field="spouseEmployerContributionDest" label="Partner's employer contributions go to" value={params.spouseEmployerContributionDest} onChange={v => update('spouseEmployerContributionDest', v)}
+              {params.employerContributionRate > 0 && <MSelect field="employerContributionDest" label="Your employer contributions go to" value={params.employerContributionDest} onChange={v => update('employerContributionDest', v)}
                 options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
             </MSub>
-          )}
-        </MGroup>
+            {partner && (
+              <MSub title="Your partner">
+                <MStep field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} />
+                <MStep field="spouseSavingsRate" label="Partner's contribution rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" />
+                {params.spouseAge >= 50 && <MStep field="spousePriorYearWages" label="Partner's prior-year W-2 wages" value={params.spousePriorYearWages} step={5000} min={0} max={1000000} onChange={v => update('spousePriorYearWages', v)} format={money} />}
+                <MStep field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" />
+                <MSelect field="spouseSavingsDest" label="Partner's contributions go to" value={params.spouseSavingsDest} onChange={v => update('spouseSavingsDest', v)}
+                  options={[{ v: 'pretax', label: 'Pre-tax (401k/IRA)' }, { v: 'roth', label: 'Roth' }, { v: 'split', label: 'Split 50/50' }]} />
+                {params.spouseEmployerContributionRate > 0 && <MSelect field="spouseEmployerContributionDest" label="Partner's employer contributions go to" value={params.spouseEmployerContributionDest} onChange={v => update('spouseEmployerContributionDest', v)}
+                  options={[{ v: 'pretax', label: 'Pre-tax (traditional)' }, { v: 'roth', label: 'Roth' }]} />}
+              </MSub>
+            )}
+          </React.Fragment>)}
 
-        <MGroup title="What goes out">
-          <MSub title="Everyday spending">
-            <MStep field="spending" label="Other spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} />
-          </MSub>
-          <MSub title="Healthcare">
-            <MStep field="healthcare" label="Healthcare / yr to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} />
-            <MStep field="healthcare65" label="Healthcare / yr from 65" value={params.healthcare65} step={1000} min={0} max={60000} onChange={v => update('healthcare65', v)} format={money} />
-            <MStep field="healthcareInflation" label="Healthcare inflation" value={params.healthcareInflation} step={0.5} min={0} max={12} onChange={v => update('healthcareInflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-          </MSub>
-          <MSub title="Later-life changes">
-            <MToggle field="spendingReduction" label="Spend less later in life" value={params.enableSpendingReduction} onChange={v => update('enableSpendingReduction', v)} />
-            {params.enableSpendingReduction && <MStep field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} />}
-            {params.enableSpendingReduction && <MStep field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" />}
-          </MSub>
-          <MSub title="Legacy goal & inflation">
-            <MStep field="legacyGoal" label="Legacy goal" value={params.legacyGoal} step={25000} min={0} max={3000000} onChange={v => update('legacyGoal', v)} format={money} />
-            <MStep field="inflation" label="Inflation" value={params.inflation} step={0.1} min={0} max={8} onChange={v => update('inflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-          </MSub>
-        </MGroup>
-
-        <MGroup title="Guaranteed income">
-          <MSub title="Social Security">
-            <MStep field="ssBenefit" label={partner ? 'Your SS / yr (at 67)' : 'SS / yr (at 67)'} value={params.ssBenefit} step={1000} min={0} max={80000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} />
-            <MStep field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} />
-            {partner && <MStep field="spouseSS" label="Partner's SS / yr" value={params.spouseSS} step={1000} min={0} max={80000} onChange={v => update('spouseSS', v)} format={v => '$' + v.toLocaleString()} />}
-            {partner && <MStep field="spouseClaimAge" label="Partner claims at" value={params.spouseClaimAge} min={62} max={70} onChange={v => update('spouseClaimAge', v)} />}
-            {partner && <MToggle field="enableSpousalBenefit" label="Apply SS spousal benefit" value={params.enableSpousalBenefit} onChange={v => update('enableSpousalBenefit', v)} />}
-          </MSub>
-          <MSub title="Your pension">
-            <MStep field="pension" label="Your pension / yr" value={params.pension} step={1000} min={0} max={200000} onChange={v => update('pension', v)} format={v => '$' + v.toLocaleString()} />
-            {params.pension > 0 && <MStep field="pensionStartAge" label="Your pension starts at" value={params.pensionStartAge} min={50} max={75} onChange={v => update('pensionStartAge', v)} />}
-            {params.pension > 0 && <MToggle field="pensionCOLA" label="Your pension has COLA" value={params.enablePensionCOLA} onChange={v => update('enablePensionCOLA', v)} />}
-          </MSub>
-          {partner && (
-            <MSub title="Partner's pension">
-              <MStep field="spousePension" label="Partner's pension / yr" value={params.spousePension} step={1000} min={0} max={200000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} />
-              {params.spousePension > 0 && <MStep field="pensionStartAge" label="Partner's pension starts at" value={params.spousePensionStartAge} min={50} max={75} onChange={v => update('spousePensionStartAge', v)} />}
-              {params.spousePension > 0 && <MToggle field="pensionCOLA" label="Partner's pension has COLA" value={params.enableSpousePensionCOLA} onChange={v => update('enableSpousePensionCOLA', v)} />}
+          {/* ── Chapter 4 · Spending ── */}
+          {chapter === 3 && (<React.Fragment>
+            <MSub title="Everyday spending">
+              <MStep field="spending" label="Other spending / yr" value={params.spending} step={5000} min={40000} max={250000} onChange={v => update('spending', v)} format={money} />
             </MSub>
-          )}
-          <MSub title={partner ? "Your part-time / other income" : "Part-time / other income"}>
-            <MToggle field="partTime" label={partner ? 'Your part-time / other income' : 'Part-time / other income'} value={params.enablePartTime} onChange={v => update('enablePartTime', v)} />
-            {params.enablePartTime && <MStep field="partTimeIncome" label="Your amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
-            {params.enablePartTime && <MStep field="partTimeStartAge" label="From your age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} />}
-            {params.enablePartTime && <MStep field="partTimeEndAge" label="To your age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} />}
-          </MSub>
-          {partner && (
-            <MSub title="Partner's part-time income">
-              <MToggle field="partTime" label="Partner's part-time income" value={params.spouseEnablePartTime} onChange={v => update('spouseEnablePartTime', v)} />
-              {params.spouseEnablePartTime && <MStep field="partTimeIncome" label="Partner's amount / yr" value={params.spousePartTimeIncome} step={1000} min={0} max={200000} onChange={v => update('spousePartTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
-              {params.spouseEnablePartTime && <MStep field="partTimeStartAge" label="From partner's age" value={params.spousePartTimeStartAge} min={params.spouseAge} max={params.endAge} onChange={v => update('spousePartTimeStartAge', v)} />}
-              {params.spouseEnablePartTime && <MStep field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} />}
+            <MSub title="Healthcare">
+              <MStep field="healthcare" label="Healthcare / yr to 65" value={params.healthcare} step={1000} min={0} max={60000} onChange={v => update('healthcare', v)} format={money} />
+              <MStep field="healthcare65" label="Healthcare / yr from 65" value={params.healthcare65} step={1000} min={0} max={60000} onChange={v => update('healthcare65', v)} format={money} />
+              <MStep field="healthcareInflation" label="Healthcare inflation" value={params.healthcareInflation} step={0.5} min={0} max={12} onChange={v => update('healthcareInflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
             </MSub>
-          )}
-        </MGroup>
+            <MSub title="Later-life changes">
+              <MToggle field="spendingReduction" label="Spend less later in life" value={params.enableSpendingReduction} onChange={v => update('enableSpendingReduction', v)} />
+              {params.enableSpendingReduction && <MStep field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} />}
+              {params.enableSpendingReduction && <MStep field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" />}
+            </MSub>
+            <MSub title="Legacy goal & inflation">
+              <MStep field="legacyGoal" label="Legacy goal" value={params.legacyGoal} step={25000} min={0} max={3000000} onChange={v => update('legacyGoal', v)} format={money} />
+              <MStep field="inflation" label="Inflation" value={params.inflation} step={0.1} min={0} max={8} onChange={v => update('inflation', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+            </MSub>
+          </React.Fragment>)}
 
-        <MGroup title="Your home">
-          <MSelect field="housingType" label="In retirement you" value={params.housingType} onChange={v => update('housingType', v)}
-            options={[{ v: 'own', label: 'Own your home' }, { v: 'rent', label: 'Rent' }]} />
-          {params.housingType === 'own' && <MStep field="mortgagePayment" label="Mortgage P&I / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} />}
-          {params.housingType === 'own' && params.mortgagePayment > 0 && <MStep field="mortgageLastAge" label="Mortgage paid off at" value={params.mortgageLastAge} min={params.currentAge} max={params.endAge} onChange={v => update('mortgageLastAge', v)} />}
-          {params.housingType === 'own' && <MStep field="propertyTax" label="Tax + home insurance / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} />}
-          {params.housingType === 'rent' && <MStep field="monthlyRent" label="Rent / mo" value={params.monthlyRent} step={250} min={0} max={20000} onChange={v => update('monthlyRent', v)} format={v => '$' + v.toLocaleString()} />}
-        </MGroup>
+          {/* ── Chapter 5 · Guaranteed income ── */}
+          {chapter === 4 && (<React.Fragment>
+            <MSub title="Social Security">
+              <MStep field="ssBenefit" label={partner ? 'Your SS / yr (at 67)' : 'SS / yr (at 67)'} value={params.ssBenefit} step={1000} min={0} max={80000} onChange={v => update('ssBenefit', v)} format={v => '$' + v.toLocaleString()} />
+              <MStep field="ssClaimAge" label="You claim SS at" value={params.ssClaimAge} min={62} max={70} onChange={v => update('ssClaimAge', v)} />
+              {partner && <MStep field="spouseSS" label="Partner's SS / yr" value={params.spouseSS} step={1000} min={0} max={80000} onChange={v => update('spouseSS', v)} format={v => '$' + v.toLocaleString()} />}
+              {partner && <MStep field="spouseClaimAge" label="Partner claims at" value={params.spouseClaimAge} min={62} max={70} onChange={v => update('spouseClaimAge', v)} />}
+              {partner && <MToggle field="enableSpousalBenefit" label="Apply SS spousal benefit" value={params.enableSpousalBenefit} onChange={v => update('enableSpousalBenefit', v)} />}
+            </MSub>
+            <MSub title="Your pension">
+              <MStep field="pension" label="Your pension / yr" value={params.pension} step={1000} min={0} max={200000} onChange={v => update('pension', v)} format={v => '$' + v.toLocaleString()} />
+              {params.pension > 0 && <MStep field="pensionStartAge" label="Your pension starts at" value={params.pensionStartAge} min={50} max={75} onChange={v => update('pensionStartAge', v)} />}
+              {params.pension > 0 && <MToggle field="pensionCOLA" label="Your pension has COLA" value={params.enablePensionCOLA} onChange={v => update('enablePensionCOLA', v)} />}
+            </MSub>
+            {partner && (
+              <MSub title="Partner's pension">
+                <MStep field="spousePension" label="Partner's pension / yr" value={params.spousePension} step={1000} min={0} max={200000} onChange={v => update('spousePension', v)} format={v => '$' + v.toLocaleString()} />
+                {params.spousePension > 0 && <MStep field="pensionStartAge" label="Partner's pension starts at" value={params.spousePensionStartAge} min={50} max={75} onChange={v => update('spousePensionStartAge', v)} />}
+                {params.spousePension > 0 && <MToggle field="pensionCOLA" label="Partner's pension has COLA" value={params.enableSpousePensionCOLA} onChange={v => update('enableSpousePensionCOLA', v)} />}
+              </MSub>
+            )}
+            <MSub title="Part-time / other income">
+              <MToggle field="partTime" label={partner ? 'Your part-time / other income' : 'Part-time / other income'} value={params.enablePartTime} onChange={v => update('enablePartTime', v)} />
+              {params.enablePartTime && <MStep field="partTimeIncome" label="Your amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
+              {params.enablePartTime && <MStep field="partTimeStartAge" label="From your age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} />}
+              {params.enablePartTime && <MStep field="partTimeEndAge" label="To your age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} />}
+            </MSub>
+            {partner && (
+              <MSub title="Partner's part-time income">
+                <MToggle field="partTime" label="Partner's part-time income" value={params.spouseEnablePartTime} onChange={v => update('spouseEnablePartTime', v)} />
+                {params.spouseEnablePartTime && <MStep field="partTimeIncome" label="Partner's amount / yr" value={params.spousePartTimeIncome} step={1000} min={0} max={200000} onChange={v => update('spousePartTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
+                {params.spouseEnablePartTime && <MStep field="partTimeStartAge" label="From partner's age" value={params.spousePartTimeStartAge} min={params.spouseAge} max={params.endAge} onChange={v => update('spousePartTimeStartAge', v)} />}
+                {params.spouseEnablePartTime && <MStep field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} />}
+              </MSub>
+            )}
+          </React.Fragment>)}
 
-        <MGroup title="Investments">
-          <MSub title="Mix today">
-            <MStep field="stockAllocation" label="Stocks now" value={params.stockAllocation} min={0} max={100} onChange={v => update('stockAllocation', v)} suffix="%" />
-          </MSub>
-          <MSub title="Glide path">
-            <MToggle field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} />
-            {params.enableGlidePath && <MStep field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
-          </MSub>
-          <MSub title="Roth conversions">
-            <MToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} />
-            {params.enableRothConversion && <MStep field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} />}
-            {params.enableRothConversion && <MStep field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} />}
-            {params.enableRothConversion && <MStep field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} />}
-          </MSub>
-        </MGroup>
+          {/* ── Chapter 6 · Your home (flat) ── */}
+          {chapter === 5 && (<React.Fragment>
+            <MSelect field="housingType" label="Own or rent" value={params.housingType} onChange={v => update('housingType', v)}
+              options={[{ v: 'own', label: 'Own your home' }, { v: 'rent', label: 'Rent' }]} />
+            {params.housingType === 'own' && <MStep field="mortgagePayment" label="Mortgage P&I / mo" value={params.mortgagePayment} step={250} min={0} max={20000} onChange={v => update('mortgagePayment', v)} format={v => '$' + v.toLocaleString()} />}
+            {params.housingType === 'own' && params.mortgagePayment > 0 && <MStep field="mortgageLastAge" label="Mortgage paid off at" value={params.mortgageLastAge} min={params.currentAge} max={params.endAge} onChange={v => update('mortgageLastAge', v)} />}
+            {params.housingType === 'own' && <MStep field="propertyTax" label="Tax + home insurance / yr" value={params.propertyTax} step={500} min={0} max={60000} onChange={v => update('propertyTax', v)} format={v => '$' + v.toLocaleString()} />}
+            {params.housingType === 'rent' && <MStep field="monthlyRent" label="Rent / mo" value={params.monthlyRent} step={250} min={0} max={20000} onChange={v => update('monthlyRent', v)} format={v => '$' + v.toLocaleString()} />}
+          </React.Fragment>)}
 
-        {/* Advanced assumptions */}
-        <div style={{ borderTop: `1px solid ${cm.ink}`, paddingTop: 22 }}>
-          <button onClick={() => setAdv(o => !o)} style={{ width: '100%', display: 'flex',
-            alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, background: 'none',
-            border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left' }}>
-            <div>
-              <div style={{ fontFamily: cm.display, fontSize: 22, letterSpacing: '-0.01em' }}>Advanced assumptions</div>
-              <div style={{ fontSize: 12, lineHeight: 1.45, color: cm.ink70, marginTop: 4 }}>
-                Tax, market, and strategy settings. Most people leave these at our defaults.
-              </div>
-            </div>
-            <span style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase',
-              color: cm.ink70, flex: '0 0 auto', paddingTop: 6, whiteSpace: 'nowrap' }}>
-              {adv ? '▾ Hide' : '▸ 13'}</span>
-          </button>
-          {adv && (
-            <div style={{ marginTop: 24 }}>
-              <MSub title="Tax & residence">
-                <MStep field="stateTaxRate" label="State tax rate" value={params.stateTaxRate} step={0.5} min={0} max={14} onChange={v => update('stateTaxRate', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MStep field="taxableGainRatio" label="Taxable account gain %" value={params.taxableGainRatio} step={5} min={0} max={100} onChange={v => update('taxableGainRatio', v)} suffix="%" />
-                <MStep field="bracketGrowth" label="Tax bracket growth" value={params.bracketGrowth} step={0.1} min={0} max={5} onChange={v => update('bracketGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MToggle field="tcjaSunset" label="Assume higher future tax rates" value={params.enableTCJASunset} onChange={v => update('enableTCJASunset', v)} />
-              </MSub>
-              <MSub title="Market assumptions">
-                <MStep field="stockReturn" label="Stock return" value={params.stockReturn} step={0.1} min={3} max={12} onChange={v => update('stockReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MStep field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7} onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MStep field="stockVol" label="Stock volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
-                <MStep field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15} onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
-                <MStep field="numPaths" label="Simulation paths" value={params.numPaths} step={500} min={500} max={10000} onChange={v => update('numPaths', v)} format={v => v.toLocaleString()} />
-              </MSub>
-              <MSub title="Strategy">
-                <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
-                {params.enableGuardrails && <MStep field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12} onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
-                {params.enableGuardrails && <MStep field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
-                {params.enableGuardrails && <MStep field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30} onChange={v => update('guardrailAdjustment', v)} suffix="%" />}
-              </MSub>
-              <div style={{ fontSize: 12, lineHeight: 1.5, color: cm.ink70, textWrap: 'pretty', marginTop: 4 }}>
-                Note: tax filing status follows your “Just me / Me + partner” choice (single vs. married-joint).
-                State tax is one flat rate on income and gains — it does not apply state-specific Social Security or pension exemptions.
-              </div>
-            </div>
+          {/* ── Chapter 7 · Investments ── */}
+          {chapter === 6 && (<React.Fragment>
+            <MSub title="Mix today">
+              <MStep field="stockAllocation" label="Stocks now" value={params.stockAllocation} min={0} max={100} onChange={v => update('stockAllocation', v)} suffix="%" />
+            </MSub>
+            <MSub title="Glide path">
+              <MToggle field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} />
+              {params.enableGlidePath && <MStep field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
+            </MSub>
+            <MSub title="Roth conversions">
+              <MToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} />
+              {params.enableRothConversion && <MStep field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} />}
+              {params.enableRothConversion && <MStep field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} />}
+              {params.enableRothConversion && <MStep field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} />}
+            </MSub>
+          </React.Fragment>)}
+
+          {/* ── Chapter 8 · Fine-tuning ── */}
+          {chapter === 7 && (<React.Fragment>
+            <MSub title="Tax & residence">
+              <MStep field="stateTaxRate" label="State tax rate" value={params.stateTaxRate} step={0.5} min={0} max={14} onChange={v => update('stateTaxRate', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+              <MStep field="taxableGainRatio" label="Taxable account gain %" value={params.taxableGainRatio} step={5} min={0} max={100} onChange={v => update('taxableGainRatio', v)} suffix="%" />
+              <MStep field="bracketGrowth" label="Tax bracket growth" value={params.bracketGrowth} step={0.1} min={0} max={5} onChange={v => update('bracketGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+              <MToggle field="tcjaSunset" label="Assume higher future tax rates" value={params.enableTCJASunset} onChange={v => update('enableTCJASunset', v)} />
+            </MSub>
+            <MSub title="Market assumptions">
+              <MStep field="stockReturn" label="Stock return" value={params.stockReturn} step={0.1} min={3} max={12} onChange={v => update('stockReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+              <MStep field="bondReturn" label="Bond return" value={params.bondReturn} step={0.1} min={1} max={7} onChange={v => update('bondReturn', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+              <MStep field="stockVol" label="Stock volatility" value={params.stockVol} min={8} max={30} onChange={v => update('stockVol', v)} suffix="%" />
+              <MStep field="bondVol" label="Bond volatility" value={params.bondVol} step={0.5} min={1} max={15} onChange={v => update('bondVol', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
+              <MStep field="numPaths" label="Simulation paths" value={params.numPaths} step={500} min={500} max={10000} onChange={v => update('numPaths', v)} format={v => v.toLocaleString()} />
+            </MSub>
+            <MSub title="Strategy">
+              <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
+              {params.enableGuardrails && <MStep field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12} onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
+              {params.enableGuardrails && <MStep field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
+              {params.enableGuardrails && <MStep field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30} onChange={v => update('guardrailAdjustment', v)} suffix="%" />}
+            </MSub>
+          </React.Fragment>)}
+
+          {ch.note && (
+            <div style={{ fontSize: 12, lineHeight: 1.5, color: cm.ink70, marginBottom: 16,
+              textWrap: 'pretty' }}>{ch.note}</div>
           )}
         </div>
 
-        {/* Result card */}
-        <div style={{ marginTop: 30, border: `1px solid ${cm.ink}`, background: cm.paperWarm, padding: '20px 22px' }}>
-          {!dirty && (
-            <div style={{ display: 'inline-block', marginBottom: 8, padding: '3px 8px',
-              border: `1px solid ${cm.clay}`, color: cm.clay, background: cm.claySoft,
-              fontFamily: cm.body, fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              Sample plan · not your numbers yet</div>
+        {/* Sticky footer */}
+        <div style={{ borderTop: `1px solid ${cm.rule}`, padding: '12px 20px 20px', flex: '0 0 auto',
+          background: cm.paper }}>
+          {saveMsg && (
+            <div role="status" style={{ fontSize: 11.5, marginBottom: 8, fontWeight: 600,
+              color: saveMsg.ok ? cm.sage : cm.clay }}>{saveMsg.text}</div>
           )}
-          <div style={{ ...mKick, marginBottom: 6 }}>{dirty ? 'Your number, so far' : 'Sample number, so far'}</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-            <span style={{ fontFamily: cm.display, fontSize: 64, lineHeight: 0.9, color: vc, transition: 'color 300ms' }}>{results.successRate}</span>
-            <span style={{ fontFamily: cm.display, fontSize: 22, color: cm.ink50 }}>/100</span>
-            <span style={{ fontFamily: cm.display, fontSize: 22, color: vc, marginLeft: 'auto', transition: 'color 300ms' }}>{results.verdictWord}.</span>
-          </div>
-          <div style={{ fontSize: 12, color: cm.ink70, marginTop: 6 }}>
-            {partner ? 'Modeled as a couple' : 'Modeled for one'} · {money(results.totalSavings)} saved today
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <button type="button" onClick={() => goTo(chapter - 1)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: cm.body,
+                fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: cm.ink70,
+                padding: 0, minHeight: 44, flex: '0 0 auto',
+                visibility: chapter === 0 ? 'hidden' : 'visible' }}>← Back</button>
+            {/* Small mid-entry save (Cris's addition to the handoff). */}
+            <button type="button" onClick={savePlan}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: cm.body,
+                fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: cm.ink70,
+                padding: 0, minHeight: 44, flex: '0 0 auto', textDecoration: 'underline',
+                textUnderlineOffset: 3 }}>Save ↓</button>
+            <button type="button" onClick={() => (last ? finish() : goTo(chapter + 1))}
+              style={{ flex: 1, minHeight: 48, padding: '0 16px', background: cm.ink, color: cm.paper,
+                border: 'none', cursor: 'pointer', fontFamily: cm.body, fontSize: 11,
+                letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>
+              {last ? 'See your results →' : `Next: ${chapters[chapter + 1].title} →`}</button>
           </div>
         </div>
+
+        {/* Contents bottom sheet */}
+        {sheet && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex',
+            flexDirection: 'column', justifyContent: 'flex-end' }}>
+            <div onClick={() => setSheet(false)} style={{ position: 'absolute', inset: 0,
+              background: 'rgba(26,24,21,0.4)' }} />
+            <div style={{ position: 'relative', background: cm.paper, borderTop: `1px solid ${cm.ink}`,
+              maxHeight: '78%', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '16px 20px 10px', flex: '0 0 auto' }}>
+                <span style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.18em',
+                  textTransform: 'uppercase', color: cm.ink70 }}>Chapters</span>
+                <button onClick={() => setSheet(false)} style={{ background: 'transparent', border: 'none',
+                  cursor: 'pointer', fontFamily: cm.body, fontSize: 11, letterSpacing: '0.12em',
+                  textTransform: 'uppercase', color: cm.ink, fontWeight: 600, minHeight: 44,
+                  padding: '0 4px' }}>Close ✕</button>
+              </div>
+              <div style={{ overflowY: 'auto', paddingBottom: 20 }}>
+                {chapters.map((c, i) => {
+                  const current = i === chapter;
+                  const done = visited.includes(i) && !current;
+                  return (
+                    <button key={c.title} onClick={() => goTo(i)}
+                      aria-current={current ? 'step' : undefined}
+                      style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                        minHeight: 48, padding: '0 20px', background: current ? cm.paperWarm : 'transparent',
+                        border: 'none', borderLeft: `3px solid ${current ? cm.ink : 'transparent'}`,
+                        cursor: 'pointer', textAlign: 'left', fontFamily: cm.body }}>
+                      <span style={{ fontFamily: cm.display, fontSize: 14, width: 20, flex: '0 0 auto',
+                        color: done ? cm.sage : cm.ink50 }}>{done ? '✓' : String(i + 1).padStart(2, '0')}</span>
+                      <span style={{ fontFamily: cm.display, fontSize: 18,
+                        color: current ? cm.ink : cm.ink70 }}>{c.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -574,63 +689,53 @@
     props = props || {};
     const [tab, setTab] = React.useState(props.initialTab || 'cover');
     // V19.1: suppress the "Returning? Load your saved plan" callout only for the one
-    // visit right after Welcome → "Start a new plan" (props.freshStart). The moment the
-    // user leaves the Questionnaire tab, treat any later visit as a normal return.
+    // visit right after Welcome → "Start a new plan" (props.freshStart).
     const [suppressReturning, setSuppressReturning] = React.useState(!!props.freshStart);
     React.useEffect(() => { if (tab !== 'quiz' && suppressReturning) setSuppressReturning(false); }, [tab]);
-    // V19.9 (A6): report the active tab up to the shared shell `screen` so switching tabs on
-    // the phone and then widening back to desktop lands on the SAME screen (previously the phone
-    // owned its tab locally and the desktop always reverted to Results across the breakpoint).
+    // V19.9 (A6): report the active tab up to the shared shell `screen` so crossing the
+    // desktop/mobile breakpoint keeps the same screen.
     React.useEffect(() => { if (props.onTabChange) props.onTabChange(tab); }, [tab]);
     const [localParams, setLocalParams] = React.useState(ME.DEFAULTS); const params = props.params || localParams; const setParams = props.setParams || setLocalParams;
-    const results = React.useMemo(() => ME.compute(params), [params]);
+    // V19.15: results are computed only for the Results screen — the wizard never shows
+    // a score (that's the point of the redesign), so entry keystrokes skip the simulation.
+    const results = React.useMemo(() => (tab === 'cover' ? ME.compute(params) : null), [tab, params]);
     const update = (k, v) => setParams(p => ({ ...p, [k]: v }));
-    const vc = results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber
-      : results.verdict === 'orange' ? cm.rust : cm.clay;
+    const vc = results ? (results.verdict === 'green' ? cm.sage : results.verdict === 'yellow' ? cm.amber
+      : results.verdict === 'orange' ? cm.rust : cm.clay) : cm.ink;
     const partner = params.hasPartner;
     const dirty = JSON.stringify(params) !== JSON.stringify(ME.DEFAULTS);
+
+    // V19.15 masthead: two rows — wordmark + issue line, then the Step 1 / Step 2
+    // switcher (replaces both the old score chip and the old bottom tab bar).
+    const stepBtn = (id, label) => (
+      <button type="button" onClick={() => setTab(id)} aria-current={tab === id ? 'page' : undefined}
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: cm.body,
+          fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '8px 0',
+          color: tab === id ? cm.ink : cm.ink70, fontWeight: tab === id ? 600 : 400 }}>{label}</button>
+    );
 
     return (
       <div style={{ width: '100%', height: '100%', background: cm.paper, color: cm.ink,
         fontFamily: cm.body, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* masthead — the tab bar keeps this outside the scrolling <main>, so on the
-            Questionnaire tab it doubles as a sticky live-score chip (V19.1). */}
-        <header style={{ padding: '10px 20px 12px', borderBottom: `1px solid ${cm.ink}`, flex: '0 0 auto',
-          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 }}>
-          <div style={{ fontFamily: cm.display, fontSize: 24, lineHeight: 1 }}>Compass</div>
-          {tab === 'quiz'
-            ? <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 8px',
-                border: `1px solid ${vc}`, whiteSpace: 'nowrap' }}>
-                {!dirty && <span style={{ fontFamily: cm.body, fontSize: 7.5, letterSpacing: '0.08em',
-                  textTransform: 'uppercase', color: cm.clay }}>Sample</span>}
-                <span style={{ fontFamily: cm.display, fontSize: 16, color: vc, lineHeight: 1 }}>{results.successRate}</span>
-                <span style={{ fontFamily: cm.display, fontSize: 9, color: cm.ink50 }}>/100</span>
-              </div>
-            : <div style={{ ...mKick, fontSize: 10.5 }}>The Retirement Issue · No. 5</div>}
+        <header style={{ padding: '14px 20px 2px', borderBottom: `1px solid ${cm.ink}`, flex: '0 0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <div style={{ fontFamily: cm.display, fontSize: 20, lineHeight: 1 }}>Compass</div>
+            <span style={{ fontFamily: cm.body, fontSize: 9, letterSpacing: '0.14em',
+              textTransform: 'uppercase', color: cm.ink70 }}>No. 5 · May 2026</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 }}>
+            {stepBtn('quiz', 'Step 1 · Input Data')}
+            {stepBtn('cover', 'Step 2 · Your plan')}
+          </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-          {tab === 'cover'
-            ? <CoverView results={results} vc={vc} partner={partner} dirty={dirty} goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
-            : <QuizView params={params} update={update} setParams={setParams} vc={vc} partner={partner} results={results} hideReturning={suppressReturning} dirty={dirty} adjustNote={props.adjustNote} />}
-        </main>
-
-        {/* bottom tab nav */}
-        <nav style={{ borderTop: `1px solid ${cm.ink}`, background: cm.paper, display: 'flex',
-          padding: '0 0 20px', flex: '0 0 auto' }}>
-          {[{ id: 'cover', label: 'Results' }, { id: 'quiz', label: 'Input Data' }].map(t => {
-            const cta = !dirty && t.id === 'quiz' && tab !== 'quiz';
-            return (
-            // V19.8: 11px/ink50 was too small/light for primary nav; bumped to 13px,
-            // inactive color darkened to ink70.
-            <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined} style={{ flex: 1, textAlign: 'center',
-              padding: '14px 0 10px', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
-              cursor: 'pointer', background: cta ? cm.sage : 'none', border: 'none', fontFamily: cm.body,
-              color: cta ? cm.paper : (tab === t.id ? cm.ink : cm.ink70), fontWeight: (cta || tab === t.id) ? 600 : 400,
-              borderTop: tab === t.id ? `2px solid ${cm.ink}` : '2px solid transparent', marginTop: -1 }}>
-              {cta ? 'Start here →' : t.label}</button>
-          );})}
-        </nav>
+        {tab === 'cover'
+          ? <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+              <CoverView results={results} vc={vc} partner={partner} dirty={dirty}
+                goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
+            </main>
+          : <WizardView params={params} update={update} setParams={setParams} partner={partner}
+              hideReturning={suppressReturning} adjustNote={props.adjustNote} />}
       </div>
     );
   }
