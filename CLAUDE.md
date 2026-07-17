@@ -16,7 +16,7 @@ drift risk. There is now exactly one entry page. **Note:** five releases intenti
 Pre-V18 UI architecture (legacy imperative-DOM app, full v9.9&ndash;v17.6 history) AND the detailed
 V18.0&ndash;V19.8 release sections (moved 2026-07-07) are archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.16
+**Current Version:** 19.18
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -906,3 +906,85 @@ up before testing and restored byte-identical (1716 chars, exact-string match).
 **Cache-buster:** `engine.js?v=19.17` + `?v=19.17` on all `cover-app/*` includes (via
 `bump-version.mjs`); HTML title, `real-engine.js` header, all five on-screen stamps, and (newly)
 the saved-plan `version` stamp reconciled to 19.17 in the same push.
+
+---
+
+## V19.18 &mdash; Per-person pre-retirement salary growth (independent of inflation)
+
+Sixth intentional `engine.js` math release (after V18.11, V19.5, V19.6, V19.9, V19.10). Approved by
+Cris 2026-07-17 from a plan with scope, risks, and validation; his two calls on the open items:
+accept the 0&ndash;10 clamp edge on migration, and ADD the "Pay increase" glance row.
+
+**Problem.** Both salaries compounded at the plan's inflation rate (`params.currentSalary *
+inflation` per year; synthetic prior-year wages likewise from `lifestyleInflation`) &mdash; one dial
+silently controlled two unrelated assumptions.
+
+**Engine (`engine.js` math IS changed, one localized block).** New params `userSalaryGrowth` /
+`spouseSalaryGrowth` (fractions). Each salary compounds at its OWN rate until that person retires
+(`Math.pow(1 + rate, i)`), and each person's synthetic prior-year wage (Roth catch-up rule, years
+after the first) uses the same per-person rate. Everything downstream (contributions, net wages,
+taxes, paycheck reconciliation, year table) reads the salary, so no other engine edits. Statutory
+amounts deliberately KEEP growing with inflation: contribution caps, compensation limit, $150k Roth
+catch-up threshold. Legacy fallback: absent params (the old DOM app) fall back to
+`lifestyleInflation` via `Number.isFinite` checks (NOT `||` &mdash; 0 is a meaningful rate),
+reproducing pre-V19.18 behavior exactly; the 95 pre-existing engine tests pass unchanged through
+this path.
+
+**Adapter (`real-engine.js`).** New keys `salaryGrowth` / `spouseSalaryGrowth` (whole-number %,
+DEFAULTS 2.5, RANGES [0,10]); mapToReal emits fractions (spouse zeroed for singles). **Migration in
+`normalizeParams`,** keyed off `raw.salaryGrowth === undefined` (checking RAW, not the merged
+object &mdash; the V19.10 lesson): pre-V19.18 plans get both fields seeded from the plan's own
+saved inflation, so old results are byte-identical (salary growth = inflation is exactly the old
+math). Seed is `Math.min(out.inflation, 10)` &mdash; only a saved inflation above 10% clamps
+(disclosed, approved edge). Idempotent by construction. DEFAULTS inflation is 2.5, so the new 2.5
+default keeps the untouched-DEFAULTS gate at 64 by construction, not luck.
+
+**UI (both layouts).** "Expected annual pay increase" CField/MStep (step 0.1, 0&ndash;10, "%")
+between salary and contribution rate in the "Salary &amp; contributions" chapter &mdash; "Your
+expected annual pay increase" / "Partner's expected annual pay increase" for couples (distinct
+accessible names, V19.12 lesson). FIELD_INFO: owner-specific `salaryGrowth` / `spouseSalaryGrowth`
+entries; help says 0% = unchanged dollar pay; detail notes independence from inflation AND that
+raises do not change the entered SS benefit (it's a typed input, not computed from earnings).
+Glance: `cvGlanceFacts` gains a "Pay increase" row right after Inflation ("You 2.5% &middot;
+Spouse 2.5%" / "2.5%/yr" solo, sub "until retirement") &mdash; shared builder, so desktop
+`CoverGlance` and mobile `MGlance` both render it (grid now 12 facts).
+
+**Tests (97 &rarr; 103, all passing; new file `tests/salary-growth.test.js`).** Permanent
+invariants: (1) changing inflation moves NEITHER gross salary nor contributions in any working year
+(the headline independence, proven executably); (2) 0% growth = flat nominal pay every year even
+with inflation on; (3) partners compound independently &mdash; changing only the spouse's rate
+shifts household wages by exactly the spouse delta; (4) absent params reproduce the
+salaryGrowth-=-inflation run to 1e-6 on wages AND balances (legacy preservation); (5) migration
+seeds from saved inflation, clamps 12&rarr;10, is idempotent, never overwrites an explicit 0;
+(6) mapToReal fraction contract + spouse zeroed for singles. `ENGINE_PARAM_NAMES` contract in
+`audit-adapter.test.js` gains the two names (annotated: NOT in `collectInputs()` &mdash;
+adapter-only, engine falls back). DEFAULTS gate 64 asserted green at every stage.
+
+**Validation.** Full suite **103 pass, 0 fail, 0 todo** in the exact /tmp clone tree that shipped;
+`node --check` clean (engine.js, real-engine.js, numeric-entry.js); all five JSX files +
+`index.html` inline block Babel-transform clean. Deploy workflow (test job + publish) succeeded
+first attempt. Live audit on the deployed URL (title/served version 19.18): **desktop** ~1568px
+&mdash; his real plan loads at 65/100 UNCHANGED post-migration (executable check: his raw stored
+plan was seeded 2.5/2.5 from its 2.5 inflation on first load); both new fields render in chapter 3
+with correct labels/help; typed entry commits (partner 2.5&rarr;4, persisted to localStorage) and
+the 0&ndash;10 validation correctly rejected a malformed paste, keeping the prior value; stepper
+0.1 increments work (2.5&rarr;2.6); Results recomputed 65&rarr;67 with the raises and the glance
+row read "You 2.6% &middot; Spouse 4.0%" (full engine round-trip); in-page executable checks:
+migration infl-4 plan &rarr; 4.0, infl-12 &rarr; 10 (clamp), couple/single/zero glance strings all
+correct; all four screens opened clean. **Mobile** at 500px (Chrome's resize floor, below the 769
+breakpoint so the true mobile shell rendered): glance "Pay increase" row, both wizard fields with
+help lines, chapter state shared across the breakpoint. Zero console errors across a fully-tracked
+reload. His real `localStorage['compassParams']` backed up under a separate key, restored
+byte-identical (1760 chars, exact-string match), backup key removed. **Note:** the app re-saves the
+migrated plan on first load, so his stored plan now contains the two new keys at 2.5 (was 1716
+chars pre-V19.18, 1760 after &mdash; expected, results identical). True 375px layout not
+verifiable this session (standing limitation) &mdash; Cris should phone-glance chapter 3 of Input
+Data: both "expected annual pay increase" fields should read clearly at 2.5%.
+
+**Cache-buster:** `engine.js?v=19.18` + `?v=19.18` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header, all five on-screen stamps, and the
+saved-plan `version` stamp reconciled to 19.18 in the same push. Same PR-workflow as
+V19.12&ndash;V19.17: release branch merged into `main` locally (`git merge --no-ff`) in the /tmp
+clone, authored as `cristelo-sirc <cristelo-sirc@users.noreply.github.com>`.
+
+**Next up:** no work queued.

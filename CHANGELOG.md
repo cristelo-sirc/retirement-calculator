@@ -1,5 +1,14 @@
 # Change log
 
+## 19.18.0 — 2026-07-17
+
+- Salaries no longer silently grow at the inflation rate. Each person now has their own "Expected annual pay increase" field (0–10%, new plans start at 2.5%) in the Salary & contributions chapter, on both desktop and phone. Your salary compounds at your rate until you retire; your partner's compounds at theirs until they retire — and changing the inflation assumption no longer changes anyone's raises.
+- The grown salary flows through everything it should: yearly contributions, take-home wages, taxes, and the wage figure used by the age-50+ catch-up contribution rules. IRS-style limits (contribution caps, the Roth catch-up wage threshold) still grow with inflation, as they do in real life.
+- Existing plans are untouched: a plan saved before this release automatically gets its pay-increase fields set to its own saved inflation rate, which reproduces the old math exactly — same score, same numbers. (Only edge: a saved inflation above 10% would be capped at 10% for this field; no realistic plan has that.)
+- "Your Plan at a Glance" on Results gained a "Pay increase" row alongside the other assumptions, showing both rates for a couple.
+- Help text spells out the fine print: 0% means your paycheck stays the same dollar amount, and raises don't change the Social Security benefit you entered (that's its own input).
+- Test suite grew from 97 to 103 checks, including permanent ones proving salary growth is independent of inflation. The built-in sample still reads 64/100.
+
 ## 19.17.0 — 2026-07-16
 
 - Added a "Private by design" note to the Welcome screen: everything you enter stays on your device — there's no server, no account, and no tracking, so nothing you type can be seen by anyone else, including whoever shared the app with you. A shorter version of the same note appears at the top of chapter 1 of Input Data, right where you start typing real numbers. This was verified against the actual code and hosting before being written: the app makes no network calls of any kind with your data.
