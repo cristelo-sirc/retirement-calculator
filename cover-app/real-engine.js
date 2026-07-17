@@ -1,4 +1,4 @@
-// real-engine.js — V19.16 adapter
+// real-engine.js — V19.17 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.

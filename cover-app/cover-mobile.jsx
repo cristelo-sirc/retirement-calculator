@@ -440,6 +440,12 @@
             <div style={{ fontSize: 13, lineHeight: 1.6, color: cm.ink, textWrap: 'pretty' }}>{ch.why}</div>
           </div>
 
+          {/* V19.17: shared privacy line (window.CV_PRIVACY_NOTE from cover-inputs.jsx) */}
+          {chapter === 0 && (
+            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: cm.ink70,
+              margin: '-12px 0 24px' }}>{window.CV_PRIVACY_NOTE}</p>
+          )}
+
           {chapter === 0 && (
             <div style={{ marginBottom: 26 }}>
               <div style={{ fontFamily: cm.body, fontSize: 11, letterSpacing: '0.18em',
