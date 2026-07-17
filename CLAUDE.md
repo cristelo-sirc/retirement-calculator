@@ -16,7 +16,7 @@ drift risk. There is now exactly one entry page. **Note:** five releases intenti
 Pre-V18 UI architecture (legacy imperative-DOM app, full v9.9&ndash;v17.6 history) AND the detailed
 V18.0&ndash;V19.8 release sections (moved 2026-07-07) are archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.13
+**Current Version:** 19.15
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -59,6 +59,13 @@ Two-layer workflow to conserve usage without compromising accuracy:
 - **Never delegate:** `engine.js` math, adapter scoring logic (`real-engine.js` success/scoring), anything
   where accuracy risk was flagged, git/deploy, or verification. The session model audits ALL subagent output
   against the plan before proceeding.
+- **Amendment (Cris, 2026-07-16): the live-browser audit's CLICKING may be delegated to a Sonnet
+  subagent** &mdash; the subagent drives Chrome and gathers evidence (screenshots, DOM/text checks, console
+  errors); the session model reviews the findings and makes the final pass/fail call. Judgment stays with
+  the session model; only the mechanical browser driving moved. Practical note from the first attempt
+  (V19.15): the subagent's browser tools were blocked for ~15 minutes by a platform-side tool-permission
+  outage while the session model's own browser tools worked once the outage cleared &mdash; if that recurs,
+  fall back to the session model doing the audit directly rather than shipping unaudited, and say so.
 
 ---
 
@@ -628,5 +635,167 @@ branch was merged into `main` locally (`git merge --no-ff`) in the `/tmp` clone 
 **Cache-buster:** `engine.js?v=19.13` + `?v=19.13` on all `cover-app/*` includes; HTML title,
 `real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.13 in the same push.
 
-**Next up:** Release 3 (copy honesty + polish batch, including the year-by-year table width fix),
-per `UX-FIX-PLAN-2026-07-10.md`. Not started.
+**Next up (superseded by V19.14 below):** Release 3 shipped same-day as V19.13, closing out
+`UX-FIX-PLAN-2026-07-10.md`.
+
+---
+
+## V19.14 &mdash; Copy honesty + polish batch (UX-FIX-PLAN-2026-07-10 Release 3, final)
+
+Third and final release of `UX-FIX-PLAN-2026-07-10.md`. `engine.js` and `real-engine.js` scoring
+logic UNCHANGED &mdash; display layer only, same ground rules as V19.12/V19.13. Approved by Cris
+same-session ("go"). Item 7 of the original plan (dropping the dead `mode="essentials"` questionnaire
+variant) had already shipped in Release 1 per Cris's sequencing call, so this release covers the
+remaining 8 items.
+
+- **1 &mdash; side-panel overclaim.** The Results "Want to try something else?" panel always said
+  "Every dial lives on Try Changes," which was wrong for both household types (there are four levers
+  for a couple, three solo, not "every dial"). Reworded to state the actual count, conditional on
+  `params.hasPartner`, and the body copy only mentions "both Social Security claim ages" for couples.
+- **2 &mdash; glide-path copy honesty.** The Charts glide-path paragraph always described the mix as
+  "easing out of stocks," even with `enableGlidePath` off and the chart drawing a flat line. Copy is
+  now conditional on the actual toggle state: on keeps the original line, off explains the mix stays
+  flat at the current allocation and points back to Input Data.
+- **3 &mdash; fan-chart / income-chart axis formatting.** Both `BalanceFanChart` and `IncomeSourceChart`
+  y-axis labels used a hand-rolled `Math.round(v/1000)+'k'` that produced ugly numbers like "$5110k."
+  Both now call the same `MockEngine.formatCurrency(v, {compact:true})` every other dollar figure in
+  the app already uses ("$5.11M" / "$40k").
+- **4 &mdash; year-by-year table width.** The table inherited the page's global 1040px reading-column
+  cap and clipped its own END BALANCE column even at reasonably wide viewports. Per Cris's explicit
+  decision (no column drops), the table was moved into its own 1280px-capped sibling wrapper, leaving
+  the rest of the Charts screen's prose/chart width untouched. Charts is desktop-only, so no mobile
+  concern.
+- **5 &mdash; typed-entry discoverability.** Nothing hinted that the big questionnaire numbers are
+  click-to-type. Added one line to both the desktop and mobile Input Data intros ("Tap any
+  number/a number to type it exactly").
+- **6 &mdash; dropdown affordance.** Selects (`CSelect` desktop, `MSelect` mobile) looked like static
+  text: a tiny caret pinned at the row's far-right edge with a gap to the value on the left. Both
+  restyled to a flex layout with the caret immediately next to the value, so each reads as one
+  control regardless of row width.
+- **8 &mdash; duplicate Save/Load.** Input Data had three Save/Load surfaces (Results top callout,
+  Input Data top callout, Input Data footer row). Removed the Input Data footer row; the top callout
+  there plus the Welcome screen's own Load path cover the same ground.
+- **9 &mdash; two-line label stragglers.** A live sweep of Input Data at 1280px (toggling "Me +
+  partner," bumping employer contribution rates to reveal conditional fields, expanding "Advanced
+  assumptions") found two genuine two-line wraps beyond the one item 4 already named: "Your/Partner's
+  employer contributions go to" (`CSelect`) and "Assume higher future tax rates" (`CToggle`). Both are
+  the last field in their sub-group, so wrapping each in `gridColumn: 'span 2'` gives them room
+  without reflowing any sibling &mdash; a layout-only fix, not a copy shortening (which risked subtle
+  wording/accessible-name regressions).
+- No param renames, no `engine.js` or `real-engine.js` changes.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched).
+DEFAULTS regression gate unaffected (display-only). All touched JSX files (`compass-cover.jsx`,
+`retire-charts.jsx`, `cover-inputs.jsx`, `cover-mobile.jsx`) plus the `index.html` inline Babel block
+transform clean; `node --check` clean on `real-engine.js`.
+
+Live-audited on the deployed GitHub Pages URL. Desktop: actual tested width ~1280px (resize
+succeeded this session), comfortably matching item 4's "verify comfortable at 1280px" requirement.
+Using Cris's real saved plan (couple, score 65/100 as of today's date &mdash; the DEFAULTS regression
+gate itself is separately pinned at 64 and unaffected): confirmed the "Four of your biggest levers
+live on Try Changes" panel copy, both fan-chart and income-chart y-axis labels rendering as "$5.11M"
+/ "$280k" style instead of raw "k" math, the year-by-year table showing all 9 columns including END
+BALANCE with no clipping, the intro hint text on Input Data, the dropdown caret sitting directly next
+to each select's value (verified via computed style on all 4 `<select>` elements on the page, not
+just visually), only one Save/Load callout on Input Data, and both previously-wrapping labels
+("Your employer contributions go to," "Assume higher future tax rates") now on one line. Also
+toggled `enableGlidePath` off in-page and confirmed the Charts paragraph swaps to the flat-mix
+copy ("Your mix stays flat at 60% stocks for the whole plan...") before restoring the toggle.
+Mobile (~500px, `resize_window` to 375px was silently ignored again &mdash; same standing
+limitation, comfortably under the 769px breakpoint regardless): re-confirmed the typed-entry hint,
+the dropdown caret restyle on all 4 selects, and no orphaned Save/Load footer row. No console errors
+on either viewport (checked via a fresh page load with console tracking active). Cris's real
+`localStorage['compassParams']` was backed up before testing (including before the in-page
+glide-path toggle test) and restored byte-identical after, verified programmatically via exact
+string match, not just visually.
+
+**PR workflow note:** same as V19.12/V19.13 &mdash; no logged-in browser session available, so the
+release branch was merged into `main` locally (`git merge --no-ff`) in the `/tmp` clone and pushed
+directly.
+
+**Cache-buster:** `engine.js?v=19.14` + `?v=19.14` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.14 in the same push.
+
+**Next up (superseded by V19.15 below):** `UX-FIX-PLAN-2026-07-10.md` is now fully shipped (Releases
+1&ndash;3 complete). No further work queued from that plan.
+
+---
+
+## V19.15 &mdash; Input Data chapter wizard (design_handoff_input_chapters)
+
+Implements Cris's external design handoff (`UI Update 071626 design_handoff_input_chapters/`, local
+folder: README + two `.dc.html` prototypes; prototypes are references, NOT ported code). `engine.js`
+and `real-engine.js` scoring logic UNCHANGED &mdash; display layer only. Approved by Cris 2026-07-16
+from a plan with scope, risks, and validation; one addition of his: a mid-entry Save link in the
+wizard footer (both layouts). One deviation from the prototype, his call: the responsive breakpoint
+stays at the app's existing **769px** (prototype said 720) &mdash; one app-wide switch point, less
+regression risk.
+
+- **Desktop Input Data (`cover-inputs.jsx`, full rewrite of the shell).** 8-chapter wizard: left
+  rail (264px; rows clickable; visited chapters get a sage &#10003;, current gets warm bg + 3px ink
+  bar; version stamp at rail bottom), 3px progress bar (fill = (chapter+1)/8, 300ms), per-chapter
+  kicker/serif title/blurb + "Why we ask" inset, pinned footer (&larr; Back hidden on ch1 &middot;
+  Save plan &darr; link with a 5s "Saved to your downloads." status &middot; primary "Next: &lt;title&gt;
+  &rarr;" / ch8 "See your results &rarr;" &rarr; `_coverNav('cover')`). Field primitives (CField/
+  CToggle/CSelect/CSegment) byte-identical to V19.14; CSub restyled to the serif-header tier (rule
+  above, 20px). Chapters "The people" and "Your home" are flat grids. **No score during entry**:
+  CviScoreChip, the reveal panel, and this screen's `compute()` call are all deleted (typing no
+  longer re-runs the simulation). "Advanced assumptions" collapsed block &rarr; normal chapter 8
+  "Fine-tuning". `CV_CHAPTERS` (titles/blurbs/why, verbatim from the prototype's ch2data) exported
+  on window for the mobile layout. Chapter + visited persist in sessionStorage
+  (`compassChapter` / `compassChaptersVisited`), shared with mobile so crossing the breakpoint keeps
+  the same chapter.
+- **Masthead nav on ALL FOUR screens (`compass-cover.jsx`).** `CoverNav` rebuilt as two labeled
+  zones ("Step 1 &middot; Enter" &rarr; Input Data; "Step 2 &middot; Your plan" &rarr; Results, Try
+  Changes, Charts) split by a 1&times;30 rule hairline; Results is full-ink at weight 400 when
+  inactive (prominent by color only); bold + 2px underline strictly for the ACTIVE tab; tabs remain
+  real buttons with `aria-current`. The V19.3 "Start here" CTA pill (`emphasizeQuiz`) is retired
+  &mdash; the hero's own "Enter your data" button carries that nudge. `CoverChrome` gained a `fill`
+  mode (fixed-viewport flex column, static masthead, no footer tag strip) used only by the wizard;
+  the other three screens keep page scroll byte-identically. Results' own masthead moved its ink
+  rule BELOW the tab row to match.
+- **Mobile (`cover-mobile.jsx`).** Masthead compresses to wordmark + issue line, then a
+  "Step 1 &middot; Input Data" / "Step 2 &middot; Your plan" switcher (the old bottom tab bar and
+  the masthead score chip are both retired). Input Data = same wizard, single column: 44px chapter
+  bar ("CHAPTER N OF 8" + CONTENTS &#9662;) opening a bottom sheet (fixed scrim, paper sheet, same
+  row anatomy as the rail, &ge;48px rows); sticky footer &larr; Back / Save &darr; / full-width
+  Next (48px); body scroll resets to top on chapter change. Touch targets per handoff: steppers
+  44px circles, toggle pill 48&times;28, segment rows 44px. `compute()` now runs only when the
+  Results tab is active.
+- **Help copy (`retire-ui.jsx`).** Every FIELD_INFO `help` one-liner reconciled to the prototype's
+  final copy; `detail` tooltips unchanged. New owner-specific entries `spousePreTax` / `spouseRoth`
+  (partner account fields no longer alias the user's help text); the housing question is labeled
+  "Own or rent". `tests/input-coverage.test.js` HELP_ALIASES updated accordingly (spousePreTax/
+  spouseRoth aliases removed; scan mechanics unchanged &mdash; negative check re-proved: deleting a
+  field's `update()` fails the suite naming that field).
+- **Known trade-offs accepted by Cris:** no score feedback during entry (deliberate; Try Changes is
+  the what-if surface); file-save mid-entry exists via the footer link; the "Returning?" load
+  callout lives on chapter 1 only.
+
+**Validation.** Full suite **97 pass, 0 fail** in the exact /tmp clone tree that shipped; DEFAULTS
+regression gate **64** (asserted in `audit-adapter.test.js`). All five JSX files + `index.html`
+inline block Babel-transform clean; `node --check` clean on the plain-JS files. Live-audited on
+deployed GitHub Pages: desktop at 1920&times;722 (title V19.15; two-zone nav on all four screens;
+wizard: no "/100" anywhere on Input Data, 8 chapters walked with correct titles/sub-headers/
+progress fills 12.5%&rarr;100%, Back hidden on ch1, Save link works, rail jump + &#10003; marks,
+full-reload &rarr; Input Data reopens on the same chapter, ch8 CTA lands on Results with the score
+visible; Try Changes + Charts render normally); mobile at 606px (Chrome's `resize_window` floor
+again &mdash; below the 769 breakpoint so the mobile shell is what rendered; true 375px not
+verifiable this session, same standing limitation): two-row masthead, no bottom bar, contents
+sheet open/jump/close + scroll-reset verified, score only on the plan screen. Zero console errors
+either pass. Cris's real `localStorage['compassParams']` backed up before testing and restored
+byte-identical (exact string match, 1716 chars).
+
+**Push-auth lesson (new):** GitHub rejected the first push with `GH007: push would publish a
+private email address` &mdash; commits authored as `cristelo@hotmail.com` trip the account's email
+privacy protection. Fix: author releases as `cristelo-sirc <cristelo-sirc@users.noreply.github.com>`
+(what every prior release used). Same PR-workflow note as V19.12&ndash;V19.14: no logged-in browser
+session, so the release branch was merged into `main` locally (`git merge --no-ff`) in the /tmp
+clone and pushed directly.
+
+**Cache-buster:** `engine.js?v=19.15` + `?v=19.15` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header, and all five on-screen version stamps
+reconciled to 19.15 in the same push &mdash; note the Questionnaire's stamp MOVED: it's no longer a
+`CoverChrome tag=` prop (fill mode has no footer strip) but a small stamp at the bottom of the
+wizard's chapter rail. Still five on-screen stamps total; `bump-version.mjs` still does not touch
+them (standing manual step).

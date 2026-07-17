@@ -1,5 +1,30 @@
 # Change log
 
+## 19.15.0 — 2026-07-16
+
+- Input Data is now an 8-chapter guided wizard instead of one long 40+ field page. A chapter list runs down the left side (The people · What you've saved · Salary & contributions · Spending · Guaranteed income · Your home · Investments · Fine-tuning), each chapter opens with a plain-English "Why we ask" explainer, and Back / Next buttons walk you through in order — though you can jump to any chapter from the list at any time. Chapters you've been through get a checkmark, and a thin progress bar tracks where you are.
+- Your score is no longer shown anywhere while you're entering data — no live chip in the header, no number at the bottom of the page. Watching the score jump around mid-entry caused more anxiety than insight. The number now appears only after you press "See your results" at the end of chapter 8.
+- The navigation at the top of every screen is reorganized into two labeled steps: "Step 1 · Enter" (Input Data) and "Step 2 · Your plan" (Results, Try Changes, Charts), so the intended order of use is visible at a glance.
+- A small "Save plan" link now lives in the wizard's footer on every chapter, so you can save your progress to a file mid-entry without finishing first. (Your numbers also continue to auto-save in the browser as you type, exactly as before.)
+- On the phone, the chapter list becomes a "Contents" sheet that slides up from the bottom, the same Step 1 / Step 2 switcher sits in the header, and the +/- buttons and switches are bigger for easier tapping.
+- The one-line helper under each field label was rewritten to shorter, more concrete phrasing (the deeper "i" explanations are unchanged), and the home question is now labeled plainly "Own or rent."
+- The former "Advanced assumptions" collapsed section is now a normal final chapter, "Fine-tuning."
+- If you refresh the page mid-entry, the wizard reopens on the chapter you were on.
+- A pleasant side effect: because no score is shown during entry, the app no longer re-runs the full simulation after every keystroke on this screen, so typing feels snappier.
+- No changes to any calculation, score, or on-screen figure. The built-in sample still reads 64/100.
+
+## 19.14.0 — 2026-07-10
+
+- Fixed a spot on Results that overclaimed what Try Changes offers ("Every dial lives on Try Changes") — it now says how many levers actually live there (four for a couple, three if it's just you).
+- The glide-path chart on Charts used to describe your mix as "easing out of stocks" even when that setting is turned off and the line is flat. The description now matches whichever way the toggle is actually set.
+- The two balance and income charts were showing y-axis numbers like "$5110k" instead of "$5.11M" — switched to the same clean dollar formatting used everywhere else in the app.
+- The year-by-year numbers table was clipping its own last column (ending balance) even on a reasonably wide screen. Gave the table more room to breathe without changing anything else on the page.
+- Added a one-line hint on Input Data telling you that you can tap any number to type it exactly, instead of only dragging the +/- buttons.
+- Dropdown menus (like "where your contributions go") used to show the value on one side and a tiny arrow pinned far away on the other. The arrow now sits right next to the value, so it reads as one control.
+- Removed a duplicate "save or load your plan" box that was showing up twice on the same screen.
+- Fixed two field labels that were wrapping awkwardly onto two lines ("Your employer contributions go to" and "Assume higher future tax rates") by giving them more horizontal room.
+- No changes to any calculation, score, or on-screen figure. The built-in sample still reads 64/100.
+
 ## 19.13.0 — 2026-07-10
 
 - Fixed a trust problem on plans that are already doing great: at 100 (or close to it), the "Three Moves, Ranked" section used to show three cards all reading "+0 points" — changes that don't actually buy you anything. A move now only shows up if it's worth at least a full point. When your plan is already at the top of the range and nothing we test can improve it, you'll see a plain note saying so instead of empty cards. This applies everywhere moves are shown — Results, Try Changes, and the phone view.
