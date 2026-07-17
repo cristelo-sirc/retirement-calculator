@@ -890,7 +890,18 @@ connections" unless the fonts are vendored first (Option B).**
 **64** (asserted in `audit-adapter.test.js`). All five JSX files + `index.html` inline Babel block
 transform clean (vendored `@babel/standalone` headless in Node; note: under `require()` it attaches
 to `module.exports`, not `global.window`); `node --check` clean on `real-engine.js`. Live audit on
-the deployed URL: see below.
+the deployed URL (title/served version 19.17, deploy workflow succeeded first attempt): desktop
+~1568px &mdash; Welcome shows the "Private by design" block with the old trailing sentence gone;
+wizard chapter 1 shows the shared note under "Why we ask" with rail stamp V19.17; chapter 2
+correctly does NOT show it; zero console errors. **Mobile:** `resize_window` was silently ignored
+in BOTH attempts (window stayed 1920px &mdash; standing limitation), so instead the mobile shell
+was force-mounted in-page (`Object.defineProperty(window,'innerWidth',{get:()=>500})` + a
+synthetic `resize` event &mdash; new fallback technique, works because the shell reads
+`innerWidth` on resize): the real mobile components rendered his plan screen (65/100) and wizard
+chapter 1 with the exact shared string exactly once, zero console errors. True phone-width LAYOUT
+(wrapping/spacing at 375px) still not visually confirmed this session &mdash; Cris should
+phone-glance Welcome + Input Data chapter 1. His real `localStorage['compassParams']` was backed
+up before testing and restored byte-identical (1716 chars, exact-string match).
 
 **Cache-buster:** `engine.js?v=19.17` + `?v=19.17` on all `cover-app/*` includes (via
 `bump-version.mjs`); HTML title, `real-engine.js` header, all five on-screen stamps, and (newly)
