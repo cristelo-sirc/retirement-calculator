@@ -273,7 +273,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
           </div>
           {/* On-screen version stamp (lives here since fill-mode chrome has no footer tag). */}
           <div style={{ marginTop: 'auto', padding: '18px 26px 0', fontFamily: cvi.body, fontSize: 10,
-            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.17</div>
+            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.18</div>
         </div>
 
         {/* Chapter content + pinned footer */}
@@ -354,6 +354,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
             {chapter === 2 && (<React.Fragment>
               <CSub title="You">
                 <CField field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} theme={theme} />
+                <CField field="salaryGrowth" label={partner ? 'Your expected annual pay increase' : 'Expected annual pay increase'} value={params.salaryGrowth} step={0.1} min={0} max={10} onChange={v => update('salaryGrowth', Math.round(v * 10) / 10)} suffix="%" theme={theme} />
                 <CField field="savingsRate" label="Your contribution rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" theme={theme} />
                 {params.currentAge >= 50 && <CField field="priorYearWages" label="Your prior-year W-2 wages" value={params.priorYearWages} step={5000} min={0} max={1000000} onChange={v => update('priorYearWages', v)} format={money} theme={theme} />}
                 <CField field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" theme={theme} />
@@ -370,6 +371,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
               {partner && (
                 <CSub title="Your partner">
                   <CField field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} theme={theme} />
+                  <CField field="spouseSalaryGrowth" label="Partner's expected annual pay increase" value={params.spouseSalaryGrowth} step={0.1} min={0} max={10} onChange={v => update('spouseSalaryGrowth', Math.round(v * 10) / 10)} suffix="%" theme={theme} />
                   <CField field="spouseSavingsRate" label="Partner's contribution rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" theme={theme} />
                   {params.spouseAge >= 50 && <CField field="spousePriorYearWages" label="Partner's prior-year W-2 wages" value={params.spousePriorYearWages} step={5000} min={0} max={1000000} onChange={v => update('spousePriorYearWages', v)} format={money} theme={theme} />}
                   <CField field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" theme={theme} />

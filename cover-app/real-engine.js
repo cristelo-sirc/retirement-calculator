@@ -1,4 +1,4 @@
-// real-engine.js — V19.17 adapter
+// real-engine.js — V19.18 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.16';
+      s.src = 'engine.js?v=19.18';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -34,6 +34,10 @@
     savingsDest: 'pretax', employerContributionDest: 'pretax',
     spouseSalary: 78000, spousePriorYearWages: 78000, spouseSavingsRate: 6, spouseEmployerContributionRate: 0,
     spouseSavingsDest: 'pretax', spouseEmployerContributionDest: 'pretax',
+    // V19.18: per-person expected annual pay increase (whole-number %). Salaries used to
+    // compound at the plan's inflation rate; DEFAULTS inflation is 2.5, so 2.5 here keeps
+    // an untouched plan's math byte-identical (regression gate 64 holds by construction).
+    salaryGrowth: 2.5, spouseSalaryGrowth: 2.5,
 
     spending: 115000, inflation: 2.5, legacyGoal: 0,
     healthcare: 8000, healthcare65: 0, healthcareInflation: 5.0,            // healthcare = pre-65, annual/person
@@ -85,6 +89,7 @@
     savingsRate: [0, 100], employerContributionRate: [0, 100],
     spouseSavingsRate: [0, 100], spouseEmployerContributionRate: [0, 100],
     priorYearWages: [0, 1000000], spousePriorYearWages: [0, 1000000],
+    salaryGrowth: [0, 10], spouseSalaryGrowth: [0, 10],
     stockAllocation: [0, 100], glidePathEndStock: [0, 100],
     stockReturn: [0, 30], bondReturn: [0, 30], stockVol: [0, 60], bondVol: [0, 40],
     bracketGrowth: [0, 20], stateTaxRate: [0, 60], taxableGainRatio: [0, 100],
@@ -145,6 +150,13 @@
     // by starting these new visible fields from each saved current salary.
     if (raw.priorYearWages === undefined) out.priorYearWages = out.salary;
     if (raw.spousePriorYearWages === undefined) out.spousePriorYearWages = out.spouseSalary;
+    // V19.18 migration: pay increases used to be welded to inflation. Plans saved before
+    // these fields exist (checked on RAW — merged plans arrive with the key filled) are
+    // seeded from the plan's own saved inflation rate so their results are unchanged.
+    // Min(…,10) mirrors RANGES; only a saved inflation above 10% (unrealistic) is clamped
+    // — a disclosed edge, approved 2026-07-17. Idempotent: once seeded, the key exists.
+    if (raw.salaryGrowth === undefined) out.salaryGrowth = Math.min(out.inflation, 10);
+    if (raw.spouseSalaryGrowth === undefined) out.spouseSalaryGrowth = Math.min(out.inflation, 10);
     out.numPaths = Math.round(out.numPaths);   // hard path-count ceiling lives in RANGES above
     return { params: out, changed: notes.length > 0, notes: notes };
   }
@@ -185,6 +197,8 @@
       taxableBalance: m.taxable || 0,
 
       currentSalary: m.salary || 0, userSavingsRate: (m.savingsRate || 0) / 100,
+      userSalaryGrowth: (m.salaryGrowth || 0) / 100,                        // V19.18: fraction, per person
+      spouseSalaryGrowth: partner ? (m.spouseSalaryGrowth || 0) / 100 : 0,  // V19.18
       userEmployerContributionRate: (m.employerContributionRate || 0) / 100,
       userPriorYearWages: m.priorYearWages || 0,
       userSavingsDest: m.savingsDest || 'pretax',
