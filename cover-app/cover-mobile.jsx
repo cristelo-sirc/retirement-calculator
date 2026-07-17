@@ -484,6 +484,7 @@
           {chapter === 2 && (<React.Fragment>
             <MSub title="You">
               <MStep field="salary" label={partner ? 'Your salary' : 'Salary'} value={params.salary} step={5000} min={0} max={1000000} onChange={v => update('salary', v)} format={money} />
+              <MStep field="salaryGrowth" label={partner ? 'Your expected annual pay increase' : 'Expected annual pay increase'} value={params.salaryGrowth} step={0.1} min={0} max={10} onChange={v => update('salaryGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
               <MStep field="savingsRate" label="Your contribution rate" value={params.savingsRate} min={0} max={60} onChange={v => update('savingsRate', v)} suffix="%" />
               {params.currentAge >= 50 && <MStep field="priorYearWages" label="Your prior-year W-2 wages" value={params.priorYearWages} step={5000} min={0} max={1000000} onChange={v => update('priorYearWages', v)} format={money} />}
               <MStep field="employerContributionRate" label="Your employer adds" value={params.employerContributionRate} min={0} max={60} onChange={v => update('employerContributionRate', v)} suffix="%" />
@@ -495,6 +496,7 @@
             {partner && (
               <MSub title="Your partner">
                 <MStep field="spouseSalary" label="Partner's salary" value={params.spouseSalary} step={5000} min={0} max={1000000} onChange={v => update('spouseSalary', v)} format={money} />
+                <MStep field="spouseSalaryGrowth" label="Partner's expected annual pay increase" value={params.spouseSalaryGrowth} step={0.1} min={0} max={10} onChange={v => update('spouseSalaryGrowth', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />
                 <MStep field="spouseSavingsRate" label="Partner's contribution rate" value={params.spouseSavingsRate} min={0} max={60} onChange={v => update('spouseSavingsRate', v)} suffix="%" />
                 {params.spouseAge >= 50 && <MStep field="spousePriorYearWages" label="Partner's prior-year W-2 wages" value={params.spousePriorYearWages} step={5000} min={0} max={1000000} onChange={v => update('spousePriorYearWages', v)} format={money} />}
                 <MStep field="spouseEmployerContributionRate" label="Partner's employer adds" value={params.spouseEmployerContributionRate} min={0} max={60} onChange={v => update('spouseEmployerContributionRate', v)} suffix="%" />

@@ -29,6 +29,8 @@ const FIELD_INFO = {
   },
 
   salary: { help: 'Gross pay before taxes and deductions.', detail: 'Drives how much you add to savings each year between now and retirement.' },
+  salaryGrowth: { help: 'Average yearly raise until you retire. 0% means unchanged dollar pay.', detail: 'Your salary compounds at this rate every year until your retirement age — it is separate from inflation, so changing one does not change the other. Raises grow your contributions, wages, and taxes; they do not change the Social Security benefit you entered, which is its own input.' },
+  spouseSalaryGrowth: { help: 'Average yearly raise until your partner retires. 0% means unchanged dollar pay.', detail: 'Your partner’s salary compounds at this rate every year until their retirement age, independent of both inflation and your own raise. It grows their contributions, wages, and taxes; it does not change the Social Security benefit you entered for them.' },
   savingsRate: { help: 'The share of salary you save each year.', detail: 'This comes out of your pay. Pre-tax contributions lower current taxable income; Roth contributions do not.' },
   priorYearWages: { help: 'Used for catch-up contribution rules at 50+.', detail: 'If you are 50 or older, enter Social Security wages from W-2 Box 3 for the employer sponsoring this plan. The 2026 Roth catch-up rule uses this figure—not your current salary—to decide whether catch-up contributions must be Roth.' },
   employerContributionRate: { help: 'Match plus profit sharing, as a % of salary.', detail: 'Enter the actual match or other employer contribution as a percent of salary. It grows your retirement account without reducing take-home pay and is subject to the separate employee-plus-employer limit.' },

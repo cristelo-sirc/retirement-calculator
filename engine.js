@@ -1889,8 +1889,16 @@
                     // inputs already define what leaves paychecks for the portfolio, so charging
                     // retirement spending here would silently withdraw money during accumulation.
                     const retirementStarted = !userWorking || (params.spouseAge > 0 && !spouseWorking);
-                    let userSalary = userWorking ? params.currentSalary * inflation : 0;
-                    let spouseSalary = spouseWorking ? params.spouseCurrentSalary * inflation : 0;
+                    // V19.18: each partner's salary compounds at their OWN expected pay-increase
+                    // rate, independent of inflation. The legacy DOM app never supplies these
+                    // params, so an undefined rate falls back to lifestyleInflation — which
+                    // reproduces the pre-V19.18 behavior (salary * inflation) exactly.
+                    // Statutory amounts (contribution caps, compensation limit, Roth catch-up
+                    // wage threshold) deliberately KEEP growing with inflation, not with pay.
+                    const userSalaryGrowth = Number.isFinite(params.userSalaryGrowth) ? params.userSalaryGrowth : params.lifestyleInflation;
+                    const spouseSalaryGrowth = Number.isFinite(params.spouseSalaryGrowth) ? params.spouseSalaryGrowth : params.lifestyleInflation;
+                    let userSalary = userWorking ? params.currentSalary * Math.pow(1 + userSalaryGrowth, i) : 0;
+                    let spouseSalary = spouseWorking ? params.spouseCurrentSalary * Math.pow(1 + spouseSalaryGrowth, i) : 0;
                     const totalSalary = userSalary + spouseSalary;
 
                     let userPreTaxContrib = 0;
@@ -1905,7 +1913,7 @@
                     if (userWorking && userSalary > 0) {
                         const userPriorYearWages = i === 0
                             ? params.userPriorYearWages
-                            : params.currentSalary * Math.pow(1 + params.lifestyleInflation, i - 1);
+                            : params.currentSalary * Math.pow(1 + userSalaryGrowth, i - 1);   // V19.18: per-person pay growth
                         const userContributions = calculateWorkplaceContributions(
                             userSalary, currentYearAge, params.userSavingsRate,
                             params.userEmployerContributionRate || 0, params.userSavingsDest,
@@ -1923,7 +1931,7 @@
                     if (spouseWorking && spouseSalary > 0) {
                         const spousePriorYearWages = i === 0
                             ? params.spousePriorYearWages
-                            : params.spouseCurrentSalary * Math.pow(1 + params.lifestyleInflation, i - 1);
+                            : params.spouseCurrentSalary * Math.pow(1 + spouseSalaryGrowth, i - 1);   // V19.18: per-person pay growth
                         const spouseContributions = calculateWorkplaceContributions(
                             spouseSalary, spouseCurrentAge, params.spouseSavingsRate,
                             params.spouseEmployerContributionRate || 0, params.spouseSavingsDest,

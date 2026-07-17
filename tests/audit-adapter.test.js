@@ -26,6 +26,9 @@ const ENGINE_PARAM_NAMES = new Set([
   'userPriorYearWages', 'userSavingsDest', 'userEmployerContributionDest',
   'spouseCurrentSalary', 'spouseSavingsRate', 'spouseEmployerContributionRate',
   'spousePriorYearWages', 'spouseSavingsDest', 'spouseEmployerContributionDest',
+  // V19.18: per-person pay growth. NOT in collectInputs() — the legacy DOM app has no such
+  // inputs; the engine falls back to lifestyleInflation when these are absent.
+  'userSalaryGrowth', 'spouseSalaryGrowth',
   'pension', 'pensionAge', 'spousePension', 'spousePensionAge',
   'enablePensionCOLA', 'enableSpousePensionCOLA',
   'enableRothConversion', 'rothConversionAmount', 'rothConversionStartAge', 'rothConversionEndAge',
