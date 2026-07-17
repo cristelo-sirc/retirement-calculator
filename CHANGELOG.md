@@ -1,5 +1,11 @@
 # Change log
 
+## 19.17.0 — 2026-07-16
+
+- Added a "Private by design" note to the Welcome screen: everything you enter stays on your device — there's no server, no account, and no tracking, so nothing you type can be seen by anyone else, including whoever shared the app with you. A shorter version of the same note appears at the top of chapter 1 of Input Data, right where you start typing real numbers. This was verified against the actual code and hosting before being written: the app makes no network calls of any kind with your data.
+- Fixed a stale version stamp inside saved plan files (they were labeled 19.10 regardless of the app version that saved them; purely informational — loading was never affected).
+- No changes to any calculation, score, or on-screen figure. The built-in sample still reads 64/100.
+
 ## 19.16.0 — 2026-07-16
 
 - The "Your Plan at a Glance" panel on Results now also shows the four assumptions behind the numbers: the inflation rate, the average stock return, the average bond return, and the spending guardrail adjustment. They sit grouped together at the bottom of the panel, on both the desktop and phone views.

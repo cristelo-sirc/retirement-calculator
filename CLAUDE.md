@@ -852,3 +852,46 @@ locally (`git merge --no-ff`) in the /tmp clone and pushed directly, authored as
 `cristelo-sirc <cristelo-sirc@users.noreply.github.com>` (V19.15 email-privacy lesson).
 
 **Next up:** no work queued. `UX-FIX-PLAN-2026-07-10.md` fully shipped (V19.12&ndash;V19.14).
+
+---
+
+## V19.17 &mdash; Privacy blurb (Welcome + Input Data chapter 1), display-only
+
+Approved by Cris 2026-07-16 (Option A of a two-option plan; Option B &mdash; self-hosting the two
+Google Fonts so the app contacts no third party at all &mdash; was declined for now and remains a
+candidate follow-up). `engine.js` and `real-engine.js` scoring logic UNCHANGED &mdash; copy-only.
+
+**Factual basis (privacy audit, 2026-07-16, this session).** Verified against the DEPLOYED tree
+(fresh clone of `main`, confirmed byte-identical to the local folder): zero network calls in app
+code (no fetch/XHR/beacon/websocket), zero analytics/tracking, no backend; inputs exist only in
+the visitor's own localStorage/sessionStorage and in save-files downloaded to their own device.
+The legacy QR-share code in `engine.js` (`importFromQRUrl`, QR generation) is dead in the shipped
+app &mdash; its libraries (QRCode/LZString/jsPDF) are not loaded and nothing calls it &mdash; so
+inputs never enter URLs. The app's ONLY third-party contact is Google Fonts (`fonts.googleapis.com`
+/ `fonts.gstatic.com` in `index.html`), which receives standard request metadata (visitor IP/UA/
+referrer), never inputs. GitHub Pages gives the repo owner NO access logs and no Pages analytics.
+**The blurb copy claims privacy of INPUTS only &mdash; do not strengthen it to "no outside
+connections" unless the fonts are vendored first (Option B).**
+
+- **Welcome screen (`compass-cover.jsx`):** the old trailing sentence ("Your answers stay in this
+  browser unless you save them to a file.") is replaced by a dedicated "Private by design" block
+  below the action buttons (kicker + two-line note, magazine voice).
+- **Input Data chapter 1 (both layouts):** new shared string `CV_PRIVACY_NOTE` defined next to
+  `CV_CHAPTERS` in `cover-inputs.jsx`, exported on window, rendered by BOTH the desktop wizard and
+  `cover-mobile.jsx` under the "Why we ask" inset on chapter 1 only (same can't-drift discipline
+  as `CV_CHAPTERS`).
+- **Drift fix found during stamp reconciliation:** `CompassIO.buildPlanJSON` had hardcoded
+  `version: '19.10'` in saved plan files since V19.10 &mdash; the release notes' "saved-plan stamp
+  reconciled" claim was NOT true for V19.11&ndash;V19.16 (nothing reads the field on load, so no
+  behavior impact). Now 19.17; future releases should actually check this spot (grep the OLD
+  version string in `compass-cover.jsx`, not just the ones bump-version.mjs reports).
+
+**Validation.** Full suite **97 pass, 0 fail** in the shipping /tmp clone; DEFAULTS regression gate
+**64** (asserted in `audit-adapter.test.js`). All five JSX files + `index.html` inline Babel block
+transform clean (vendored `@babel/standalone` headless in Node; note: under `require()` it attaches
+to `module.exports`, not `global.window`); `node --check` clean on `real-engine.js`. Live audit on
+the deployed URL: see below.
+
+**Cache-buster:** `engine.js?v=19.17` + `?v=19.17` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header, all five on-screen stamps, and (newly)
+the saved-plan `version` stamp reconciled to 19.17 in the same push.

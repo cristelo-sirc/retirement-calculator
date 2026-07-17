@@ -166,6 +166,11 @@ const CV_CHAPTERS = [
     note: 'Tax filing status follows your “Just me / Me + partner” choice (single vs. married-joint). State tax is modeled as one flat rate on income and gains.' },
 ];
 
+// V19.17: one shared privacy line rendered by BOTH layouts on chapter 1 (same can't-drift
+// discipline as CV_CHAPTERS). Factually verified 2026-07-16: the app has no network calls,
+// no analytics, and no backend — inputs exist only on the user's own device.
+const CV_PRIVACY_NOTE = 'Private by design: your answers stay on this device — saving a plan just downloads a file to your computer.';
+
 // sessionStorage keys shared by desktop and mobile so crossing the 769px breakpoint
 // keeps the reader on the same chapter (same discipline as the shared shell `screen`).
 const CV_CHAPTER_KEY = 'compassChapter';
@@ -268,7 +273,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
           </div>
           {/* On-screen version stamp (lives here since fill-mode chrome has no footer tag). */}
           <div style={{ marginTop: 'auto', padding: '18px 26px 0', fontFamily: cvi.body, fontSize: 10,
-            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.16</div>
+            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.17</div>
         </div>
 
         {/* Chapter content + pinned footer */}
@@ -300,6 +305,11 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
                 textTransform: 'uppercase', color: cvi.ink70, marginBottom: 6 }}>Why we ask</div>
               <div style={{ fontSize: 13, lineHeight: 1.6, color: cvi.ink, textWrap: 'pretty' }}>{ch.why}</div>
             </div>
+
+            {chapter === 0 && (
+              <p style={{ fontSize: 12.5, lineHeight: 1.55, color: cvi.ink70, maxWidth: 560,
+                margin: '-14px 0 26px' }}>{CV_PRIVACY_NOTE}</p>
+            )}
 
             {chapter === 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 30, flexWrap: 'wrap' }}>
@@ -542,4 +552,4 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
   );
 }
 
-Object.assign(window, { CoverInputs, CVI_STATES, CV_CHAPTERS });
+Object.assign(window, { CoverInputs, CVI_STATES, CV_CHAPTERS, CV_PRIVACY_NOTE });
