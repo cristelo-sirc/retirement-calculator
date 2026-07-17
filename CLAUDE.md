@@ -16,7 +16,7 @@ drift risk. There is now exactly one entry page. **Note:** five releases intenti
 Pre-V18 UI architecture (legacy imperative-DOM app, full v9.9&ndash;v17.6 history) AND the detailed
 V18.0&ndash;V19.8 release sections (moved 2026-07-07) are archived in **`CLAUDE-legacy.md`**.
 
-**Current Version:** 19.15
+**Current Version:** 19.16
 **Project Location:** `/Users/cristelogarza/Claude Code/Retirement Calculator`
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
@@ -799,3 +799,56 @@ reconciled to 19.15 in the same push &mdash; note the Questionnaire's stamp MOVE
 `CoverChrome tag=` prop (fill mode has no footer strip) but a small stamp at the bottom of the
 wizard's chapter rail. Still five on-screen stamps total; `bump-version.mjs` still does not touch
 them (standing manual step).
+
+---
+
+## V19.16 &mdash; Assumptions surfaced in "Your Plan at a Glance" (display-only)
+
+Approved by Cris 2026-07-16 from a plan with scope, risks, and validation. `engine.js` and
+`real-engine.js` scoring logic UNCHANGED &mdash; single display-layer edit. Cris's two design
+calls: mix the new rows into the existing glance grid but grouped together (not scattered), and
+show the guardrail **adjustment only** (not ceiling/floor).
+
+- **Four assumption rows added to the shared `cvGlanceFacts` builder** (`compass-cover.jsx`), so
+  both the desktop `CoverGlance` and the mobile `MGlance` pick them up automatically (same
+  shared-builder discipline as every other glance fact &mdash; the two layouts can't disagree).
+  The rows sit as a contiguous block at the END of the fact array (after Monthly paycheck), reading
+  as "and here are the assumptions behind it": **Inflation** (`p.inflation` &rarr; "2.5%/yr",
+  sub "assumed"), **Stock return** (`p.stockReturn` &rarr; "7.0%/yr", sub "average, before
+  inflation"), **Bond return** (`p.bondReturn` &rarr; "3.5%/yr", same sub), **Guardrail
+  adjustment** (`p.guardrailAdjustment` &rarr; "10%" when `p.enableGuardrails`, else **"Off"**).
+  Grid grows 7&rarr;11 facts, stays 2-column.
+- **Units note (why no `/100`):** `cvGlanceFacts` reads the UI-level `params` object, where these
+  are whole-number percentages (inflation 2.5, stockReturn 7.0, bondReturn 3.5, guardrailAdjustment
+  10). The `/100` conversion is the adapter's job (`mapToReal`), NOT the display's &mdash; so the
+  rows render the raw param with a "%" suffix (`Number(v).toFixed(1)` for the three returns, integer
+  for guardrail). Reading the already-`/100`-ed `results.params` here would show "0.025%".
+- **Accuracy call (disclosed):** the guardrail adjustment percentage is inert when
+  `enableGuardrails` is off, so showing a bare "10%" there would misrepresent the plan. It reads
+  **"Off"** in that state instead &mdash; the honest display, verified live in both states.
+- No param renames, no new inputs, no `engine.js`/`real-engine.js` change.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched);
+`DEFAULTS` regression gate **64** (asserted in `audit-adapter.test.js`). `compass-cover.jsx` and
+`cover-inputs.jsx` Babel-transform clean; `node --check` clean on `real-engine.js`. Live-audited on
+the deployed GitHub Pages URL (title/served version confirmed **19.16**, cache-busted): against
+Cris's real saved plan (couple, 65/100, guardrails off) the four rows rendered correctly on Results
+&mdash; Inflation 2.5%/yr, Stock return 7.0%/yr, Bond return 3.5%/yr, Guardrail adjustment **Off**;
+the guardrail-**on** &rarr; "10%" path was confirmed by an executable call to the live
+`cvGlanceFacts` with `enableGuardrails:true`. All four screens (Input Data wizard, Results, Try
+Changes, Charts) opened clean; zero console errors across a full reload. Desktop tested width
+~1568px (Chrome `resize_window` floor, standing limitation). **Mobile not visually verified this
+session** &mdash; same `resize_window` limitation; mobile code is verified by construction (shared
+`cvGlanceFacts`, so `MGlance` renders the identical facts) but Cris should phone-check: open
+Results, scroll "Your Plan at a Glance," confirm the four new rows appear at the bottom and read
+clearly. Cris's real `localStorage['compassParams']` backed up before testing and restored
+byte-identical after (1716 chars, exact-string match).
+
+**Cache-buster:** `engine.js?v=19.16` + `?v=19.16` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header comment, and all five on-screen version
+stamps reconciled to 19.16 in the same push (no repeat of the V19.11 gap). Same PR-workflow as
+V19.12&ndash;V19.15: no logged-in browser session, so the release branch was merged into `main`
+locally (`git merge --no-ff`) in the /tmp clone and pushed directly, authored as
+`cristelo-sirc <cristelo-sirc@users.noreply.github.com>` (V19.15 email-privacy lesson).
+
+**Next up:** no work queued. `UX-FIX-PLAN-2026-07-10.md` fully shipped (V19.12&ndash;V19.14).

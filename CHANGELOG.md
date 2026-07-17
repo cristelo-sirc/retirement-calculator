@@ -1,5 +1,11 @@
 # Change log
 
+## 19.16.0 — 2026-07-16
+
+- The "Your Plan at a Glance" panel on Results now also shows the four assumptions behind the numbers: the inflation rate, the average stock return, the average bond return, and the spending guardrail adjustment. They sit grouped together at the bottom of the panel, on both the desktop and phone views.
+- The guardrail row reads "Off" when spending guardrails are turned off (rather than showing a percentage that isn't actually doing anything), and shows the adjustment percentage when they're on.
+- No changes to any calculation, score, or on-screen figure. The built-in sample still reads 64/100.
+
 ## 19.15.0 — 2026-07-16
 
 - Input Data is now an 8-chapter guided wizard instead of one long 40+ field page. A chapter list runs down the left side (The people · What you've saved · Salary & contributions · Spending · Guaranteed income · Your home · Investments · Fine-tuning), each chapter opens with a plain-English "Why we ask" explainer, and Back / Next buttons walk you through in order — though you can jump to any chapter from the list at any time. Chapters you've been through get a checkmark, and a thin progress bar tracks where you are.
