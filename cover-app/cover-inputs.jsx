@@ -268,7 +268,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
           </div>
           {/* On-screen version stamp (lives here since fill-mode chrome has no footer tag). */}
           <div style={{ marginTop: 'auto', padding: '18px 26px 0', fontFamily: cvi.body, fontSize: 10,
-            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.15</div>
+            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.16</div>
         </div>
 
         {/* Chapter content + pinned footer */}
