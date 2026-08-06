@@ -367,6 +367,35 @@ v17.3 replaced blocking native dialogs with promise-based modals. Anything at lo
 **Moved verbatim from `CLAUDE.md` on 2026-07-07** (doc condensation; CLAUDE.md keeps one-line summaries
 plus a consolidated Standing Environment &amp; Process Lessons section distilled from these).
 
+**Index moved here 2026-08-06** during the context-engineering restructure. `CHANGELOG.md` covers
+V18.0 and V18.12&ndash;V18.14 but not V18.1&ndash;V18.11, so this one-line-per-release index is the
+only compact orientation for that stretch:
+
+- **V18.0** &mdash; React "Compass" rebuild; `engine.js` reused as pure math via the `real-engine.js` adapter; rollback branch `pre-reskin-v17.6`.
+- **V18.1** &mdash; every engine input exposed in the Questionnaire; flat state-tax %; filing status derived from partner toggle.
+- **V18.2** &mdash; Welcome launch screen; file Save/Load (`CompassIO`; defensive `parsePlan` merges only known DEFAULTS keys).
+- **V18.3** &mdash; Save/Load callouts surfaced at the top of Cover + Questionnaire.
+- **V18.5** &mdash; deterministic seeded RNG &rarr; identical odds on every screen; TCJA toggle relabeled "Assume higher future tax rates"; version-string hygiene.
+- **V18.6** &mdash; `numPaths` single source + user-facing path-count control.
+- **V18.7** &mdash; `legacyGoal` binds the success test (flat future-dollar amount, graded on `finalBalance` in the adapter); lever deltas apples-to-apples.
+- **Repo maintenance 2026-06-15** &mdash; superseded files removed from repo; `scripts/deploy.sh` added (now fallback-only); `.gitignore` tightened.
+- **V18.8** &mdash; default 5,000 paths (max 10,000); helper estimates proportional to path count.
+- **V18.9** &mdash; hotfix: fan-chart max via linear scan (spread-args `RangeError` blanked the app at high path counts).
+- **V18.10** &mdash; audit pass 1 (app-only): SS move = both partners everywhere; goal-aware headline label; `normalizeParams` validation + path cap; true P10/P50/P90 fan chart.
+- **V18.11** &mdash; audit pass 2 (ENGINE MATH): contribution-accumulation fix (contributions were silently discarded every year; DEFAULTS 42&rarr;61); IRMAA per-person + 2-yr lookback; contribution caps grow with inflation; wages in pathLog + paycheck reconciliation.
+- **V18.12** &mdash; exact typed questionnaire entry (`numeric-entry.js` + tests).
+- **V18.13** &mdash; V17 spending contract restored (`spending` EXCLUDES housing &amp; healthcare; `propertyTax` = property tax + homeowners insurance combined); no spending drawn during accumulation; fixed mortgage not inflated.
+- **V18.14** &mdash; employee/employer contribution split per person; 2026 statutory limits/brackets/IRMAA baselines.
+- **V19.0** &mdash; explicit elapsed-year timeline (`age` vs `balanceAge`; inherited off-by-one fixed); `priorYearWages` + employer-contribution destinations; input-coverage test contract.
+- **V19.1** &mdash; UX batch: one editing model (Cover moves stage Rework drafts), sticky nav, honest sample state, live score chip.
+- **V19.2** &mdash; year-by-year table (Average/Rough/Strong storyline views) + permanent balance-identity invariant; confirmed `totalWithdrawal` excludes RMD.
+- **V19.3** &mdash; four tabs (Input Data &middot; Results &middot; Try Changes &middot; Charts); `computeMoves` = single full-count source for every move delta.
+- **V19.4** &mdash; mobile parity decision: two-tab companion, disclosed in copy (Option A sketch in BACKLOG.md).
+- **V19.5** &mdash; ENGINE MATH: 8 accuracy fixes (phantom Roth-conversion tax; SS earnings-test double-inflation; IRMAA convergence skip; cap-gains standard-deduction floor; surplus banked to taxable as `surplusBanked`; post-depletion recovery on new money; RMD table through 119; IRMAA tier-4 cent).
+- **V19.6** &mdash; honest scoring: additive `everDepleted` latching flag; success = never went broke; `firstDepletionAge` danger-age insight.
+- **V19.7** &mdash; Results context: "Your Plan at a Glance" + "How It Could Play Out" (`roughLegacy`/`strongLegacy` additive, equal to yearTables finals).
+- **V19.8** &mdash; four-tier verdict (On Track 90 / Tight 80 / Shaky 65 / At Risk) + app-wide small-label legibility (`ink70`).
+
 ---
 
 ## V18.0 &mdash; "Compass" editorial rebuild (Concept 07 Cover)
@@ -1438,3 +1467,766 @@ Changes, Charts, Input Data) on both viewports; zero console errors throughout.
 **Cache-buster:** `engine.js?v=19.8` + `?v=19.8` on all `cover-app/*` includes in both shells; both HTML
 titles, `real-engine.js` header, saved-plan stamp, and on-screen kickers reconciled to 19.8. `engine.js`
 UNCHANGED.
+
+---
+
+# Part III &mdash; V19.9&ndash;V19.18 detailed release history
+
+Moved verbatim from `CLAUDE.md` on 2026-08-06 during the context-engineering restructure.
+The standing lessons these releases produced were promoted into `CLAUDE.md`'s gotchas section
+before archiving; the detail below is the full record, kept for forensics.
+
+## Deploy pipeline replaced — 2026-07-04 (legacy branch-build &rarr; custom Actions workflow)
+
+Not an app version (no `?v=` bump; nothing in `cover-app/` or `engine.js` touched). Fixes the
+GitHub Pages "Deploy to GitHub Pages" step that had failed transiently three times across
+V19.2&ndash;V19.4 (build always succeeded; only the publish step flaked, for no reason visible from
+outside GitHub's own infrastructure).
+
+**Root cause, as far as it's diagnosable from outside GitHub.** The repo was on Pages' legacy
+**"Deploy from a branch"** source. In that mode GitHub runs its own hidden build+deploy pipeline
+(visible in Actions only as an opaque **"pages build and deployment"** run with no workflow file in
+the repo) &mdash; unrelated to Jekyll content, it ran a Jekyll build step regardless (this site is
+plain HTML/JS and never needed one), and there was no file we could edit to add a safety net when
+the publish step flaked. We could not get GitHub's exact error text for the failures: an
+unauthenticated log request came back `403`, and a follow-up attempt using the stored deploy token
+to authenticate was correctly refused by a safety check before the token could be printed into a
+visible tool call. The diagnosis is therefore built from the observable pattern (build succeeds,
+deploy fails in ~8 seconds, no fixed correlation to push timing) plus the fact that this is a
+widely-reported class of flakiness in that legacy pipeline specifically.
+
+**Fix shipped:** `.github/workflows/deploy.yml` &mdash; checkout &rarr; `actions/configure-pages` &rarr;
+`actions/upload-pages-artifact` (path `.`, no Jekyll) &rarr; `actions/deploy-pages`, with the deploy
+step retrying itself up to **3 attempts** (20s then 30s backoff) before failing the job. Confirmed
+free on GitHub Free for public repos (no plan upgrade needed) and not subject to the legacy
+pipeline's 10-builds/hour soft cap.
+
+**Manual step required, done by Cris:** repo Settings &rarr; Pages &rarr; Build and deployment &rarr;
+Source, switched from "Deploy from a branch" to "GitHub Actions". Verified via the Actions API
+(browser-context fetch, since `api.github.com` is blocked by the sandbox proxy) that the very next
+push after the switch triggered **only** the new "Deploy to GitHub Pages" workflow &mdash; the
+legacy "pages build and deployment" run did not fire &mdash; and that run succeeded on its first
+attempt.
+
+**Environment/process lesson: the deploy token lacks `workflow` scope, by design.** Pushing
+`.github/workflows/deploy.yml` from the `/tmp` clone was rejected: `refusing to allow a Personal
+Access Token to create or update workflow ".github/workflows/deploy.yml" without \`workflow\`
+scope`. This is GitHub enforcing least-privilege on the token, not a bug. Cris added the file
+himself via the GitHub web UI (Add file &rarr; Create new file) instead of us broadening the
+token's scope. **Any future change to a file under `.github/workflows/` needs the same
+web-UI hand-off (or Cris granting the token `workflow` scope first)** &mdash; a normal content push
+from the `/tmp` clone will not work for that one directory.
+
+**Standing reminder added:** if a future Pages deploy ever fails again, check which pipeline
+produced the failing run first (`"pages build and deployment"` = legacy, should not exist anymore;
+`"Deploy to GitHub Pages"` = ours). If it's ours, the 3-attempt retry already ran and still lost —
+that's a stronger signal than the old single-shot legacy failures ever gave, and is worth showing
+Cris directly rather than silently re-pushing.
+
+---
+
+## V19.9 &mdash; Deep-review fix batch (AUDIT-2026-07-06-DEEP-REVIEW): 4 release-blockers + P2/P3 + 1 new input
+
+Fourth intentional `engine.js` math release (after V18.11, V19.5, V19.6). Addresses
+`AUDIT-2026-07-06-DEEP-REVIEW.md` in one batch, per Cris's instruction to fix everything in one pass.
+Two-tier verification (Cris's explicit choice): Tier A (app-only) got light verification; the engine-math
+release-blockers (B1&ndash;B4, B6) each got targeted permanent invariant tests. Suite grew **86 &rarr; 95
+tests, all passing, 0 todo** (the F-PT-EARNTEST-ATTRIB todo is now a real passing test). `DEFAULTS` score
+**unchanged at 64** (regression gate held through every change).
+
+### Tier A (UI / copy / adapter-exposition; zero Monte Carlo math change)
+
+- **A1 &mdash; IRMAA tier-4 corrected: $529.70 &rarr; $529.60** (`engine.js`). CMS 2026 tier-4 is Part B
+  **$446.30** + Part D $83.30 = **$529.60**; V19.5 changed it to $529.70 citing Part B 446.40, which was
+  wrong per the official CMS 2026 fact sheet (re-verified live 2026-07-06). Test oracle in
+  `audit-statutory.test.js` corrected too. **This reverses a V19.5 "fix"** &mdash; documented as a dated
+  correction, not a silent rewrite.
+- **A2 &mdash; recovery-semantics display (audit P1 #4), display-only.** Plans that went broke then
+  recovered read "money lasts the full plan" while scoring 0/100, because runway/longevity/banner display
+  logic still read the end-state `depletionAge` (which V19.5 clears on recovery) instead of the V19.6
+  latching `everDepleted`/`firstDepletionAge`. Adapter now exposes `medianDepletion`
+  `{everDepleted, firstDepletionAge, recovered, endAge}` and an honest `runwayYears` (based on the median
+  path's FIRST depletion); `cvOutcomes` (shared desktop+mobile) and the year-table banner
+  (`retire-charts.jsx`) state both facts on recovery. No dollar changed.
+- **A3 &mdash; move-card boundary honesty (audit P2).** `computeMoves()` and the Rework levers now hide the
+  "delay retirement" move when the 80-cap leaves no room, and decide SS-move eligibility PER-PARTNER (was
+  user-only, so "all together" silently moved a spouse the card never listed). Cards, bars, and staged
+  drafts derive from the same applicable-patch set.
+- **A4 &mdash; future-dollar labels (audit P2).** Rough/median/strong ending balances and the legacy goal
+  are labeled future (nominal) dollars, with a note pointing to the Charts today's-dollars toggle. Copy only.
+- **A5 &mdash; accessibility (audit P2/P3).** Primary desktop nav is now real `<button>`s (tab stop,
+  Enter/Space, `aria-current`); the Results masthead was lifted OUT of the 900px hero section so it stays
+  sticky down the whole page; `ink70` darkened 60%&rarr;65% opacity (`#1a1815a6`) to clear WCAG AA (measured
+  5.28:1 / 5.11:1 on the two creams, vs the sub-4.5:1 before); `aria-pressed` added to the year-table
+  segmented controls.
+- **A6 &mdash; responsive polish (audit P3).** Mobile tab selection now syncs to the shared shell `screen`
+  so crossing the desktop/mobile breakpoint keeps the same screen; the giant Results score uses
+  `clamp(200px,26vw,360px)` so it stops dominating at the 769px breakpoint; welcome masthead gap + "No. 5"
+  wrap fixed; mobile paycheck note rewritten as a standalone sentence.
+- **A7 &mdash; CI test gate + scratch cleanup.** `.github/workflows/deploy.yml` gains a required `test` job
+  (`node --test tests/*.test.js`) that `build` depends on, so a red suite can't publish. `_harness.js`/`_h2.js`
+  gitignored. **NOTE:** the workflow file needs Cris's web-UI commit (the deploy token lacks `workflow` scope).
+
+### Tier B (engine math / broad surface; each with a permanent invariant test)
+
+- **B1 &mdash; tax convergence + household-cash invariant (audit P1 #2). `engine.js` math changed.** The
+  convergence loop hard-stopped after 5 passes even when unconverged, so tax-heavy years (e.g. large Roth
+  conversions) left thousands of dollars of spending/tax UNFUNDED while the path was still solvent (the audit
+  repro: $1M pre-tax / $200k spend / $500k conversion left a $4,011 shortfall). Fix: raised the pass cap to
+  100 and converge only when BOTH tax and need are stable within $1; normal years still break in 3&ndash;5
+  passes (no perf cost). **New permanent invariant** (`audit-cash-identity.test.js`): for every fully-retired
+  solvent year, `guaranteed income + portfolio withdrawals == spending + taxes + surplus banked` within $2,
+  across a scenario grid. The audit repro now funds to $0.52. This is the lens that was missing when the bug
+  shipped (portfolio conservation stayed true throughout).
+- **B2 &mdash; sustainable-spending solver rebuilt (audit P1 #1).** Old solver assumed $20k was feasible
+  (reported "$20,000 safe" for 0/100 plans), capped the ceiling at max($80k, 2&times;spend) and never
+  expanded it, and reported an unverified figure. Rebuilt with **adaptive bracketing** (walks the floor down
+  toward $0; expands the ceiling up to a $2M cap while it still passes) and returns **null ("None")** when no
+  level reaches ~90%. **Cris's speed/accuracy decision:** the figure is a FAST bisection ESTIMATE at the
+  sample count (keeps live recompute ~1s) rather than a full-count-verified number (which tripled recompute
+  time), and is LABELED an estimate ("~" prefix + "estimate for ~90% success"). Test:
+  `sustainable-spending.test.js`.
+- **B3 &mdash; shared parameter normalization (audit P1 #3). Broadest UI surface.** Cross-field rules
+  (age ordering, ranges) were enforced only inside a private copy in `compute()`, so the form could show
+  current age 65 / retirement 65 while the engine used 66 &mdash; displayed, persisted, saved, and computed
+  params disagreed. Fix: BOTH HTML shells now normalize every params write at the single `setParams`
+  boundary (`normalizeParams`), so displayed == persisted == saved-file == `results.params`, always. When a
+  dependent field is auto-corrected, a friendly note (`cvAdjustMessage`, surfaced in both questionnaire
+  layouts) tells the user what changed. Invariant relies on `normalizeParams` idempotence (tested,
+  `param-normalization.test.js`).
+- **B4 &mdash; paycheck surplus + horizon (audit P2). `engine.js` UNCHANGED; adapter + UI.** V19.5 netted
+  banked surplus INTO the portfolio segment, which went negative in surplus years and broke the bar (positive
+  segments summed past 100%). Now presented as GROSS sources vs EXPLICIT uses: gross portfolio outflow
+  (RMD + discretionary, never negative) as a source, leftover guaranteed income as a separate "saved back to
+  portfolio" use; `total` = gross sources = spending + taxes + saved (the B1 identity). The year-table shows a
+  surplus year's negative net as a green "+$X saved" deposit, not a confusing "-$143,925 withdrawal". Also, if
+  the later partner's retirement falls beyond the plan horizon, `paycheck.fullyRetired=false` and the UI says
+  a fully-retired paycheck is unavailable instead of labeling a still-working year "once fully retired".
+- **B5 &mdash; FRA-year SS earnings test disclosed (audit P2), per Cris: disclose, don't build.** The engine
+  always applies the under-FRA earnings limit and does not model the special rule for the single year a person
+  REACHES FRA (needs birth month the annual model lacks). Disclosed in the SS claim-age tooltip, an
+  `engine.js` comment at `SS_EARNINGS_LIMIT`, and the README &mdash; no longer presented as exact.
+- **B6 &mdash; per-person part-time SS attribution BUILT (audit P2), per Cris: build now. `engine.js` math
+  changed.** New `partTimeOwner` input (user | spouse), exposed in both questionnaire layouts (couples only),
+  mapped through the adapter, with a `FIELD_INFO` tooltip and full `input-coverage` coverage. The engine gates
+  the part-time channel on the OWNER's age and applies the SS earnings test to only the OWNER's benefit
+  (previously always the user, so a spouse-earned paycheck wrongly reduced the user's early benefit). The
+  former `todo` test is now a real passing test (`audit-properties.test.js`) using an asymmetric-benefit pair
+  to prove attribution actually changes the household total.
+
+### Validation
+Full suite **95 tests, 95 pass, 0 fail, 0 todo**. `DEFAULTS` re-scored **64** at every stage (regression
+gate). New permanent tests: household-cash identity (B1), sustainable-spending feasibility/ceiling/estimate
+(B2), param-normalization idempotence + identity (B3), gross-source paycheck reconciliation (B4), per-owner
+earnings-test attribution (B6). All five JSX files Babel-transform clean; both HTML inline scripts transform;
+`node --check` on both plain-JS files. Live browser audit: see the deploy log for the desktop 1680px + mobile
+~500px pass against the deployed GitHub Pages URL.
+
+**Cache-buster:** `engine.js?v=19.9` + `?v=19.9` on all `cover-app/*` includes in both shells; both HTML
+titles, `real-engine.js` header, saved-plan stamp (`19.9`), and on-screen kickers/tags reconciled to 19.9.
+`engine.js` math IS changed (B1 tax-loop cap, B6 earnings-test attribution, A1 IRMAA constant; A2 exposition
+via adapter). The audit report and this batch's fix plan (`V19.9-FIX-PLAN.md`) are kept local (gitignored
+`*.md`), not published.
+
+---
+
+## V19.10 &mdash; Per-partner part-time income channels (two channels, partTimeOwner retired)
+
+Fifth intentional `engine.js` math release (after V18.11, V19.5, V19.6, V19.9). Builds the full
+two-channel model the F-PT-EARNTEST-ATTRIB backlog entry originally sketched, superseding V19.9's
+B6 single-channel `partTimeOwner` selector. Approved by Cris 2026-07-07 from a plan with scope,
+risks, and validation; shipped as one batch.
+
+**Engine (`engine.js` math IS changed, one localized block).** The V19.9 owner-switch block is
+replaced by two independent computations: the user's channel (`enablePartTime` / `partTimeIncome` /
+`partTimeStartAge` / `partTimeEndAge` &mdash; names unchanged) gates on the USER's age window, and a
+new spouse channel (`spouseEnablePartTime` / `spousePartTimeIncome` / `spousePartTimeStartAge` /
+`spousePartTimeEndAge`) gates on the SPOUSE's age window. Each partner's SS earnings test receives
+only THEIR own earnings (the two `calculateSSBenefit` call sites already took per-person earnings
+since V19.9). Household cash, ordinary income, and the logged `partTimeIncome` pathLog field all
+use the SUM, so every downstream consumer (tax convergence, surplus banking, paycheck, year table)
+is unchanged. The legacy DOM app's part-time controls (single channel) still work: the undefined
+spouse params are falsy, so the spouse channel is simply $0 there.
+
+**Adapter (`real-engine.js`).** Four new DEFAULTS keys (spouse channel), RANGES for the two new
+ages, `partTimeOwner` removed from ENUMS/DEFAULTS, and mapToReal emits both channels (spouse channel
+zeroed for singles). **Migration in `normalizeParams`:** a plan with `partTimeOwner: 'spouse'` and
+no actively-used spouse channel has its user-channel values MOVED to the spouse channel (user channel
+zeroed) &mdash; same income stream, same attribution, no double-counting. Trigger is
+`raw.partTimeOwner === 'spouse' && !raw.spouseEnablePartTime` (NOT `=== undefined`: plans merged
+over DEFAULTS arrive with the key already present as `false` &mdash; caught by the migration test on
+its first run). `partTimeOwner` itself is dropped by the known-keys merge, which also makes the
+migration idempotent. Old user-owned and single plans pass through byte-identical.
+
+**UI (both questionnaire layouts).** The user's toggle relabels to "Your part-time / other income"
+for couples; a partner block (toggle + Amount / yr + "From partner's age" + "To partner's age")
+renders for couples only, styled identically to the user's. The "Who earns it" selector is gone.
+Partner fields alias to the shared FIELD_INFO help entries (pension-block precedent) via
+HELP_ALIASES in `tests/input-coverage.test.js`; the partTime tooltips now explain per-person
+earnings-test attribution; the `partTimeOwner` FIELD_INFO entry is removed.
+
+**Tests (97 total, 97 pass, 0 todo; was 95).** The V19.9 attribution test is rewritten for the
+two-channel model; new: both jobs pay simultaneously (household = sum), the two earnings-test
+reductions are independent and ADDITIVE (each measured against a no-jobs baseline; both amounts
+chosen above the $24,480 exempt amount so each produces a nonzero reduction), the spouse channel
+gates on the spouse's own start age, and the partTimeOwner:'spouse' migration (values moved,
+user channel zeroed, idempotent, user-owned plans untouched). `audit-adapter.test.js`'s
+ENGINE_PARAM_NAMES contract swaps `partTimeOwner` for the four new names. **DEFAULTS still 64/100**
+(regression gate) &mdash; the new channel defaults OFF everywhere.
+
+**Cache-buster:** `engine.js?v=19.10` + `?v=19.10` on all `cover-app/*` includes in both shells;
+both HTML titles, `real-engine.js` header, saved-plan stamp (`19.10`), and on-screen kickers/tags
+reconciled to 19.10.
+
+---
+
+## V19.11 &mdash; Production hardening batch (self-hosted vendor libs, single entry page, failure screen, a11y)
+
+Approved by Cris 2026-07-10 from the "Production hardening" backlog item, scoped down to the five
+lowest-risk pieces after working through trade-offs together; `engine.js` math is UNCHANGED (no
+Tier B item touched). Two backlog ideas (extracting the engine from the legacy DOM file; moving
+heavy comparison work off the main thread) were deliberately left deferred &mdash; no user-visible
+payoff for the accuracy risk in the first case, no observed symptom yet in the second.
+
+- **Self-hosted vendor libraries.** `index.html` previously loaded React, ReactDOM, and Babel from
+  `unpkg.com` on every visit &mdash; if that third-party host ever had an outage, the app would not
+  start, and we had zero control over it. The exact pinned versions (React/ReactDOM 18.3.1, Babel
+  standalone 7.29.0) now ship inside the repo under `vendor/`. Provenance: downloaded the official
+  npm tarballs directly from `registry.npmjs.org` (reachable from the sandbox; `unpkg.com`,
+  `cdnjs.cloudflare.com`, and `cdn.jsdelivr.net` are not) and verified each tarball's sha1 against
+  npm's own published `shasum` before extracting anything &mdash; all three matched exactly. The
+  extracted `babel.min.js` was additionally confirmed byte-identical to the file the CDN had been
+  serving (its sha384 matches the `integrity` hash already in the pre-V19.11 `index.html`), since
+  Babel standalone ships one build regardless of dev/prod. New `integrity` (SRI) hashes were
+  computed for all three vendored files and kept on the `<script>` tags as a tripwire against the
+  local copy itself ever getting corrupted.
+- **Switched React/ReactDOM to their production builds** (was the development build of each,
+  meant for in-progress coding and noticeably larger/slower; behavior is identical, the only loss
+  is React's own console warnings, which we don't need in the shipped app).
+- **Engine-load failure screen.** `index.html`'s app-shell script used to await
+  `window._engineReady` (set by `real-engine.js`, resolves `true`/`false`, never hangs) and always
+  rendered `<App/>` regardless of the result &mdash; so if `engine.js` itself failed to load, the
+  app looked fine until the first screen tried to compute a plan and crashed. Now a `false` result
+  renders a plain "Something did not load, please check your connection and refresh" screen
+  instead. A second, independent plain-JS safety net (no React/Babel dependency, since those are
+  exactly what might have failed) shows the same message via `onerror` on the vendor `<script>`
+  tags themselves, guarded by a `root.dataset.appRendered` flag so it never clobbers a working app.
+- **Removed the second front door (`cover.html`).** Traced its origin: a staging URL from the V18
+  redesign, kept afterward only so old bookmarks wouldn't 404. Verified with `grep` that nothing in
+  the code, tests, or `.github/workflows/deploy.yml` referenced it &mdash; only documentation
+  mentioned it. Cris's call: delete outright, no redirect (small trusted audience, actively
+  developed). `scripts/bump-version.mjs`'s `FILES` list updated to drop it (previously bumped both
+  files' version strings in lockstep).
+- **Accessibility:** the one remaining unlabeled control (the age/spending dials on the "Try
+  Changes" screen, `CoverSlider` in `compass-cover.jsx`) now has `aria-labelledby` tied to its
+  visible label and an `aria-valuetext` carrying the already-formatted display value (e.g.
+  "$120,000") instead of the raw number.
+- **Housekeeping found and folded in:** `scripts/bump-version.mjs` (documented since 2026-07-07 as
+  the standard release step) had never actually been pushed to GitHub &mdash; it only existed as a
+  local file in the project folder. Confirmed via `git ls-tree` against every branch on the remote
+  (none had it). Committed for the first time in this batch; a fresh clone of the repo now matches
+  what the docs have described all along.
+- **Process gap caught by the post-deploy live check, then fixed same-release:** `bump-version.mjs`
+  only ever rewrites `<title>` tags and `?v=` cache-busters (documented, deliberate scope). It does
+  NOT touch the five hardcoded on-screen version kickers/tags (Welcome and Desktop-cover footers,
+  the Rework/Charts/Questionnaire `CoverChrome` `tag=` prop) or the `real-engine.js` header comment
+  &mdash; those have apparently been reconciled BY HAND every release, and this batch's first push
+  missed them (deployed V19.11 briefly showed a "V19.10" footer/tags while the title and cache-buster
+  correctly read V19.11). Caught by the live-browser check below, fixed in the same release with a
+  second small commit. Flagged here rather than silently patched: a future release should either
+  keep remembering this manual step or (separate, not-yet-approved follow-up) extend
+  `bump-version.mjs` to cover these five spots too so this can't be missed again.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged count &mdash; no engine/adapter logic
+touched, so no new invariant tests were needed). `DEFAULTS` regression gate confirmed still **64**
+(`audit-adapter.test.js` asserts this directly). All five JSX files and the one inline
+`<script type="text/babel">` block in `index.html` re-verified to Babel-transform clean (via
+`@babel/standalone`, already vendored, run headlessly in Node against every file); `node --check`
+clean on `engine.js`, `real-engine.js`, `numeric-entry.js`, and `bump-version.mjs`.
+
+**Cache-buster:** `engine.js?v=19.11` + `?v=19.11` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and on-screen kickers/tags reconciled to 19.11. Single entry page now
+(`cover.html` deleted), so `bump-version.mjs` only touches `index.html` + `real-engine.js`.
+
+---
+
+## V19.12 &mdash; Input Data sub-groups + drop dead essentials mode (UX-FIX-PLAN-2026-07-10 Release 1)
+
+First of three planned UI-only releases from a structured design critique run 2026-07-10 against
+deployed V19.11 (`UX-FIX-PLAN-2026-07-10.md`, local-only, gitignored). `engine.js` and `real-engine.js`
+scoring logic UNCHANGED &mdash; display layer only. Approved by Cris in three decisions: fold the
+dead-mode removal into this release, keep the at-ceiling empty state plain with no Safe-to-spend
+pointer (that's Release 2, not yet built), and no dropping a year-by-year table column to fix its
+clipped END BALANCE (also Release 2/3, not yet built) &mdash; widen the table's container instead when
+that item ships.
+
+- **Input Data reorganized into labeled sub-groups.** Every questionnaire section used to pour its
+  fields into one flat 3-column grid in list order, so unrelated fields shared rows and a toggle
+  reflowed everything below it. `cover-inputs.jsx` (desktop `CSub`) and `cover-mobile.jsx` (mobile
+  `MSub`, newly reused outside the Advanced block) now group related fields under small-caps
+  headers: What you've saved (Accounts / One-time windfall), What comes in (You / Your partner),
+  What goes out (Everyday spending / Healthcare / Later-life changes / Legacy goal & inflation),
+  Guaranteed income (Social Security / Your pension / Partner's pension / Your part-time / Partner's
+  part-time), Investments (Mix today / Glide path / Roth conversions). "The people" and "Your home"
+  stay flat (small, no natural sub-topic split). Conditional fields render inside their own
+  sub-group only, so toggling one reflows just that block.
+- **Removed the dead `mode="essentials"` variant.** `index.html` always rendered
+  `CoverInputs mode="detailed"`; the essentials progressive-disclosure branch (and `CGroup`'s
+  Show-more expander) was unreachable dead code. Deleted along with the `mode` prop entirely;
+  `CoverInputs` no longer takes one.
+- **Fixed a real accessible-name collision.** The two part-time-income "Amount / yr" fields (yours
+  and your partner's) read identically to a screen reader even after the sub-group split, since
+  visual containment alone doesn't create an accessible group name. Two-part fix: the fields are now
+  labeled "Your amount / yr" / "Partner's amount / yr" (with matching "From/To your age" on the user
+  side, mirroring the partner side's existing "From/To partner's age"), and `CSub`/`MSub` gained
+  `role="group"` + `aria-labelledby` (via `React.useId()`) tying every sub-group's fields to its
+  heading as their accessible group name &mdash; the actual ARIA-level fix, not just a copy tweak.
+- No param renames, no `engine.js` or `real-engine.js` changes.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched).
+`DEFAULTS` regression gate confirmed still **64**. Both touched JSX files + `index.html`'s inline
+Babel block transform clean; `node --check` clean on the untouched plain-JS files. Live-audited on
+the deployed GitHub Pages URL at desktop 1680px with an "everything on" couple plan (both pensions,
+both part-time channels, windfall, Roth conversions, spending slow-down, guardrails): every
+sub-group rendered correctly, the two amount/yr fields read distinctly, no console errors. Cris's
+real saved plan (`localStorage['compassParams']`) was backed up before testing and confirmed
+byte-identical after. **Mobile not visually verified this session** &mdash; the Chrome tool's
+`resize_window` was silently ignored (matches the standing lesson that this happens intermittently),
+so no phone-width screenshot could be captured. Mobile code is verified by construction (identical
+`MStep`/`MSub` field wiring to desktop, `input-coverage` test passing for both layouts) but Cris
+should phone-check: open Input Data on a phone, turn on "Me + partner" and both part-time toggles,
+confirm the sub-group headers read clearly and the two amount fields say "Your"/"Partner's".
+
+**PR workflow note:** the GitHub PR-creation URL required a logged-in browser session, which this
+session's Chrome didn't have and credential entry is out of scope for Claude to perform. Followed
+the same pattern already visible in the repo's own merge-commit history (V19.5/V19.8/V19.11): merged
+the release branch into `main` locally in the `/tmp` clone with `git merge --no-ff`, then pushed
+`main` directly, rather than via GitHub's web UI.
+
+**Cache-buster:** `engine.js?v=19.12` + `?v=19.12` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.12 in the same push
+(no repeat of the V19.11 process gap).
+
+**Next up (superseded by V19.13 below):** Release 2 shipped same-day as V19.13. Release 3 (copy
+honesty + polish batch, including the year-by-year table width fix) remains not started.
+
+---
+
+## V19.13 &mdash; Honest at-ceiling move handling + slider guides (UX-FIX-PLAN-2026-07-10 Release 2)
+
+Second of three planned UI-only releases from `UX-FIX-PLAN-2026-07-10.md`. `engine.js` and
+`real-engine.js` scoring logic UNCHANGED &mdash; display layer only, same ground rules as V19.12.
+Approved by Cris same-session ("Continue with 2 and 3"); shipped as its own release per the plan's
+own rule that each release ships separately with the full ritual.
+
+- **2a &mdash; the &ge;1-point rule.** At or near a 100/100 score, "Three Moves, Ranked" used to
+  show cards reading "+0 points" &mdash; changes that buy nothing, which reads as broken rather than
+  as "you're already safe." A move now only counts if its measured delta clears a full point (a
+  hidden +0.4 rounding to "+0" was the actual bug; "must buy a whole point" is the honest bar). New
+  shared filter `cvQualifyingMoves()` in `compass-cover.jsx` is the SINGLE source every surface that
+  lists moves reads from: the Results cards, the desktop Cover teaser (which now hides entirely
+  when nothing qualifies, matching the same treatment as the Try Changes "Suggested moves" block),
+  the Try Changes suggested-move buttons (now keyed off the FILED plan's own `computeMoves()`
+  deltas, not just applicability), the Try Changes comparison bars (`ScenarioCompareChart` in
+  `retire-charts.jsx`, which now fully replaces itself with the empty-state message when no move
+  qualifies, instead of rendering several identical 100%-reading bars), and the mobile Results cards
+  (`cover-mobile.jsx`). Dynamic headline copy (`cvMovesTeaserTitle`: "Three/Two/One move(s) that
+  buy(s) better odds") and a dynamic kicker (`cvMovesRankedKicker`: "Three Moves, Ranked" down to
+  "Already at the Top"). Honest empty-state line (Cris's decision, unchanged from the plan: plain
+  "top of the range" wording, no pointer to Safe-to-spend) and an overlap footnote wherever
+  per-move deltas sit next to a combined "all together" figure, so a 98&ndash;99 reading doesn't
+  look like broken math.
+- **2b &mdash; slider guides.** `CoverSlider` (the four Try Changes dials: retire age, spending,
+  and both SS claim ages) gained end labels under the track, tick marks via the native
+  `input[list]`/`datalist` mechanism (yearly for SS claim age, every $25k for spending, 2&ndash;5
+  years for retire-at depending on span &mdash; `cvSliderTicks()`), and a click-to-type readout that
+  reuses `numeric-entry.js`'s parse/validate/clamp rules, the same commit-on-Enter-or-blur behavior
+  as the questionnaire's `NumericStepper` (minus the +/- buttons a drag control doesn't need). The
+  V19.11 `aria-labelledby`/`aria-valuetext` wiring was kept intact.
+- No param renames, no `engine.js` or `real-engine.js` changes.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched).
+DEFAULTS regression gate unaffected (display-only change; not re-verified by a new test, per the
+plan's own validation criteria of "suite green + DEFAULTS 64 + live audit" for this release). All
+touched JSX files (`compass-cover.jsx`, `retire-charts.jsx`, `cover-mobile.jsx`) plus the
+`index.html` inline Babel block transform clean; `node --check` clean on `real-engine.js`. Pure-JS
+logic (`cvQualifyingMoves`, `cvMovesTeaserTitle`, `cvMovesRankedKicker`, `cvSliderTicks`,
+`cvSliderEndLabel`) spot-checked with standalone Node assertions before shipping (filtering,
+sort order, grammar for 1/2/3 counts, tick-interval math for all three `kind` values).
+
+Live-audited on the deployed GitHub Pages URL. Desktop: the browser tool's `resize_window` to
+1680px was silently ignored again (same standing limitation as prior releases) &mdash; actual
+tested width was ~1568px, still comfortably above the 769px mobile breakpoint. Two scenarios: (1)
+Cris's real saved plan, which happens to score 64/100 (same as DEFAULTS &mdash; he's never
+diverged it) &mdash; confirmed 3 cards with the exact deltas `computeMoves()` reports (+19/+10/+5),
+the dynamic "Three moves that buy better odds" headline and teaser, the Try Changes bars showing
+all 5 rows plus the overlap footnote, and typed slider entry (clicked "Retire at," typed 72, Enter)
+correctly re-scoring the draft to 95 with a working diff chip and Reset-all. (2) A synthetic
+100/100 ceiling plan built via `MockEngine.compute()` in-page (confirmed all three move deltas are
+exactly 0 before testing) &mdash; confirmed the Cover teaser disappears, the ranked-cards section
+reads "Already at the Top" with the plain empty-state line, the Try Changes "Suggested moves" block
+disappears entirely, and the bars chart is fully replaced by the same empty-state line. Mobile
+(375px, resize succeeded this session): both scenarios re-confirmed with matching wording. No
+console errors in either viewport. Cris's real `localStorage['compassParams']` was backed up under
+a separate key before testing and restored byte-identical after (length and exact-string match
+verified programmatically, not just visually).
+
+**PR workflow note:** same as V19.12 &mdash; no logged-in browser session available, so the release
+branch was merged into `main` locally (`git merge --no-ff`) in the `/tmp` clone and pushed directly.
+
+**Cache-buster:** `engine.js?v=19.13` + `?v=19.13` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.13 in the same push.
+
+**Next up (superseded by V19.14 below):** Release 3 shipped same-day as V19.13, closing out
+`UX-FIX-PLAN-2026-07-10.md`.
+
+---
+
+## V19.14 &mdash; Copy honesty + polish batch (UX-FIX-PLAN-2026-07-10 Release 3, final)
+
+Third and final release of `UX-FIX-PLAN-2026-07-10.md`. `engine.js` and `real-engine.js` scoring
+logic UNCHANGED &mdash; display layer only, same ground rules as V19.12/V19.13. Approved by Cris
+same-session ("go"). Item 7 of the original plan (dropping the dead `mode="essentials"` questionnaire
+variant) had already shipped in Release 1 per Cris's sequencing call, so this release covers the
+remaining 8 items.
+
+- **1 &mdash; side-panel overclaim.** The Results "Want to try something else?" panel always said
+  "Every dial lives on Try Changes," which was wrong for both household types (there are four levers
+  for a couple, three solo, not "every dial"). Reworded to state the actual count, conditional on
+  `params.hasPartner`, and the body copy only mentions "both Social Security claim ages" for couples.
+- **2 &mdash; glide-path copy honesty.** The Charts glide-path paragraph always described the mix as
+  "easing out of stocks," even with `enableGlidePath` off and the chart drawing a flat line. Copy is
+  now conditional on the actual toggle state: on keeps the original line, off explains the mix stays
+  flat at the current allocation and points back to Input Data.
+- **3 &mdash; fan-chart / income-chart axis formatting.** Both `BalanceFanChart` and `IncomeSourceChart`
+  y-axis labels used a hand-rolled `Math.round(v/1000)+'k'` that produced ugly numbers like "$5110k."
+  Both now call the same `MockEngine.formatCurrency(v, {compact:true})` every other dollar figure in
+  the app already uses ("$5.11M" / "$40k").
+- **4 &mdash; year-by-year table width.** The table inherited the page's global 1040px reading-column
+  cap and clipped its own END BALANCE column even at reasonably wide viewports. Per Cris's explicit
+  decision (no column drops), the table was moved into its own 1280px-capped sibling wrapper, leaving
+  the rest of the Charts screen's prose/chart width untouched. Charts is desktop-only, so no mobile
+  concern.
+- **5 &mdash; typed-entry discoverability.** Nothing hinted that the big questionnaire numbers are
+  click-to-type. Added one line to both the desktop and mobile Input Data intros ("Tap any
+  number/a number to type it exactly").
+- **6 &mdash; dropdown affordance.** Selects (`CSelect` desktop, `MSelect` mobile) looked like static
+  text: a tiny caret pinned at the row's far-right edge with a gap to the value on the left. Both
+  restyled to a flex layout with the caret immediately next to the value, so each reads as one
+  control regardless of row width.
+- **8 &mdash; duplicate Save/Load.** Input Data had three Save/Load surfaces (Results top callout,
+  Input Data top callout, Input Data footer row). Removed the Input Data footer row; the top callout
+  there plus the Welcome screen's own Load path cover the same ground.
+- **9 &mdash; two-line label stragglers.** A live sweep of Input Data at 1280px (toggling "Me +
+  partner," bumping employer contribution rates to reveal conditional fields, expanding "Advanced
+  assumptions") found two genuine two-line wraps beyond the one item 4 already named: "Your/Partner's
+  employer contributions go to" (`CSelect`) and "Assume higher future tax rates" (`CToggle`). Both are
+  the last field in their sub-group, so wrapping each in `gridColumn: 'span 2'` gives them room
+  without reflowing any sibling &mdash; a layout-only fix, not a copy shortening (which risked subtle
+  wording/accessible-name regressions).
+- No param renames, no `engine.js` or `real-engine.js` changes.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched).
+DEFAULTS regression gate unaffected (display-only). All touched JSX files (`compass-cover.jsx`,
+`retire-charts.jsx`, `cover-inputs.jsx`, `cover-mobile.jsx`) plus the `index.html` inline Babel block
+transform clean; `node --check` clean on `real-engine.js`.
+
+Live-audited on the deployed GitHub Pages URL. Desktop: actual tested width ~1280px (resize
+succeeded this session), comfortably matching item 4's "verify comfortable at 1280px" requirement.
+Using Cris's real saved plan (couple, score 65/100 as of today's date &mdash; the DEFAULTS regression
+gate itself is separately pinned at 64 and unaffected): confirmed the "Four of your biggest levers
+live on Try Changes" panel copy, both fan-chart and income-chart y-axis labels rendering as "$5.11M"
+/ "$280k" style instead of raw "k" math, the year-by-year table showing all 9 columns including END
+BALANCE with no clipping, the intro hint text on Input Data, the dropdown caret sitting directly next
+to each select's value (verified via computed style on all 4 `<select>` elements on the page, not
+just visually), only one Save/Load callout on Input Data, and both previously-wrapping labels
+("Your employer contributions go to," "Assume higher future tax rates") now on one line. Also
+toggled `enableGlidePath` off in-page and confirmed the Charts paragraph swaps to the flat-mix
+copy ("Your mix stays flat at 60% stocks for the whole plan...") before restoring the toggle.
+Mobile (~500px, `resize_window` to 375px was silently ignored again &mdash; same standing
+limitation, comfortably under the 769px breakpoint regardless): re-confirmed the typed-entry hint,
+the dropdown caret restyle on all 4 selects, and no orphaned Save/Load footer row. No console errors
+on either viewport (checked via a fresh page load with console tracking active). Cris's real
+`localStorage['compassParams']` was backed up before testing (including before the in-page
+glide-path toggle test) and restored byte-identical after, verified programmatically via exact
+string match, not just visually.
+
+**PR workflow note:** same as V19.12/V19.13 &mdash; no logged-in browser session available, so the
+release branch was merged into `main` locally (`git merge --no-ff`) in the `/tmp` clone and pushed
+directly.
+
+**Cache-buster:** `engine.js?v=19.14` + `?v=19.14` on all `cover-app/*` includes; HTML title,
+`real-engine.js` header, and all five on-screen kickers/tags reconciled to 19.14 in the same push.
+
+**Next up (superseded by V19.15 below):** `UX-FIX-PLAN-2026-07-10.md` is now fully shipped (Releases
+1&ndash;3 complete). No further work queued from that plan.
+
+---
+
+## V19.15 &mdash; Input Data chapter wizard (design_handoff_input_chapters)
+
+Implements Cris's external design handoff (`UI Update 071626 design_handoff_input_chapters/`, local
+folder: README + two `.dc.html` prototypes; prototypes are references, NOT ported code). `engine.js`
+and `real-engine.js` scoring logic UNCHANGED &mdash; display layer only. Approved by Cris 2026-07-16
+from a plan with scope, risks, and validation; one addition of his: a mid-entry Save link in the
+wizard footer (both layouts). One deviation from the prototype, his call: the responsive breakpoint
+stays at the app's existing **769px** (prototype said 720) &mdash; one app-wide switch point, less
+regression risk.
+
+- **Desktop Input Data (`cover-inputs.jsx`, full rewrite of the shell).** 8-chapter wizard: left
+  rail (264px; rows clickable; visited chapters get a sage &#10003;, current gets warm bg + 3px ink
+  bar; version stamp at rail bottom), 3px progress bar (fill = (chapter+1)/8, 300ms), per-chapter
+  kicker/serif title/blurb + "Why we ask" inset, pinned footer (&larr; Back hidden on ch1 &middot;
+  Save plan &darr; link with a 5s "Saved to your downloads." status &middot; primary "Next: &lt;title&gt;
+  &rarr;" / ch8 "See your results &rarr;" &rarr; `_coverNav('cover')`). Field primitives (CField/
+  CToggle/CSelect/CSegment) byte-identical to V19.14; CSub restyled to the serif-header tier (rule
+  above, 20px). Chapters "The people" and "Your home" are flat grids. **No score during entry**:
+  CviScoreChip, the reveal panel, and this screen's `compute()` call are all deleted (typing no
+  longer re-runs the simulation). "Advanced assumptions" collapsed block &rarr; normal chapter 8
+  "Fine-tuning". `CV_CHAPTERS` (titles/blurbs/why, verbatim from the prototype's ch2data) exported
+  on window for the mobile layout. Chapter + visited persist in sessionStorage
+  (`compassChapter` / `compassChaptersVisited`), shared with mobile so crossing the breakpoint keeps
+  the same chapter.
+- **Masthead nav on ALL FOUR screens (`compass-cover.jsx`).** `CoverNav` rebuilt as two labeled
+  zones ("Step 1 &middot; Enter" &rarr; Input Data; "Step 2 &middot; Your plan" &rarr; Results, Try
+  Changes, Charts) split by a 1&times;30 rule hairline; Results is full-ink at weight 400 when
+  inactive (prominent by color only); bold + 2px underline strictly for the ACTIVE tab; tabs remain
+  real buttons with `aria-current`. The V19.3 "Start here" CTA pill (`emphasizeQuiz`) is retired
+  &mdash; the hero's own "Enter your data" button carries that nudge. `CoverChrome` gained a `fill`
+  mode (fixed-viewport flex column, static masthead, no footer tag strip) used only by the wizard;
+  the other three screens keep page scroll byte-identically. Results' own masthead moved its ink
+  rule BELOW the tab row to match.
+- **Mobile (`cover-mobile.jsx`).** Masthead compresses to wordmark + issue line, then a
+  "Step 1 &middot; Input Data" / "Step 2 &middot; Your plan" switcher (the old bottom tab bar and
+  the masthead score chip are both retired). Input Data = same wizard, single column: 44px chapter
+  bar ("CHAPTER N OF 8" + CONTENTS &#9662;) opening a bottom sheet (fixed scrim, paper sheet, same
+  row anatomy as the rail, &ge;48px rows); sticky footer &larr; Back / Save &darr; / full-width
+  Next (48px); body scroll resets to top on chapter change. Touch targets per handoff: steppers
+  44px circles, toggle pill 48&times;28, segment rows 44px. `compute()` now runs only when the
+  Results tab is active.
+- **Help copy (`retire-ui.jsx`).** Every FIELD_INFO `help` one-liner reconciled to the prototype's
+  final copy; `detail` tooltips unchanged. New owner-specific entries `spousePreTax` / `spouseRoth`
+  (partner account fields no longer alias the user's help text); the housing question is labeled
+  "Own or rent". `tests/input-coverage.test.js` HELP_ALIASES updated accordingly (spousePreTax/
+  spouseRoth aliases removed; scan mechanics unchanged &mdash; negative check re-proved: deleting a
+  field's `update()` fails the suite naming that field).
+- **Known trade-offs accepted by Cris:** no score feedback during entry (deliberate; Try Changes is
+  the what-if surface); file-save mid-entry exists via the footer link; the "Returning?" load
+  callout lives on chapter 1 only.
+
+**Validation.** Full suite **97 pass, 0 fail** in the exact /tmp clone tree that shipped; DEFAULTS
+regression gate **64** (asserted in `audit-adapter.test.js`). All five JSX files + `index.html`
+inline block Babel-transform clean; `node --check` clean on the plain-JS files. Live-audited on
+deployed GitHub Pages: desktop at 1920&times;722 (title V19.15; two-zone nav on all four screens;
+wizard: no "/100" anywhere on Input Data, 8 chapters walked with correct titles/sub-headers/
+progress fills 12.5%&rarr;100%, Back hidden on ch1, Save link works, rail jump + &#10003; marks,
+full-reload &rarr; Input Data reopens on the same chapter, ch8 CTA lands on Results with the score
+visible; Try Changes + Charts render normally); mobile at 606px (Chrome's `resize_window` floor
+again &mdash; below the 769 breakpoint so the mobile shell is what rendered; true 375px not
+verifiable this session, same standing limitation): two-row masthead, no bottom bar, contents
+sheet open/jump/close + scroll-reset verified, score only on the plan screen. Zero console errors
+either pass. Cris's real `localStorage['compassParams']` backed up before testing and restored
+byte-identical (exact string match, 1716 chars).
+
+**Push-auth lesson (new):** GitHub rejected the first push with `GH007: push would publish a
+private email address` &mdash; commits authored as `cristelo@hotmail.com` trip the account's email
+privacy protection. Fix: author releases as `cristelo-sirc <cristelo-sirc@users.noreply.github.com>`
+(what every prior release used). Same PR-workflow note as V19.12&ndash;V19.14: no logged-in browser
+session, so the release branch was merged into `main` locally (`git merge --no-ff`) in the /tmp
+clone and pushed directly.
+
+**Cache-buster:** `engine.js?v=19.15` + `?v=19.15` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header, and all five on-screen version stamps
+reconciled to 19.15 in the same push &mdash; note the Questionnaire's stamp MOVED: it's no longer a
+`CoverChrome tag=` prop (fill mode has no footer strip) but a small stamp at the bottom of the
+wizard's chapter rail. Still five on-screen stamps total; `bump-version.mjs` still does not touch
+them (standing manual step).
+
+---
+
+## V19.16 &mdash; Assumptions surfaced in "Your Plan at a Glance" (display-only)
+
+Approved by Cris 2026-07-16 from a plan with scope, risks, and validation. `engine.js` and
+`real-engine.js` scoring logic UNCHANGED &mdash; single display-layer edit. Cris's two design
+calls: mix the new rows into the existing glance grid but grouped together (not scattered), and
+show the guardrail **adjustment only** (not ceiling/floor).
+
+- **Four assumption rows added to the shared `cvGlanceFacts` builder** (`compass-cover.jsx`), so
+  both the desktop `CoverGlance` and the mobile `MGlance` pick them up automatically (same
+  shared-builder discipline as every other glance fact &mdash; the two layouts can't disagree).
+  The rows sit as a contiguous block at the END of the fact array (after Monthly paycheck), reading
+  as "and here are the assumptions behind it": **Inflation** (`p.inflation` &rarr; "2.5%/yr",
+  sub "assumed"), **Stock return** (`p.stockReturn` &rarr; "7.0%/yr", sub "average, before
+  inflation"), **Bond return** (`p.bondReturn` &rarr; "3.5%/yr", same sub), **Guardrail
+  adjustment** (`p.guardrailAdjustment` &rarr; "10%" when `p.enableGuardrails`, else **"Off"**).
+  Grid grows 7&rarr;11 facts, stays 2-column.
+- **Units note (why no `/100`):** `cvGlanceFacts` reads the UI-level `params` object, where these
+  are whole-number percentages (inflation 2.5, stockReturn 7.0, bondReturn 3.5, guardrailAdjustment
+  10). The `/100` conversion is the adapter's job (`mapToReal`), NOT the display's &mdash; so the
+  rows render the raw param with a "%" suffix (`Number(v).toFixed(1)` for the three returns, integer
+  for guardrail). Reading the already-`/100`-ed `results.params` here would show "0.025%".
+- **Accuracy call (disclosed):** the guardrail adjustment percentage is inert when
+  `enableGuardrails` is off, so showing a bare "10%" there would misrepresent the plan. It reads
+  **"Off"** in that state instead &mdash; the honest display, verified live in both states.
+- No param renames, no new inputs, no `engine.js`/`real-engine.js` change.
+
+**Validation.** Full suite **97 pass, 0 fail** (unchanged &mdash; no engine/adapter logic touched);
+`DEFAULTS` regression gate **64** (asserted in `audit-adapter.test.js`). `compass-cover.jsx` and
+`cover-inputs.jsx` Babel-transform clean; `node --check` clean on `real-engine.js`. Live-audited on
+the deployed GitHub Pages URL (title/served version confirmed **19.16**, cache-busted): against
+Cris's real saved plan (couple, 65/100, guardrails off) the four rows rendered correctly on Results
+&mdash; Inflation 2.5%/yr, Stock return 7.0%/yr, Bond return 3.5%/yr, Guardrail adjustment **Off**;
+the guardrail-**on** &rarr; "10%" path was confirmed by an executable call to the live
+`cvGlanceFacts` with `enableGuardrails:true`. All four screens (Input Data wizard, Results, Try
+Changes, Charts) opened clean; zero console errors across a full reload. Desktop tested width
+~1568px (Chrome `resize_window` floor, standing limitation). **Mobile not visually verified this
+session** &mdash; same `resize_window` limitation; mobile code is verified by construction (shared
+`cvGlanceFacts`, so `MGlance` renders the identical facts) but Cris should phone-check: open
+Results, scroll "Your Plan at a Glance," confirm the four new rows appear at the bottom and read
+clearly. Cris's real `localStorage['compassParams']` backed up before testing and restored
+byte-identical after (1716 chars, exact-string match).
+
+**Cache-buster:** `engine.js?v=19.16` + `?v=19.16` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header comment, and all five on-screen version
+stamps reconciled to 19.16 in the same push (no repeat of the V19.11 gap). Same PR-workflow as
+V19.12&ndash;V19.15: no logged-in browser session, so the release branch was merged into `main`
+locally (`git merge --no-ff`) in the /tmp clone and pushed directly, authored as
+`cristelo-sirc <cristelo-sirc@users.noreply.github.com>` (V19.15 email-privacy lesson).
+
+**Next up:** no work queued. `UX-FIX-PLAN-2026-07-10.md` fully shipped (V19.12&ndash;V19.14).
+
+---
+
+## V19.17 &mdash; Privacy blurb (Welcome + Input Data chapter 1), display-only
+
+Approved by Cris 2026-07-16 (Option A of a two-option plan; Option B &mdash; self-hosting the two
+Google Fonts so the app contacts no third party at all &mdash; was declined for now and remains a
+candidate follow-up). `engine.js` and `real-engine.js` scoring logic UNCHANGED &mdash; copy-only.
+
+**Factual basis (privacy audit, 2026-07-16, this session).** Verified against the DEPLOYED tree
+(fresh clone of `main`, confirmed byte-identical to the local folder): zero network calls in app
+code (no fetch/XHR/beacon/websocket), zero analytics/tracking, no backend; inputs exist only in
+the visitor's own localStorage/sessionStorage and in save-files downloaded to their own device.
+The legacy QR-share code in `engine.js` (`importFromQRUrl`, QR generation) is dead in the shipped
+app &mdash; its libraries (QRCode/LZString/jsPDF) are not loaded and nothing calls it &mdash; so
+inputs never enter URLs. The app's ONLY third-party contact is Google Fonts (`fonts.googleapis.com`
+/ `fonts.gstatic.com` in `index.html`), which receives standard request metadata (visitor IP/UA/
+referrer), never inputs. GitHub Pages gives the repo owner NO access logs and no Pages analytics.
+**The blurb copy claims privacy of INPUTS only &mdash; do not strengthen it to "no outside
+connections" unless the fonts are vendored first (Option B).**
+
+- **Welcome screen (`compass-cover.jsx`):** the old trailing sentence ("Your answers stay in this
+  browser unless you save them to a file.") is replaced by a dedicated "Private by design" block
+  below the action buttons (kicker + two-line note, magazine voice).
+- **Input Data chapter 1 (both layouts):** new shared string `CV_PRIVACY_NOTE` defined next to
+  `CV_CHAPTERS` in `cover-inputs.jsx`, exported on window, rendered by BOTH the desktop wizard and
+  `cover-mobile.jsx` under the "Why we ask" inset on chapter 1 only (same can't-drift discipline
+  as `CV_CHAPTERS`).
+- **Drift fix found during stamp reconciliation:** `CompassIO.buildPlanJSON` had hardcoded
+  `version: '19.10'` in saved plan files since V19.10 &mdash; the release notes' "saved-plan stamp
+  reconciled" claim was NOT true for V19.11&ndash;V19.16 (nothing reads the field on load, so no
+  behavior impact). Now 19.17; future releases should actually check this spot (grep the OLD
+  version string in `compass-cover.jsx`, not just the ones bump-version.mjs reports).
+
+**Validation.** Full suite **97 pass, 0 fail** in the shipping /tmp clone; DEFAULTS regression gate
+**64** (asserted in `audit-adapter.test.js`). All five JSX files + `index.html` inline Babel block
+transform clean (vendored `@babel/standalone` headless in Node; note: under `require()` it attaches
+to `module.exports`, not `global.window`); `node --check` clean on `real-engine.js`. Live audit on
+the deployed URL (title/served version 19.17, deploy workflow succeeded first attempt): desktop
+~1568px &mdash; Welcome shows the "Private by design" block with the old trailing sentence gone;
+wizard chapter 1 shows the shared note under "Why we ask" with rail stamp V19.17; chapter 2
+correctly does NOT show it; zero console errors. **Mobile:** `resize_window` was silently ignored
+in BOTH attempts (window stayed 1920px &mdash; standing limitation), so instead the mobile shell
+was force-mounted in-page (`Object.defineProperty(window,'innerWidth',{get:()=>500})` + a
+synthetic `resize` event &mdash; new fallback technique, works because the shell reads
+`innerWidth` on resize): the real mobile components rendered his plan screen (65/100) and wizard
+chapter 1 with the exact shared string exactly once, zero console errors. True phone-width LAYOUT
+(wrapping/spacing at 375px) still not visually confirmed this session &mdash; Cris should
+phone-glance Welcome + Input Data chapter 1. His real `localStorage['compassParams']` was backed
+up before testing and restored byte-identical (1716 chars, exact-string match).
+
+**Cache-buster:** `engine.js?v=19.17` + `?v=19.17` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header, all five on-screen stamps, and (newly)
+the saved-plan `version` stamp reconciled to 19.17 in the same push.
+
+---
+
+## V19.18 &mdash; Per-person pre-retirement salary growth (independent of inflation)
+
+Sixth intentional `engine.js` math release (after V18.11, V19.5, V19.6, V19.9, V19.10). Approved by
+Cris 2026-07-17 from a plan with scope, risks, and validation; his two calls on the open items:
+accept the 0&ndash;10 clamp edge on migration, and ADD the "Pay increase" glance row.
+
+**Problem.** Both salaries compounded at the plan's inflation rate (`params.currentSalary *
+inflation` per year; synthetic prior-year wages likewise from `lifestyleInflation`) &mdash; one dial
+silently controlled two unrelated assumptions.
+
+**Engine (`engine.js` math IS changed, one localized block).** New params `userSalaryGrowth` /
+`spouseSalaryGrowth` (fractions). Each salary compounds at its OWN rate until that person retires
+(`Math.pow(1 + rate, i)`), and each person's synthetic prior-year wage (Roth catch-up rule, years
+after the first) uses the same per-person rate. Everything downstream (contributions, net wages,
+taxes, paycheck reconciliation, year table) reads the salary, so no other engine edits. Statutory
+amounts deliberately KEEP growing with inflation: contribution caps, compensation limit, $150k Roth
+catch-up threshold. Legacy fallback: absent params (the old DOM app) fall back to
+`lifestyleInflation` via `Number.isFinite` checks (NOT `||` &mdash; 0 is a meaningful rate),
+reproducing pre-V19.18 behavior exactly; the 95 pre-existing engine tests pass unchanged through
+this path.
+
+**Adapter (`real-engine.js`).** New keys `salaryGrowth` / `spouseSalaryGrowth` (whole-number %,
+DEFAULTS 2.5, RANGES [0,10]); mapToReal emits fractions (spouse zeroed for singles). **Migration in
+`normalizeParams`,** keyed off `raw.salaryGrowth === undefined` (checking RAW, not the merged
+object &mdash; the V19.10 lesson): pre-V19.18 plans get both fields seeded from the plan's own
+saved inflation, so old results are byte-identical (salary growth = inflation is exactly the old
+math). Seed is `Math.min(out.inflation, 10)` &mdash; only a saved inflation above 10% clamps
+(disclosed, approved edge). Idempotent by construction. DEFAULTS inflation is 2.5, so the new 2.5
+default keeps the untouched-DEFAULTS gate at 64 by construction, not luck.
+
+**UI (both layouts).** "Expected annual pay increase" CField/MStep (step 0.1, 0&ndash;10, "%")
+between salary and contribution rate in the "Salary &amp; contributions" chapter &mdash; "Your
+expected annual pay increase" / "Partner's expected annual pay increase" for couples (distinct
+accessible names, V19.12 lesson). FIELD_INFO: owner-specific `salaryGrowth` / `spouseSalaryGrowth`
+entries; help says 0% = unchanged dollar pay; detail notes independence from inflation AND that
+raises do not change the entered SS benefit (it's a typed input, not computed from earnings).
+Glance: `cvGlanceFacts` gains a "Pay increase" row right after Inflation ("You 2.5% &middot;
+Spouse 2.5%" / "2.5%/yr" solo, sub "until retirement") &mdash; shared builder, so desktop
+`CoverGlance` and mobile `MGlance` both render it (grid now 12 facts).
+
+**Tests (97 &rarr; 103, all passing; new file `tests/salary-growth.test.js`).** Permanent
+invariants: (1) changing inflation moves NEITHER gross salary nor contributions in any working year
+(the headline independence, proven executably); (2) 0% growth = flat nominal pay every year even
+with inflation on; (3) partners compound independently &mdash; changing only the spouse's rate
+shifts household wages by exactly the spouse delta; (4) absent params reproduce the
+salaryGrowth-=-inflation run to 1e-6 on wages AND balances (legacy preservation); (5) migration
+seeds from saved inflation, clamps 12&rarr;10, is idempotent, never overwrites an explicit 0;
+(6) mapToReal fraction contract + spouse zeroed for singles. `ENGINE_PARAM_NAMES` contract in
+`audit-adapter.test.js` gains the two names (annotated: NOT in `collectInputs()` &mdash;
+adapter-only, engine falls back). DEFAULTS gate 64 asserted green at every stage.
+
+**Validation.** Full suite **103 pass, 0 fail, 0 todo** in the exact /tmp clone tree that shipped;
+`node --check` clean (engine.js, real-engine.js, numeric-entry.js); all five JSX files +
+`index.html` inline block Babel-transform clean. Deploy workflow (test job + publish) succeeded
+first attempt. Live audit on the deployed URL (title/served version 19.18): **desktop** ~1568px
+&mdash; his real plan loads at 65/100 UNCHANGED post-migration (executable check: his raw stored
+plan was seeded 2.5/2.5 from its 2.5 inflation on first load); both new fields render in chapter 3
+with correct labels/help; typed entry commits (partner 2.5&rarr;4, persisted to localStorage) and
+the 0&ndash;10 validation correctly rejected a malformed paste, keeping the prior value; stepper
+0.1 increments work (2.5&rarr;2.6); Results recomputed 65&rarr;67 with the raises and the glance
+row read "You 2.6% &middot; Spouse 4.0%" (full engine round-trip); in-page executable checks:
+migration infl-4 plan &rarr; 4.0, infl-12 &rarr; 10 (clamp), couple/single/zero glance strings all
+correct; all four screens opened clean. **Mobile** at 500px (Chrome's resize floor, below the 769
+breakpoint so the true mobile shell rendered): glance "Pay increase" row, both wizard fields with
+help lines, chapter state shared across the breakpoint. Zero console errors across a fully-tracked
+reload. His real `localStorage['compassParams']` backed up under a separate key, restored
+byte-identical (1760 chars, exact-string match), backup key removed. **Note:** the app re-saves the
+migrated plan on first load, so his stored plan now contains the two new keys at 2.5 (was 1716
+chars pre-V19.18, 1760 after &mdash; expected, results identical). True 375px layout not
+verifiable this session (standing limitation) &mdash; Cris should phone-glance chapter 3 of Input
+Data: both "expected annual pay increase" fields should read clearly at 2.5%.
+
+**Cache-buster:** `engine.js?v=19.18` + `?v=19.18` on all `cover-app/*` includes (via
+`bump-version.mjs`); HTML title, `real-engine.js` header, all five on-screen stamps, and the
+saved-plan `version` stamp reconciled to 19.18 in the same push. Same PR-workflow as
+V19.12&ndash;V19.17: release branch merged into `main` locally (`git merge --no-ff`) in the /tmp
+clone, authored as `cristelo-sirc <cristelo-sirc@users.noreply.github.com>`.
+
+**Next up:** no work queued.
