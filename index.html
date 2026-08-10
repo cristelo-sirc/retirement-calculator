@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Compass &middot; The Retirement Issue &middot; V19.18</title>
+  <title>Compass &middot; The Retirement Issue &middot; V19.19</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -40,23 +40,34 @@
   </script>
 
   <!-- Real engine adapter: defines window.MockEngine and loads engine.js (math) after DOMContentLoaded -->
-  <script src="cover-app/real-engine.js?v=19.18"></script>
+  <script src="cover-app/real-engine.js?v=19.19"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- The mockup design components (the exact handoff UI) -->
-  <script src="cover-app/numeric-entry.js?v=19.18"></script>
-  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.18"></script>
-  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.18"></script>
-  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.18"></script>
-  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.18"></script>
-  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.18"></script>
+  <script src="cover-app/numeric-entry.js?v=19.19"></script>
+  <!-- V19.19: pure staleness/field-write-back helpers (window.PlanRefresh). Plain JS, not
+       Babel, so the node test suite can require() the same file the browser runs. -->
+  <script src="cover-app/plan-refresh.js?v=19.19"></script>
+  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.19"></script>
+  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.19"></script>
+  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.19"></script>
+  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.19"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.19"></script>
+  <script type="text/babel" src="cover-app/cover-update.jsx?v=19.19"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
     const { useState, useEffect } = React;
     const SAVE_KEY = 'compassParams';
+    // V19.19: when the plan was last EDITED, as an ISO string. Deliberately a SECOND key
+    // rather than a field inside compassParams — that key holds the params object directly,
+    // and wrapping it would change the shape every existing browser has stored and force a
+    // migration on the read path. A separate key needs no migration and cannot corrupt the
+    // plan. It cannot be backfilled either: plans saved before V19.19 have no stamp, and the
+    // Welcome screen says "we don't know" rather than guessing.
+    const STAMP_KEY = 'compassParamsSavedAt';
 
     function App() {
       const [screen, setScreen] = useState('cover');
@@ -90,6 +101,11 @@
           return JSON.stringify(saved) !== JSON.stringify(window.MockEngine.DEFAULTS);
         } catch (e) { return false; }
       });
+      // V19.19: null means "we have no idea when this plan was last touched" — true for every
+      // plan stored before this release, and the Welcome screen has copy for that state.
+      const [savedAt, setSavedAt] = useState(() => {
+        try { return localStorage.getItem(STAMP_KEY) || null; } catch (e) { return null; }
+      });
       const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
       // V19.1: freshStart is a one-shot flag — true only for the visit right after
       // Welcome → "Start a new plan", so the Questionnaire's "Returning? Load your saved
@@ -108,10 +124,36 @@
         return () => window.removeEventListener('resize', onResize);
       }, []);
       // Persist params across refreshes (private to this browser; no data in the repo)
-      useEffect(() => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(params)); } catch (e) {} }, [params]);
+      // V19.19: the stamp is written on genuine EDITS only. The first run of this effect is
+      // the mount write — the app re-saves a migrated plan on first load, so stamping there
+      // would mark a two-year-old plan as edited today and destroy the one fact the Welcome
+      // screen exists to report. firstPersist skips exactly that one write.
+      const firstPersist = React.useRef(true);
+      useEffect(() => {
+        try {
+          localStorage.setItem(SAVE_KEY, JSON.stringify(params));
+          // A just-loaded file carries its own savedAt (set by CompassIO.parsePlan). It is
+          // consumed once here so the clock reflects when those numbers were current, not
+          // when the file was opened. Ordinary edits fall through to now; the mount write
+          // stamps nothing. The decision itself is pure and tested (plan-refresh.test.js).
+          const io = window.CompassIO || {};
+          const stamp = window.PlanRefresh.decideStamp(
+            firstPersist.current, io._pendingSavedAt, new Date().toISOString());
+          firstPersist.current = false;
+          io._pendingSavedAt = null;
+          if (stamp) { localStorage.setItem(STAMP_KEY, stamp); setSavedAt(stamp); }
+        } catch (e) {}
+      }, [params]);
+
+      // V19.19: the score the Welcome screen showed, kept so the update flow's summary can
+      // say "82 → 89" rather than only "89". Score-only (MockEngine.scoreAsync), never a full
+      // compute — see the note on scoreAsync for why a blocking run cannot go on a launch
+      // screen. The Cover still runs its own full compute as it always has.
+      const [welcomeScore, setWelcomeScore] = useState(null);
 
       const beginContinue = () => setStarted(true);
       const beginLoad = (loaded) => { setParams(loaded); setScreen('cover'); setStarted(true); };
+      const beginUpdate = () => { setScreen('update'); setStarted(true); };
       const beginNew = () => {
         if (hasSession && !window.confirm('Starting a new plan replaces the plan saved in this browser. You can Save it to a file first. Continue?')) return;
         setParams(window.MockEngine.DEFAULTS);
@@ -120,7 +162,15 @@
         setStarted(true);
       };
 
-      if (!started) return <CoverWelcome hasSession={hasSession} onContinue={beginContinue} onStartNew={beginNew} onLoaded={beginLoad} />;
+      if (!started) return <CoverWelcome params={params} savedAt={savedAt} hasSession={hasSession}
+        score={welcomeScore} onScore={setWelcomeScore}
+        onContinue={beginContinue} onUpdate={beginUpdate} onStartNew={beginNew} onLoaded={beginLoad} />;
+
+      if (screen === 'update') return <CoverUpdate params={params} setParams={setParams}
+        beforeScore={welcomeScore}
+        onFinish={() => setScreen('cover')}
+        onOpenInputs={() => setScreen('quiz')}
+        onCancel={() => setScreen('cover')} />;
 
       const shared = { params, setParams };
       if (isMobile)             return <CoverMobile {...shared} adjustNote={adjustNote} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} freshStart={freshStart} onTabChange={(id) => setScreen(id)} />;

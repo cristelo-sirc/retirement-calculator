@@ -1,4 +1,4 @@
-// real-engine.js — V19.18 adapter
+// real-engine.js — V19.19 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.18';
+      s.src = 'engine.js?v=19.19';
       s.onload = function () { resolve(true); };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
@@ -467,6 +467,51 @@
     };
   }
 
+  // V19.19: score ONLY, computed in slices so the page stays usable while it runs.
+  //
+  // Why this exists: compute() is synchronous and measured at ~7s at 5,000 paths (~2.4s of
+  // scoring plus ~4.4s of safe-to-spend bisection). Calling it to put a number on the Welcome
+  // screen would freeze the main thread for those seconds — the buttons would be painted but
+  // dead, which is worse than showing no score at all. This runs the same paths in ~40ms
+  // slices, yielding to the browser between them.
+  //
+  // Determinism is preserved BY CONSTRUCTION, not by luck: every path is seeded from
+  // SEED_BASE plus its own index, so a path's result cannot depend on when it was run or on
+  // what ran alongside it. The scoring predicate is successOf() itself, not a copy of it, so
+  // the two can never drift. Asserted against compute() in tests/score-async.test.js.
+  //
+  // Returns a cancel function; call it if the caller unmounts mid-run.
+  function scoreAsync(params, onDone) {
+    var m = normalizeParams(params).params;
+    if (!window.simulatePath) { setTimeout(function () { onDone(null); }, 0); return function () {}; }
+    var real = mapToReal(m, m.numPaths || 5000);
+    real._solverDeterministic = true;
+    real._solverSeedBase = SEED_BASE;
+    var goal = m.legacyGoal || 0;
+    var total = real.numPaths, i = 0, cancelled = false;
+    // Only the two fields successOf reads are kept, so a 10,000-path run doesn't hold
+    // 10,000 full year-by-year logs alive just to count them.
+    var slim = [];
+    var SLICE_MS = 40;
+    function step() {
+      if (cancelled) return;
+      var t0 = Date.now();
+      while (i < total) {
+        var r = window.simulatePath(real, i);
+        slim.push({ everDepleted: r.everDepleted, finalBalance: r.finalBalance });
+        i++;
+        if ((i & 15) === 0 && (Date.now() - t0) >= SLICE_MS) break;
+      }
+      if (i < total) { setTimeout(step, 0); return; }
+      var rate = successOf(slim, goal);
+      var v = verdictFor(rate);
+      onDone({ params: m, successRate: rate, numPaths: total, verdict: v.verdict,
+        verdictWord: v.verdictWord, verdictBlurb: v.verdictBlurb });
+    }
+    setTimeout(step, 0);
+    return function () { cancelled = true; };
+  }
+
   function compute(params) {
     var m = normalizeParams(params).params;   // validate + clamp every entry point (incl. numPaths)
     if (!window.simulatePath) {            // engine not loaded yet — safe placeholder
@@ -653,7 +698,8 @@
   }
 
   window.MockEngine = {
-    DEFAULTS: DEFAULTS, compute: compute, computeMoves: computeMoves, normalizeParams: normalizeParams,
+    DEFAULTS: DEFAULTS, compute: compute, scoreAsync: scoreAsync, computeMoves: computeMoves,
+    normalizeParams: normalizeParams,
     formatCurrency: formatCurrency, formatPct: formatPct, clone: clone, ssFactor: ssFactor
   };
 })();

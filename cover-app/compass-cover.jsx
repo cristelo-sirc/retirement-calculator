@@ -153,6 +153,53 @@ function cvGlanceFacts(params, results) {
 }
 window.cvGlanceFacts = cvGlanceFacts;
 
+// V19.19: the "what's likely moved since" rows on the Welcome screen. Bucket 1 only —
+// figures somebody else authored and restates, which drift whether or not the app is opened.
+// Deliberately mirrors PlanRefresh.stepsFor's conditions so the list you are shown and the
+// steps you are then walked through cannot disagree: a single person is never told their
+// spouse's salary has moved, and someone already claiming is not told SSA has restated an
+// estimate they are already collecting on.
+function cvStaleRows(params) {
+  var p = params || {};
+  var fmt = window.MockEngine.formatCurrency;
+  var couple = !!p.hasPartner;
+  var pair = function (a, b) { return couple ? (a + ' · ' + b) : String(a); };
+  var rows = [];
+  rows.push({ label: couple ? 'Your age and your spouse’s' : 'Your age',
+    why: 'Moves whether or not you open this',
+    value: pair(p.currentAge, p.spouseAge) });
+  var invested = (p.userPreTax || 0) + (p.userRoth || 0) + (p.taxable || 0)
+    + (couple ? (p.spousePreTax || 0) + (p.spouseRoth || 0) : 0);
+  rows.push({ label: 'Invested balances',
+    why: (couple ? 'Five accounts' : 'Three accounts') + ' — contributions and markets',
+    value: fmt(invested, { compact: true }) });
+  var working = p.currentAge < p.retireAge;
+  var spouseWorking = couple && p.spouseAge < p.spouseRetireAge;
+  if (working || spouseWorking) {
+    rows.push({ label: (working && spouseWorking) ? 'Salaries' : 'Salary',
+      why: 'Raises since you last looked',
+      value: (working && spouseWorking) ? (fmt(p.salary, { compact: true }) + ' · ' + fmt(p.spouseSalary, { compact: true }))
+        : fmt(working ? p.salary : p.spouseSalary, { compact: true }) });
+  }
+  var claiming = p.currentAge >= p.ssClaimAge;
+  var spouseClaiming = couple && p.spouseAge >= p.spouseClaimAge;
+  if (!claiming || (couple && !spouseClaiming)) {
+    rows.push({ label: 'Social Security estimates',
+      why: 'ssa.gov restates these yearly',
+      value: (!claiming && couple && !spouseClaiming)
+        ? (fmt(p.ssBenefit, { compact: true }) + ' · ' + fmt(p.spouseSS, { compact: true }))
+        : fmt(!claiming ? p.ssBenefit : p.spouseSS, { compact: true }) });
+  }
+  var mine = (p.pension || 0) > 0, theirs = couple && (p.spousePension || 0) > 0;
+  if (mine || theirs) {
+    rows.push({ label: 'Pension', why: 'Restated on your annual statement',
+      value: (mine && theirs) ? (fmt(p.pension, { compact: true }) + ' · ' + fmt(p.spousePension, { compact: true }))
+        : fmt(mine ? p.pension : p.spousePension, { compact: true }) });
+  }
+  return rows;
+}
+window.cvStaleRows = cvStaleRows;
+
 // V19.7: the "How It Could Play Out" outcomes strip — the RANGE the Monte Carlo produces.
 // rough/middle/strong are the P10/P50/P90 end balances (same percentiles the year-by-year
 // table uses); longevity is the middle path's runway and the share of futures that ever ran
@@ -323,7 +370,7 @@ window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
   buildPlanJSON: function (params) {
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.18', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.19', savedAt: new Date().toISOString(),
       params: params || {}
     }, null, 2);
   },
@@ -360,6 +407,14 @@ window.CompassIO = {
       : { params: Object.assign({}, DEF, raw), changed: false };
     var res = { ok: true, params: norm.params };
     if (norm.changed) res.note = 'Plan loaded. Some values were out of range and were adjusted to safe limits.';
+    // V19.19: hand the file's own savedAt to the app shell so loading a 2025 plan does NOT
+    // reset the staleness clock to today. The numbers in that file are as old as the file;
+    // the Welcome screen should still say so. Set here rather than threaded through props
+    // because BOTH load paths (Welcome's pickPlanFile and CoverSaveLoad's mid-session load)
+    // run through parsePlan, so this is the one place that covers both.
+    // Only set on the ok path — a rejected file must not leave a stale value behind for the
+    // next unrelated edit to consume.
+    this._pendingSavedAt = (typeof obj.savedAt === 'string' && obj.savedAt) ? obj.savedAt : null;
     return res;
   },
   pickPlanFile: function (onResult) {
@@ -642,7 +697,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.18</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.19</div>
         </div>
       </section>
     </div>
@@ -939,7 +994,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.18">
+    <CoverChrome active="rework" tag="V19.19">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -1062,7 +1117,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.18">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.19">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1155,8 +1210,29 @@ function CoverBigStat({ big, unit, label }) {
 // WELCOME — launch screen shown on every load (Continue / Start new / Load).
 // Responsive: same component renders at desktop and 375px.
 // ============================================================================
-function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
+function CoverWelcome({ params, savedAt, hasSession, score, onScore,
+                        onContinue, onUpdate, onStartNew, onLoaded }) {
+  const PR = window.PlanRefresh;
+  const ME = window.MockEngine;
+  const fmt = ME.formatCurrency;
   const [err, setErr] = React.useState('');
+  const [isMobile, setIsMobile] = React.useState(window.innerWidth < 769);
+  React.useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 769);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // The score is fetched with scoreAsync, NOT compute(). compute() is ~7s and synchronous:
+  // the buttons would be painted but dead for those seconds, which is worse than no score.
+  // scoreAsync runs the same seeded paths in slices, so the screen is usable throughout and
+  // the number it lands on is exactly what the Cover will show.
+  React.useEffect(() => {
+    if (!hasSession || score) return;
+    const cancel = ME.scoreAsync(params, (r) => { if (r) onScore(r); });
+    return cancel;
+  }, [hasSession]);
+
   const doLoad = () => {
     setErr('');
     window.CompassIO.pickPlanFile(res => {
@@ -1164,71 +1240,181 @@ function CoverWelcome({ hasSession, onContinue, onStartNew, onLoaded }) {
       else setErr((res && res.error) || 'Could not load that file.');
     });
   };
-  const sub = { display: 'block', fontSize: 12, marginTop: 3, opacity: 0.7,
-    letterSpacing: 0, textTransform: 'none', fontWeight: 400 };
+
+  const age = PR.describeStaleness(savedAt, new Date().toISOString());
+  const rows = window.cvStaleRows(params);
+
   const btn = (primary) => ({
-    width: '100%', padding: '15px 20px', textAlign: 'left', cursor: 'pointer',
+    width: '100%', padding: isMobile ? '14px 16px' : '15px 20px', textAlign: 'left', cursor: 'pointer',
     fontFamily: cvStyles.body, border: `1px solid ${cvStyles.ink}`,
     background: primary ? cvStyles.ink : 'transparent',
     color: primary ? cvStyles.paper : cvStyles.ink,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 });
+  const sub = { display: 'block', fontSize: 12, marginTop: 3, opacity: 0.7,
+    letterSpacing: 0, textTransform: 'none', fontWeight: 400 };
   const ActionButton = ({ primary, onClick, title, note, glyph }) => (
     <button onClick={onClick} style={btn(primary)}>
       <span style={{ display: 'block' }}>
-        <span style={{ fontFamily: cvStyles.display, fontSize: 18, display: 'block' }}>{title}</span>
+        <span style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 16 : 18, display: 'block' }}>{title}</span>
         <span style={sub}>{note}</span>
       </span>
       <span style={{ flex: '0 0 auto', fontSize: 18 }}>{glyph}</span>
     </button>
   );
-  return (
+
+  const chrome = (children) => (
     <div style={{ width: '100%', height: '100%', background: cvStyles.paper, color: cvStyles.ink,
       fontFamily: cvStyles.body, overflowY: 'auto', overflowX: 'hidden' }}>
-      <div style={{ maxWidth: 560, width: '100%', margin: '0 auto', minHeight: '100%',
-        padding: 'clamp(28px,6vw,64px) 24px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div style={{ maxWidth: hasSession && !isMobile ? 1180 : 560, width: '100%', margin: '0 auto',
+        minHeight: '100%', padding: isMobile ? 'clamp(26px,6vw,32px) 22px 34px' : '44px 56px 48px',
+        display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-          gap: 16, borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14, marginBottom: 'clamp(28px,6vw,52px)' }}>
+          gap: 16, borderBottom: `1px solid ${cvStyles.ink}`, paddingBottom: 14 }}>
           {/* V19.9 (A6): keep the wordmark from butting into the issue label at ~390px, and stop
               "No. 5" wrapping — the gap plus a shrink-to-fit, nowrap issue label fixes both. */}
           <div style={{ fontFamily: cvStyles.display, fontSize: 'clamp(28px,7vw,34px)', lineHeight: 1, flex: '0 0 auto' }}>Compass</div>
           <div style={{ ...cvKicker, fontSize: 'clamp(9px,2.4vw,12px)', letterSpacing: '0.12em',
-            textAlign: 'right', whiteSpace: 'nowrap', flex: '0 1 auto' }}>The Retirement Issue · No. 5</div>
+            textAlign: 'right', whiteSpace: 'nowrap', flex: '0 1 auto' }}>The Retirement Issue &middot; No. 5</div>
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ ...cvKicker, marginBottom: 14 }}>Welcome</div>
-          <h1 style={{ fontFamily: cvStyles.display, fontSize: 'clamp(34px,8vw,54px)', lineHeight: 1.05,
-            letterSpacing: '-0.01em', margin: '0 0 16px' }}>
-            {hasSession ? 'Welcome back.' : 'Let’s build your plan.'}
-          </h1>
-          <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 430, margin: '0 0 32px' }}>
-            {hasSession
-              ? 'Pick up where you left off, load a plan you saved, or start fresh.'
-              : 'Answer a few questions and your results fill in with your real numbers — about 3–5 minutes.'}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 430 }}>
-            {hasSession && <ActionButton primary onClick={onContinue}
-              title="Continue your plan" note="Reopen your saved session" glyph="→" />}
-            <ActionButton primary={!hasSession} onClick={onStartNew}
-              title="Start a new plan" note="Enter your details from scratch" glyph="→" />
-            <ActionButton primary={false} onClick={doLoad}
-              title="Load a saved plan" note="Open a .json file you saved before" glyph="↑" />
-          </div>
-          {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
-          {/* V19.17: privacy blurb — verified 2026-07-16: no network calls, no analytics, no
-              backend anywhere in the app; inputs live only in this browser's localStorage and
-              in save-files the user downloads themselves. Keep this copy in sync with that fact. */}
-          <div style={{ marginTop: 32, maxWidth: 430 }}>
-            <div style={{ ...cvKicker, marginBottom: 8 }}>Private by design</div>
-            <p style={{ fontSize: 13, lineHeight: 1.6, color: cvStyles.ink70, margin: 0 }}>
-              Everything you enter stays on this device. There’s no server, no account, and no
-              tracking — nothing you type can be seen by anyone else, including the person who
-              shared this with you.</p>
-          </div>
+        {children}
+      </div>
+    </div>
+  );
+
+  const privacy = (
+    /* V19.17: privacy blurb — verified 2026-07-16: no network calls, no analytics, no
+       backend anywhere in the app; inputs live only in this browser's localStorage and
+       in save-files the user downloads themselves. Keep this copy in sync with that fact. */
+    <div style={{ maxWidth: 520 }}>
+      <div style={{ ...cvKicker, marginBottom: 8 }}>Private by design</div>
+      <p style={{ fontSize: 13, lineHeight: 1.6, color: cvStyles.ink70, margin: 0 }}>
+        Everything you enter stays on this device. There&rsquo;s no server, no account, and no
+        tracking &mdash; nothing you type can be seen by anyone else, including the person who
+        shared this with you.</p>
+    </div>
+  );
+
+  // ---- First visit: nothing to recap, nothing to score. -------------------------------
+  if (!hasSession) {
+    return chrome(
+      <div style={{ flex: 1, marginTop: 'clamp(28px,6vw,52px)' }}>
+        <div style={{ ...cvKicker, marginBottom: 14 }}>Welcome</div>
+        <h1 style={{ fontFamily: cvStyles.display, fontSize: 'clamp(34px,8vw,54px)', lineHeight: 1.05,
+          letterSpacing: '-0.01em', margin: '0 0 16px' }}>Let&rsquo;s build your plan.</h1>
+        <p style={{ fontSize: 15, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 430, margin: '0 0 32px' }}>
+          Answer a few questions and your results fill in with your real numbers &mdash; about 3&ndash;5 minutes.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 430 }}>
+          <ActionButton primary onClick={onStartNew}
+            title="Start a new plan" note="Enter your details from scratch" glyph="&rarr;" />
+          <ActionButton primary={false} onClick={doLoad}
+            title="Load a saved plan" note="Open a .json file you saved before" glyph="&uarr;" />
         </div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.18</div>
+        {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
+        <div style={{ marginTop: 32 }}>{privacy}</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.19</div>
+      </div>
+    );
+  }
+
+  // ---- Returning: recap first, score when it lands. -----------------------------------
+  // Three copy states, driven by what we actually know. A plan stored before V19.19 has no
+  // stamp and cannot be given one retroactively, so that case says so rather than guessing.
+  const headline = age.known
+    ? (age.stale ? 'It’s been ' + age.phrase.replace(' ago', '') + '.' : 'Welcome back.')
+    : 'Welcome back.';
+  const standfirst = !age.known
+    ? 'We don’t know when you last updated this. Worth a look at your numbers before you lean on the score.'
+    : age.stale
+      ? 'Your plan still says what it said ' + age.phrase + '. These numbers move on their own — a couple of minutes puts them right.'
+      : 'Picking up where you left off. Everything below is as you last saved it.';
+
+  const scoreBlock = (
+    <div>
+      <div style={{ ...cvKicker, marginBottom: 14 }}>
+        {age.known ? 'Your plan · last updated ' + age.phrase : 'Your plan'}
+      </div>
+      {/* The slot is sized for the final number so nothing jumps when the score lands. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 12,
+        minHeight: isMobile ? 62 : 92 }}>
+        <span style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 68 : 104, lineHeight: .86,
+          letterSpacing: '-0.03em', color: score ? cvStyles.ink : cvStyles.ink20 }}>
+          {score ? score.successRate : '—'}
+        </span>
+        <span style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 23 : 34, color: cvStyles.ink50 }}>/100</span>
+        {score && <span style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 23 : 34,
+          color: cvVerdictColor(score.verdict), marginLeft: 4 }}>{score.verdictWord}</span>}
+      </div>
+      <h1 style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 32 : 44, lineHeight: 1.05,
+        letterSpacing: '-0.01em', margin: isMobile ? '16px 0 10px' : '22px 0 14px' }}>{headline}</h1>
+      <p style={{ fontSize: isMobile ? 14 : 15, lineHeight: 1.65, color: cvStyles.ink70,
+        maxWidth: 440, margin: 0 }}>{standfirst}</p>
+
+      <div style={{ marginTop: isMobile ? 22 : 32, display: 'grid',
+        gridTemplateColumns: '1fr 1fr 1fr', gap: isMobile ? 12 : 26, maxWidth: 470 }}>
+        <div>
+          <div style={{ ...cvKicker, fontSize: isMobile ? 10.5 : 11.5, letterSpacing: '0.09em' }}>Retiring at</div>
+          <div style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 21 : 26, marginTop: 6 }}>{params.retireAge}</div>
+        </div>
+        <div>
+          <div style={{ ...cvKicker, fontSize: isMobile ? 10.5 : 11.5, letterSpacing: '0.09em' }}>Spending</div>
+          <div style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 21 : 26, marginTop: 6 }}>{fmt(params.spending, { compact: true })}</div>
+        </div>
+        <div>
+          <div style={{ ...cvKicker, fontSize: isMobile ? 10.5 : 11.5, letterSpacing: '0.09em' }}>Horizon</div>
+          <div style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 21 : 26, marginTop: 6 }}>{params.currentAge}&ndash;{params.endAge}</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const actionBlock = (
+    <div>
+      <div style={{ ...cvKicker, marginBottom: 4, fontSize: isMobile ? 11 : 12 }}>What&rsquo;s likely moved since</div>
+      <div style={{ borderTop: `1px solid ${cvStyles.ink}`, marginTop: 8 }}>
+        {rows.map(r => (
+          <div key={r.label} style={{ display: 'flex', alignItems: 'baseline', gap: 12,
+            padding: isMobile ? '9px 0' : '11px 0', borderBottom: `1px solid ${cvStyles.rule}` }}>
+            <span style={{ flex: '1 1 auto', fontSize: isMobile ? 13.5 : 14 }}>
+              {r.label}
+              <em style={{ fontStyle: 'normal', color: cvStyles.ink70, fontSize: isMobile ? 12 : 12.5,
+                display: 'block', marginTop: 2 }}>{r.why}</em>
+            </span>
+            <span style={{ fontFamily: cvStyles.display, fontSize: isMobile ? 16 : 18,
+              color: cvStyles.ink70, whiteSpace: 'nowrap' }}>{r.value}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ marginTop: isMobile ? 22 : 26, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <ActionButton primary onClick={onUpdate}
+          title="Update my numbers" note="A few minutes &mdash; then I&rsquo;ll re-score your plan" glyph="&rarr;" />
+        <ActionButton primary={false} onClick={onContinue}
+          title="They&rsquo;re still right &mdash; open my plan" note="Go straight to results" glyph="&rarr;" />
+      </div>
+      <div style={{ marginTop: 16, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <button onClick={doLoad} style={cvWelcomeLink}>Load a saved file</button>
+        <button onClick={onStartNew} style={cvWelcomeLink}>Start over</button>
+      </div>
+      {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16 }}>{err}</div>}
+    </div>
+  );
+
+  return chrome(
+    <div style={{ flex: 1 }}>
+      {isMobile
+        ? <div style={{ marginTop: 24 }}>{scoreBlock}<div style={{ marginTop: 26 }}>{actionBlock}</div></div>
+        : <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 64,
+            marginTop: 44, alignItems: 'start' }}>{scoreBlock}{actionBlock}</div>}
+      <hr style={{ border: 0, borderTop: `1px solid ${cvStyles.rule}`, margin: isMobile ? '28px 0 16px' : '40px 0 18px' }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
+        {privacy}
+        <span style={{ ...cvKicker }}>V19.19</span>
       </div>
     </div>
   );
 }
+const cvWelcomeLink = { background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+  fontFamily: cvStyles.body, fontSize: 13.5, color: cvStyles.ink,
+  textDecoration: 'underline', textUnderlineOffset: 3 };
 
 Object.assign(window, { CoverDesktop, CoverAdjust, CoverCharts, CoverWelcome });

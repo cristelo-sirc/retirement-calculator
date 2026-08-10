@@ -67,7 +67,9 @@ function loadAdapter() {
   const eng = loadFinancialEngine();
   const window = { simulatePath: eng.simulatePath };
   const context = {
-    console, Math, JSON, window,
+    // V19.19: Date + timers are needed by scoreAsync (the chunked, non-blocking scoring run).
+    // The browser has them ambiently; this sandbox has to be handed them explicitly.
+    console, Math, JSON, Date, setTimeout, clearTimeout, window,
     document: { addEventListener() {}, createElement() { return {}; }, head: { appendChild() {} } }
   };
   vm.createContext(context);

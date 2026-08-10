@@ -59,8 +59,12 @@ const FIELD_INFO = {
   spouseClaimAge: { help: 'Between 62 and 70.', detail: 'Benefits begin in the yearly period that starts at this age. Set it independently from yours; delaying the higher earner can improve the survivor benefit.' },
   enableSpousalBenefit: { help: 'Can top up the lower earner’s check.', detail: 'When on, the lower earner can receive up to half of the higher earner’s full benefit if that exceeds their own. Worth enabling when one partner earned much more than the other.' },
 
-  pension: { help: 'Annual pension. $0 if you don’t have one.', detail: 'Guaranteed yearly income from an employer or government pension (monthly amount × 12). Counts alongside Social Security as income you don’t have to draw from savings.' },
-  spousePension: { help: 'Annual pension. $0 if none.', detail: 'Guaranteed yearly pension income for your partner (monthly amount × 12).' },
+  // V19.19: which figure to take off the statement. Without a COLA the engine treats this as
+  // a FIXED amount for the whole plan and never grows it, so the number it wants is the
+  // projected benefit AT RETIREMENT — not the amount accrued to date, which would model
+  // someone who stops earning pension credit today.
+  pension: { help: 'Annual pension at retirement. $0 if you don’t have one.', detail: 'Guaranteed yearly income from an employer or government pension (monthly amount × 12). If you’re still working, use your statement’s estimated benefit at retirement — not the amount earned to date, which assumes you stop accruing today. Counts alongside Social Security as income you don’t have to draw from savings.' },
+  spousePension: { help: 'Annual pension at retirement. $0 if none.', detail: 'Guaranteed yearly pension income for your partner (monthly amount × 12). If they’re still working, use the estimated benefit at retirement rather than the amount earned so far.' },
   pensionCOLA: { help: 'Rises with inflation each year.', detail: 'A cost-of-living adjustment keeps the pension’s buying power steady over time. Most private pensions are fixed (leave off); many government and military pensions have a COLA (turn on).' },
   partTime: { help: 'Consulting, rentals, a bridge job.', detail: 'Part-time work, an annuity, or rental income — anything dependable over a set age range. It reduces what you draw from the portfolio while it lasts. Couples get one channel each: if the earner claims Social Security before full retirement age, this income can temporarily reduce THEIR OWN benefit (never their partner’s).' },
   partTimeIncome: { help: 'In today’s dollars.', detail: 'The annual amount, in today’s dollars. The plan grows it with inflation over the years you specify.' },
