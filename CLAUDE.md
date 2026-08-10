@@ -5,7 +5,7 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 (`engine.js`) through the `real-engine.js` adapter. `engine.js` is reused as a pure math library
 &mdash; only its DOM init is bypassed.
 
-**Current Version:** 19.18
+**Current Version:** 19.19
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 **Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`)
@@ -210,8 +210,16 @@ Deriving values instead of using actual simulation data causes mismatches.
 These are known, deliberate limits currently live in the app. Don't "fix" them silently.
 
 - **Safe-to-spend is a labeled estimate**, not a full-count-verified number &mdash; a fast bisection
-  at sample count, to keep live recompute ~1s. It's prefixed "~" and says "estimate" in the UI, and
-  returns **null ("None")** when no level reaches ~90%.
+  at sample count. It's prefixed "~" and says "estimate" in the UI, and returns **null ("None")** when
+  no level reaches ~90%. (This bullet claimed the bisection keeps live recompute "~1s" until V19.19.
+  It does not &mdash; see the measured timings below. The sampling is still a real saving; the ~1s
+  figure was simply never true.)
+- **The user's age does not advance on its own.** `currentAge` is a stored number, not a birth date,
+  so a plan reopened two years later still plans from the age last entered. Deliberate: deriving age
+  from a birth date would move the floor under six dependent fields (retirement age, windfall age,
+  part-time start, mortgage payoff, Roth conversion start, and the spouse equivalents) and silently
+  clamp values the user had set. V19.19's update flow asks for age directly instead, so correctness
+  depends on the user acting on the prompt rather than being guaranteed by the app.
 - **The FRA-year SS earnings test is not modeled.** The engine always applies the under-FRA limit; the
   special rule for the year a person reaches FRA needs a birth month the annual model lacks. Disclosed
   in the SS claim-age tooltip, an `engine.js` comment, and the README.
@@ -268,6 +276,54 @@ These are known, deliberate limits currently live in the app. Don't "fix" them s
   manual step every release. V19.11 shipped a mismatched footer by forgetting; the saved-plan stamp
   silently drifted from V19.10 through V19.16. **Grep the OLD version string** after running the
   script, don't trust its report.
+
+### Performance &mdash; measured, not estimated (V19.19)
+
+Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
+
+| | Time |
+| --- | --- |
+| Full `compute()` | **~5&ndash;7.5s** |
+| Full `compute()` at 10,000 paths | **~14s** |
+| The scoring run alone | **~2.4s** |
+| The safe-to-spend bisection | **~4.4s &mdash; 65% of the total** |
+
+- **`compute()` is synchronous and cannot go anywhere a user is waiting to click.** It blocks the main
+  thread for those seconds: buttons paint, then do nothing. Entering the Cover has always paid this
+  cost; a launch screen must not.
+- **`MockEngine.scoreAsync(params, cb)` is the non-blocking alternative** &mdash; score/verdict only,
+  run in ~40ms slices, returns a cancel function. Determinism holds by construction (every path is
+  seeded from `SEED_BASE` plus its own index, so a path cannot depend on when it ran), and is asserted
+  equal to `compute()` at the real 5,000-path count in `tests/score-async.test.js`. Use it anywhere a
+  score is wanted without a freeze; use `compute()` when the full result object is needed.
+- **Dropping safe-to-spend from a screen removes two thirds of its wait.** That is why the Welcome
+  screen shows retirement age, spending and horizon rather than the safe-to-spend figure.
+- **Don't batch several `compute()` calls into one Chrome MCP `javascript_tool` evaluation** &mdash;
+  the CDP call times out at 45s and the tab looks frozen. Drive one screen at a time.
+
+### The staleness stamp (V19.19)
+
+- `compassParamsSavedAt` is a **second localStorage key**, deliberately not a field inside
+  `compassParams` &mdash; that key holds the params object directly, and wrapping it would change the
+  shape every existing browser has stored.
+- **It is not written on the mount persist.** The app re-saves a migrated plan on first load, so
+  stamping there would mark a years-old plan as edited today. `PlanRefresh.decideStamp` owns that
+  decision and is tested.
+- **A loaded file carries its own `savedAt`** (set by `CompassIO.parsePlan`, consumed once), so opening
+  a 2025 plan does not reset the clock to today.
+- **It cannot be backfilled.** Plans stored before V19.19 have no stamp; the Welcome screen says it
+  doesn't know rather than guessing.
+
+### The update flow's field contract (V19.19)
+
+- Fields are **pre-filled and grey, dark once edited**. There is never an empty box, so there is never
+  a moment where the code must decide what an empty box means. Only touched fields reach the writer.
+- `PlanRefresh.parseEntry` is the whole risk surface: `''` must never become 0, while `'0'` must.
+  Garbage keeps the stored value rather than guessing.
+- `PlanRefresh.stepsFor` and `cvStaleRows` share the same conditions on purpose &mdash; the list you
+  are shown and the steps you are then walked through must not disagree.
+- **Prior-year wages follow salary** only when they were already in step; a deliberately different
+  figure is preserved (`syncPriorWages`).
 
 ### Testing and verification
 

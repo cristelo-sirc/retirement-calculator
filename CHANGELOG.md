@@ -1,5 +1,17 @@
 # Change log
 
+## 19.19.0 — 2026-08-10
+
+- The Welcome screen now shows you your plan instead of just three buttons. Your score sits at the top, with your retirement age, spending and horizon beneath it, and a short list of the figures that go stale on their own while a plan sits unopened — your ages, your balances, your salaries, your Social Security estimates, and your pension if you have one — each showing the value you last entered.
+- Compass now remembers when you last edited a plan, so the screen can say "It's been 14 months" rather than a generic greeting. Plans already saved in your browser have no such record and can't be given one retroactively, so the first time you open one it says plainly that it doesn't know, rather than guessing.
+- New "Update my numbers" flow: four or five short steps covering only the figures somebody else authors and restates every year. Each step tells you where to look — your statement, a pay stub, ssa.gov, your plan administrator. Steps that don't apply don't appear: a single person is never asked about a spouse, someone already retired skips salaries, someone already claiming skips Social Security.
+- Fields in that flow arrive already filled in with what you last entered, shown in grey. Type over one and it turns dark and reads "changed". Nothing is ever blank, so there is no way for a field you left alone to be misread as zero.
+- Everything the flow doesn't cover is handled by one question at the end — "has anything changed in your life?" — which opens Input Data if you say yes. Assumptions like inflation, expected returns and your glide path are deliberately left out of the refresh; they live in Input Data where changing them is a deliberate act.
+- Finishing the flow shows what your update did: your old score, your new one, and a line for each figure you changed.
+- The pension help text now says which number to take off your statement. Without a cost-of-living increase, Compass treats what you enter as a fixed amount for the whole plan, so it wants the estimated benefit at retirement — not the amount earned so far, which models someone who stops accruing today. This ambiguity was already in the app; it is now spelled out.
+- Under the hood: the Welcome screen's score is computed in small slices so the page stays usable while it runs. A full recompute takes about seven seconds and would have frozen the buttons. The sliced version produces exactly the same number — asserted against the full calculation at the real 5,000-path count.
+- Test suite grew from 103 to 136 checks, including proof that a field you leave alone is written back exactly as it was, and that the sliced score matches the full one. The built-in sample still reads 64/100.
+
 ## 19.18.0 — 2026-07-17
 
 - Salaries no longer silently grow at the inflation rate. Each person now has their own "Expected annual pay increase" field (0–10%, new plans start at 2.5%) in the Salary & contributions chapter, on both desktop and phone. Your salary compounds at your rate until you retire; your partner's compounds at theirs until they retire — and changing the inflation assumption no longer changes anyone's raises.
