@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Compass &middot; The Retirement Issue &middot; V19.19</title>
+  <title>Compass &middot; The Retirement Issue &middot; V19.20</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -40,22 +40,22 @@
   </script>
 
   <!-- Real engine adapter: defines window.MockEngine and loads engine.js (math) after DOMContentLoaded -->
-  <script src="cover-app/real-engine.js?v=19.19"></script>
+  <script src="cover-app/real-engine.js?v=19.20"></script>
 </head>
 <body>
   <div id="root"></div>
 
   <!-- The mockup design components (the exact handoff UI) -->
-  <script src="cover-app/numeric-entry.js?v=19.19"></script>
+  <script src="cover-app/numeric-entry.js?v=19.20"></script>
   <!-- V19.19: pure staleness/field-write-back helpers (window.PlanRefresh). Plain JS, not
        Babel, so the node test suite can require() the same file the browser runs. -->
-  <script src="cover-app/plan-refresh.js?v=19.19"></script>
-  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.19"></script>
-  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.19"></script>
-  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.19"></script>
-  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.19"></script>
-  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.19"></script>
-  <script type="text/babel" src="cover-app/cover-update.jsx?v=19.19"></script>
+  <script src="cover-app/plan-refresh.js?v=19.20"></script>
+  <script type="text/babel" src="cover-app/retire-ui.jsx?v=19.20"></script>
+  <script type="text/babel" src="cover-app/retire-charts.jsx?v=19.20"></script>
+  <script type="text/babel" src="cover-app/compass-cover.jsx?v=19.20"></script>
+  <script type="text/babel" src="cover-app/cover-inputs.jsx?v=19.20"></script>
+  <script type="text/babel" src="cover-app/cover-mobile.jsx?v=19.20"></script>
+  <script type="text/babel" src="cover-app/cover-update.jsx?v=19.20"></script>
 
   <!-- App shell: one shared params state across all screens; nav switches screens -->
   <script type="text/babel">
@@ -68,6 +68,14 @@
     // plan. It cannot be backfilled either: plans saved before V19.19 have no stamp, and the
     // Welcome screen says "we don't know" rather than guessing.
     const STAMP_KEY = 'compassParamsSavedAt';
+    // V19.20 (F1): a record of a retirement age the APP moved (age passed it), so the Cover can
+    // keep saying so until the user picks one. Third key, same reasoning as STAMP_KEY.
+    const RETIRE_MOVE_KEY = 'compassRetireAgeMoved';
+    // V19.20 (F6): the wizard's chapter position belongs to ONE plan. Cleared whenever a
+    // different plan arrives (Start over, or any file load).
+    const clearWizardPosition = () => {
+      try { sessionStorage.removeItem('compassChapter'); sessionStorage.removeItem('compassChaptersVisited'); } catch (e) {}
+    };
 
     function App() {
       const [screen, setScreen] = useState('cover');
@@ -82,11 +90,31 @@
         try { var s = localStorage.getItem(SAVE_KEY); if (s) return window.MockEngine.normalizeParams(JSON.parse(s)).params; } catch (e) {}
         return window.MockEngine.normalizeParams(window.MockEngine.DEFAULTS).params;
       });
+      // V19.20 (F1): see RETIRE_MOVE_KEY. Held in a ref so the setParams boundary can read and
+      // update it synchronously; mirrored to state so the Cover re-renders.
+      const retireMoveRef = React.useRef(null);
+      const [retireMove, setRetireMove] = useState(() => {
+        try { const v = JSON.parse(localStorage.getItem(RETIRE_MOVE_KEY) || 'null'); retireMoveRef.current = v; return v; }
+        catch (e) { return null; }
+      });
+      const storeRetireMove = (rec) => {
+        retireMoveRef.current = rec;
+        setRetireMove(rec);
+        try { if (rec) localStorage.setItem(RETIRE_MOVE_KEY, JSON.stringify(rec)); else localStorage.removeItem(RETIRE_MOVE_KEY); } catch (e) {}
+      };
       const setParams = React.useCallback((updater) => {
         setParamsRaw(prev => {
           const next = (typeof updater === 'function') ? updater(prev) : updater;
           const norm = window.MockEngine.normalizeParams(next);
           setAdjustNote((norm.notes && norm.notes.length) ? norm.notes.slice() : null);
+          // V19.20: a just-loaded file (CompassIO.parsePlan sets _justLoaded on every
+          // successful parse, from either load path) is a DIFFERENT plan: the old plan's
+          // retirement-age record and wizard position do not carry over.
+          const io = window.CompassIO || {};
+          let rec = retireMoveRef.current;
+          if (io._justLoaded) { io._justLoaded = false; rec = null; clearWizardPosition(); }
+          const nextRec = window.PlanRefresh.trackRetireMove(rec, prev, next, norm.params);
+          if (JSON.stringify(nextRec) !== JSON.stringify(retireMoveRef.current)) storeRetireMove(nextRec);
           return norm.params;
         });
       }, []);
@@ -141,7 +169,10 @@
             firstPersist.current, io._pendingSavedAt, new Date().toISOString());
           firstPersist.current = false;
           io._pendingSavedAt = null;
-          if (stamp) { localStorage.setItem(STAMP_KEY, stamp); setSavedAt(stamp); }
+          // V19.20 (F8): { write } stamps; { clear } means a file with no trustworthy edit date
+          // was loaded, so the Welcome screen goes back to "we don't know".
+          if (stamp && stamp.write) { localStorage.setItem(STAMP_KEY, stamp.write); setSavedAt(stamp.write); }
+          else if (stamp && stamp.clear) { localStorage.removeItem(STAMP_KEY); setSavedAt(null); }
         } catch (e) {}
       }, [params]);
 
@@ -156,6 +187,10 @@
       const beginUpdate = () => { setScreen('update'); setStarted(true); };
       const beginNew = () => {
         if (hasSession && !window.confirm('Starting a new plan replaces the plan saved in this browser. You can Save it to a file first. Continue?')) return;
+        // V19.20 (F6, F1): a new plan starts at chapter 1 with nothing ticked and no
+        // retirement-age record. Cleared BEFORE setParams so the boundary sees no record.
+        clearWizardPosition();
+        retireMoveRef.current = null; storeRetireMove(null);
         setParams(window.MockEngine.DEFAULTS);
         setScreen('quiz');
         setFreshStart(true);
@@ -172,7 +207,9 @@
         onOpenInputs={() => setScreen('quiz')}
         onCancel={() => setScreen('cover')} />;
 
-      const shared = { params, setParams };
+      // V19.20 (F1): only while the moved age is still what's stored.
+      const retireWarnings = window.PlanRefresh.retireMoveWarnings(retireMove, params);
+      const shared = { params, setParams, retireWarnings };
       if (isMobile)             return <CoverMobile {...shared} adjustNote={adjustNote} initialTab={screen === 'quiz' ? 'quiz' : 'cover'} freshStart={freshStart} onTabChange={(id) => setScreen(id)} />;
       if (screen === 'quiz')    return <CoverInputs {...shared} adjustNote={adjustNote} freshStart={freshStart} />;
       if (screen === 'rework')  return <CoverAdjust {...shared} stageLever={stageLever} onLeverStaged={() => setStageLever(null)} />;
@@ -196,6 +233,50 @@
       );
     }
 
+    // V19.20 (F5): if any screen throws while rendering, React would otherwise unmount the
+    // whole app and leave a blank page. The plan itself is safe in localStorage, so say so,
+    // offer Reload, and offer a file copy read straight from storage (no app state needed).
+    // The error is logged — a boundary must never hide a bug from an audit.
+    class AppErrorBoundary extends React.Component {
+      constructor(p) { super(p); this.state = { failed: false, saved: '' }; }
+      static getDerivedStateFromError() { return { failed: true }; }
+      componentDidCatch(error, info) { console.error('Compass: a screen failed to render', error, info && info.componentStack); }
+      saveRaw() {
+        try {
+          const raw = localStorage.getItem('compassParams');
+          if (!raw) { this.setState({ saved: 'There is no plan saved in this browser.' }); return; }
+          const file = JSON.stringify({ schema: 'compass-retirement-plan', version: 'recovery',
+            savedAt: localStorage.getItem('compassParamsSavedAt') || null,
+            exportedAt: new Date().toISOString(), params: JSON.parse(raw) }, null, 2);
+          const url = URL.createObjectURL(new Blob([file], { type: 'application/json' }));
+          const a = document.createElement('a');
+          a.href = url; a.download = 'compass-plan-recovery.json';
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          this.setState({ saved: 'Saved to your downloads.' });
+        } catch (e) { this.setState({ saved: 'Could not save a copy.' }); }
+      }
+      render() {
+        if (!this.state.failed) return this.props.children;
+        const btn = { padding: '12px 20px', cursor: 'pointer', border: '1px solid #1a1815',
+          fontFamily: 'Inter, sans-serif', fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 };
+        return (
+          <div role="alert" style={{ maxWidth: 520, margin: '15vh auto', padding: 32,
+            fontFamily: 'Inter, sans-serif', textAlign: 'center', color: '#1a1815' }}>
+            <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Something went wrong on this screen</div>
+            <div style={{ fontSize: 14, color: '#1a1815b3', lineHeight: 1.55, marginBottom: 22 }}>
+              Your plan is still saved in this browser. Reloading usually fixes this.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button style={{ ...btn, background: '#1a1815', color: '#f5f1e8' }} onClick={() => window.location.reload()}>Reload</button>
+              <button style={{ ...btn, background: 'transparent', color: '#1a1815' }} onClick={() => this.saveRaw()}>Save plan to a file</button>
+            </div>
+            {this.state.saved && <div style={{ fontSize: 12.5, marginTop: 12, color: '#1a1815b3' }}>{this.state.saved}</div>}
+          </div>
+        );
+      }
+    }
+
     const rootEl = document.getElementById('root');
     const root = ReactDOM.createRoot(rootEl);
     root.render(
@@ -207,7 +288,7 @@
     window._engineReady.then((engineLoaded) => {
       if (!engineLoaded) { root.render(<EngineLoadError />); return; }
       rootEl.dataset.appRendered = 'true'; // tells the plain-JS vendor-failure fallback to stand down
-      root.render(<App />);
+      root.render(<AppErrorBoundary><App /></AppErrorBoundary>);
     });
   </script>
 </body>

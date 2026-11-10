@@ -1,4 +1,4 @@
-// cover-app/cover-update.jsx — V19.19
+// cover-app/cover-update.jsx — V19.20 (V19.19 origin)
 // The update flow: the short walk through the numbers that go stale on their own while a
 // plan sits unopened. Bucket 1 only (see WELCOME-UPDATE-PLAN-2026-08-10.md) — figures
 // somebody else authored and restates: ages, balances, pay, Social Security, pension.
@@ -18,6 +18,12 @@
 // what an empty box means. Only fields the user actually touched are sent to the writer; the
 // rest are not in the edit map at all and cannot be altered. Clearing a field to nothing is
 // caught by PlanRefresh.parseEntry and keeps the stored value.
+//
+// V19.20 (F4): every box is checked as you type with PlanRefresh.checkEntry (the
+// questionnaire's own parser). An entry it can't read ("600k", "55.5" for an age) shows a
+// message and blocks Next — before V19.20 it read "changed" and was then silently dropped.
+// A cleared box, or one typed back to its stored value, reads "unchanged"; a cleared box
+// refills with the stored value when you leave it.
 //
 // Reaching the end of a step IS the confirmation that its numbers are still right — the flow
 // cannot be skipped past, so "untouched" here means "seen and left alone", not "never read".
@@ -41,6 +47,12 @@ const CVU_FIELDS = {
   spouseSS:      { label: 'Your spouse’s benefit, per year', kind: 'money' },
   pension:       { label: 'Your pension, per year', kind: 'money' },
   spousePension: { label: 'Your spouse’s pension, per year', kind: 'money' },
+};
+
+// V19.20 (F1): plain names for the fields the normalizer can move as a side effect.
+const CVU_ADJUSTED_LABELS = {
+  retireAge: 'Your retirement age', endAge: 'Plan to age',
+  spouseRetireAge: 'Your spouse’s retirement age', spouseAge: 'Your spouse’s age',
 };
 
 const CVU_STEPS = {
@@ -77,34 +89,48 @@ const CVU_STEPS = {
 // ---------------------------------------------------------------------------
 // One field. Pre-filled, grey until touched, select-all on focus.
 // ---------------------------------------------------------------------------
-function CvuField({ name, raw, touched, onChange, isMobile }) {
+function CvuField({ name, raw, check, onChange, onBlur, isMobile }) {
   const meta = CVU_FIELDS[name];
   const money = meta.kind === 'money';
+  const status = check ? check.status : 'unchanged';
+  const dark = status !== 'unchanged';
+  const invalid = status === 'invalid';
+  const msgId = 'cvu-' + name + '-msg';
   return (
     <div style={{ padding: isMobile ? '13px 0' : '16px 0', borderBottom: `1px solid ${cvu.rule}` }}>
       <label htmlFor={'cvu-' + name} style={{ fontSize: isMobile ? 13.5 : 14.5, fontWeight: 500, display: 'block' }}>
         {meta.label}
       </label>
       <div style={{ marginTop: 9, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', border: `1px solid ${cvu.ink}`,
+        <div style={{ display: 'flex', alignItems: 'baseline', border: `1px solid ${invalid ? cvu.clay : cvu.ink}`,
           background: cvu.paper, padding: isMobile ? '9px 12px' : '10px 14px', flex: '0 0 auto' }}>
           {money && <span style={{ fontFamily: cvu.display, fontSize: isMobile ? 18 : 20,
-            color: touched ? cvu.ink : cvu.ink50, marginRight: 2 }}>$</span>}
+            color: dark ? cvu.ink : cvu.ink50, marginRight: 2 }}>$</span>}
           <input
             id={'cvu-' + name}
             type="text"
             inputMode="numeric"
             value={raw}
+            aria-invalid={invalid ? 'true' : undefined}
+            aria-describedby={msgId}
             onFocus={e => e.target.select()}
             onChange={e => onChange(name, e.target.value)}
+            onBlur={() => onBlur(name)}
             style={{ width: money ? (isMobile ? 118 : 140) : 62, border: 'none', background: 'transparent',
               padding: 0, fontFamily: cvu.display, fontSize: isMobile ? 20 : 22,
-              color: touched ? cvu.ink : cvu.ink50, fontVariantNumeric: 'tabular-nums', outline: 'none' }} />
+              color: dark ? cvu.ink : cvu.ink50, fontVariantNumeric: 'tabular-nums', outline: 'none' }} />
         </div>
-        <span style={{ fontSize: 12.5, color: cvu.ink50 }}>
-          {touched ? 'changed' : 'unchanged'}
-        </span>
+        {!invalid && (
+          <span id={msgId} style={{ fontSize: 12.5, color: cvu.ink50 }}>
+            {status === 'changed' ? 'changed' : 'unchanged'}
+          </span>
+        )}
       </div>
+      {invalid && (
+        <div id={msgId} role="alert" style={{ fontSize: 12.5, color: cvu.clay, marginTop: 7, fontWeight: 600 }}>
+          {window.PlanRefresh.entryMessage(meta.kind, check.reason)}
+        </div>
+      )}
     </div>
   );
 }
@@ -148,22 +174,42 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
     setRaw(r => ({ ...r, [name]: value }));
     setTouched(t => (t[name] ? t : { ...t, [name]: true }));
   };
+  // V19.20 (F4): one verdict per box, from the tested checker. Untouched boxes are unchanged.
+  const checkOf = (f) => (touched[f]
+    ? PR.checkEntry(CVU_FIELDS[f].kind, raw[f], startParams[f]) : { status: 'unchanged' });
+  // Leaving a box empty puts the stored value back, so there is never an empty box.
+  const onBlur = (name) => {
+    if (String(raw[name] == null ? '' : raw[name]).trim() !== '') return;
+    setRaw(r => ({ ...r, [name]: String(startParams[name] != null ? startParams[name] : '') }));
+    setTouched(t => { const n = { ...t }; delete n[name]; return n; });
+  };
+  const stepInvalid = (st) => st.fields.some(f => checkOf(f).status === 'invalid');
 
   // Collect only the boxes the user typed in, hand them to the tested writer, then keep
   // prior-year wages in step with any salary that moved. Every write goes through setParams,
   // the app's single normalize boundary, so the flow cannot produce a state the rest of the
   // app disagrees with.
+  // V19.20 (F4): only boxes the checker calls 'changed' are sent, as numbers — an unreadable
+  // entry can no longer reach the writer (Next is blocked on it) and be silently kept.
+  // V19.20 (F1): the summary also lists every field the normalizer moved on this write (an age
+  // passing the retirement age moves the retirement age), from the notes it already returns.
   const commit = () => {
     const edits = {};
-    Object.keys(touched).forEach(f => { if (touched[f]) edits[f] = raw[f]; });
+    Object.keys(touched).forEach(f => {
+      const c = checkOf(f);
+      if (c.status === 'changed') edits[f] = c.value;
+    });
     const res = PR.applyFieldEdits(startParams, edits);
     const withWages = PR.syncPriorWages(startParams, res.params);
+    const norm = ME.normalizeParams(withWages);
+    const typed = res.changed.concat(['priorYearWages', 'spousePriorYearWages']);
     setParams(withWages);
-    setApplied(res);
+    setApplied({ ...res, adjusted: PR.adjustedFields(startParams, norm.params, norm.notes, typed) });
     return withWages;
   };
 
-  const finishSteps = () => { commit(); setPhase('life'); };
+  const anyInvalid = steps.some(stepInvalid);
+  const finishSteps = () => { if (anyInvalid) return; commit(); setPhase('life'); };
 
   // The score after the update. scoreAsync runs the same seeded 5,000 paths compute() would,
   // in slices, so the summary paints immediately and stays clickable while the number lands.
@@ -218,6 +264,7 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
     const step = steps[idx];
     const copy = CVU_STEPS[step.id];
     const last = idx === steps.length - 1;
+    const blocked = stepInvalid(step) || (last && anyInvalid);
     const left = (
       <div>
         {progress(idx)}
@@ -237,16 +284,23 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
       <div>
         <div style={{ borderTop: `1px solid ${cvu.ink}` }}>
           {step.fields.map(f => (
-            <CvuField key={f} name={f} raw={raw[f]} touched={!!touched[f]}
-              onChange={onChange} isMobile={isMobile} />
+            <CvuField key={f} name={f} raw={raw[f]} check={checkOf(f)}
+              onChange={onChange} onBlur={onBlur} isMobile={isMobile} />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
           {idx > 0 && <button style={btn(false)} onClick={() => setIdx(idx - 1)}>Back</button>}
-          <button style={btn(true)} onClick={() => (last ? finishSteps() : setIdx(idx + 1))}>
+          <button style={{ ...btn(true), opacity: blocked ? 0.4 : 1, cursor: blocked ? 'not-allowed' : 'pointer' }}
+            disabled={blocked} aria-disabled={blocked ? 'true' : undefined}
+            onClick={() => { if (blocked) return; if (last) finishSteps(); else setIdx(idx + 1); }}>
             {last ? 'Next — anything else' : 'Next — ' + CVU_STEPS[steps[idx + 1].id].kicker.toLowerCase()} &rarr;
           </button>
         </div>
+        {blocked && (
+          <div style={{ fontSize: 12.5, color: cvu.clay, marginTop: 10 }}>
+            Fix the highlighted {step.fields.filter(f => checkOf(f).status === 'invalid').length > 1 ? 'boxes' : 'box'} to continue.
+          </div>
+        )}
         <button onClick={onCancel} style={{ background: 'none', border: 'none', padding: 0,
           marginTop: 16, cursor: 'pointer', fontFamily: cvu.body, fontSize: 13,
           color: cvu.ink70, textDecoration: 'underline', textUnderlineOffset: 3 }}>
@@ -295,17 +349,21 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
   const after = afterScore ? afterScore.successRate : null;
   const delta = (before != null && after != null) ? after - before : null;
   const changedList = (applied && applied.changed) || [];
+  const adjustedList = (applied && applied.adjusted) || [];
   const deltaColor = delta == null ? cvu.ink : delta > 0 ? cvu.sage : delta < 0 ? cvu.clay : cvu.ink;
 
   return shell(
     <div style={{ marginTop: isMobile ? 24 : 40, maxWidth: 720 }}>
       <div style={{ ...cvuKicker, marginBottom: 12 }}>Updated</div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, minHeight: isMobile ? 64 : 84 }}>
+        {/* V19.20 (F2): no before-score, no arrow pointing from nothing. */}
         {before != null && (
           <span style={{ fontFamily: cvu.display, fontSize: isMobile ? 34 : 44, color: cvu.ink50,
             textDecoration: 'line-through' }}>{before}</span>
         )}
-        <span style={{ fontFamily: cvu.display, fontSize: isMobile ? 24 : 30, color: cvu.ink50 }}>&rarr;</span>
+        {before != null && (
+          <span style={{ fontFamily: cvu.display, fontSize: isMobile ? 24 : 30, color: cvu.ink50 }}>&rarr;</span>
+        )}
         <span style={{ fontFamily: cvu.display, fontSize: isMobile ? 64 : 84, lineHeight: .9,
           color: after == null ? cvu.ink20 : deltaColor }}>
           {after == null ? '—' : after}
@@ -314,10 +372,7 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
       </div>
       <h2 style={{ fontFamily: cvu.display, fontSize: isMobile ? 30 : 40, lineHeight: 1.06,
         letterSpacing: '-0.01em', margin: '18px 0 12px' }}>
-        {after == null ? 'Working out where that leaves you…'
-          : delta > 0 ? 'Better than you left it.'
-          : delta < 0 ? 'Worth a closer look.'
-          : 'Right where you left it.'}
+        {PR.updateHeadline(before, after)}
       </h2>
       <p style={{ fontSize: isMobile ? 13.5 : 15, lineHeight: 1.65, color: cvu.ink70,
         margin: '0 0 22px', maxWidth: 520 }}>
@@ -327,7 +382,9 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
             ? 'Your plan now reads ' + afterScore.verdictWord + '. ' +
               (changedList.length
                 ? 'You changed ' + changedList.length + (changedList.length === 1 ? ' figure' : ' figures') + '; the rest you confirmed unchanged.'
-                : 'You confirmed every figure unchanged.')
+                : 'You confirmed every figure unchanged.') +
+              (adjustedList.length ? ' Compass also adjusted ' + adjustedList.length +
+                (adjustedList.length === 1 ? ' figure' : ' figures') + ' to keep your plan in order — see below.' : '')
             : ''}
       </p>
 
@@ -345,6 +402,28 @@ function CoverUpdate({ params, setParams, beforeScore, onFinish, onOpenInputs, o
               </span>
             </div>
           ))}
+        </div>
+      )}
+
+      {adjustedList.length > 0 && (
+        <div style={{ borderLeft: `3px solid ${cvu.clay}`, background: cvu.paperWarm,
+          padding: isMobile ? '12px 14px' : '14px 18px', marginBottom: 24, maxWidth: 560 }}>
+          <div style={{ ...cvuKicker, fontSize: 11, color: cvu.clay, fontWeight: 600, marginBottom: 8 }}>
+            Adjusted by Compass
+          </div>
+          {adjustedList.map(a => (
+            <div key={a.field} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '4px 0' }}>
+              <span style={{ fontSize: isMobile ? 13.5 : 14, flex: '1 1 auto' }}>{CVU_ADJUSTED_LABELS[a.field] || a.field}</span>
+              <span style={{ fontFamily: cvu.display, fontSize: isMobile ? 16 : 18, color: cvu.ink70, whiteSpace: 'nowrap' }}>
+                {a.from} &rarr; {a.to}
+              </span>
+            </div>
+          ))}
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, color: cvu.ink70, marginTop: 8 }}>
+            {adjustedList.some(a => a.field === 'retireAge' || a.field === 'spouseRetireAge')
+              ? 'A retirement age has to come after your current age, so Compass moved it. That means the plan now assumes more working and saving years, which can make the score look better than your situation. If you’ve already retired, Compass can’t model that yet. Set the retirement age yourself in Input Data.'
+              : 'These had to move to keep your entries in order.'}
+          </div>
         </div>
       )}
 

@@ -1,4 +1,4 @@
-// real-engine.js — V19.19 adapter
+// real-engine.js — V19.20 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,8 +12,14 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.19';
-      s.onload = function () { resolve(true); };
+      s.src = 'engine.js?v=19.20';
+      // V19.20 (F5): a script with a syntax error, or one that throws at top level, still
+      // fires 'load'. Ready means the math actually arrived, not merely that a file did.
+      s.onload = function () {
+        var ok = typeof window.simulatePath === 'function';
+        if (!ok) console.error('real-engine: engine.js loaded but simulatePath is missing');
+        resolve(ok);
+      };
       s.onerror = function () { console.error('real-engine: failed to load engine.js'); resolve(false); };
       document.head.appendChild(s);
     });

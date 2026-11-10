@@ -63,6 +63,44 @@ function cvDangerLine(results) {
 }
 window.cvDangerLine = cvDangerLine;
 
+// V19.20 (F1): the persistent Cover note for a retirement age the APP moved because the
+// person's age reached it. Shared by desktop and mobile (same discipline as cvDangerLine).
+// warnings come from PlanRefresh.retireMoveWarnings — empty means no note. Disclosure only:
+// the engine cannot model someone already retired (BACKLOG), so the score stays optimistic.
+function cvRetireMoveNote(warnings) {
+  if (!warnings || !warnings.length) return null;
+  var parts = warnings.map(function (w) {
+    return w.who === 'spouse'
+      ? 'Your partner’s retirement age was moved from ' + w.from + ' to ' + w.to + ' because they’ve reached ' + w.from + '.'
+      : 'Your retirement age was moved from ' + w.from + ' to ' + w.to + ' because you’ve reached ' + w.from + '.';
+  });
+  return {
+    kicker: 'Check your retirement age',
+    body: parts.join(' ') + ' Compass can only plan a retirement that’s still ahead, so this plan assumes ' +
+      (warnings.length > 1 ? 'more working and saving years' : 'more working and saving') +
+      ' than you may have. The score may look better than your situation. If you’ve already retired, ' +
+      'Compass can’t model that yet. Set the retirement age yourself in Input Data to clear this note.'
+  };
+}
+window.cvRetireMoveNote = cvRetireMoveNote;
+
+// The note as rendered on either layout. Clay rule on the left, warm paper — reads as a
+// caution without competing with the score.
+function CoverRetireNote({ warnings, compact }) {
+  var n = cvRetireMoveNote(warnings);
+  if (!n) return null;
+  return (
+    <div role="note" style={{ borderLeft: `3px solid ${cvStyles.clay}`, background: cvStyles.paperWarm,
+      padding: compact ? '12px 14px' : '14px 18px', textAlign: 'left', margin: compact ? '0 0 14px' : '20px auto 0',
+      maxWidth: compact ? 'none' : 520 }}>
+      <div style={{ fontFamily: cvStyles.body, fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase',
+        color: cvStyles.clay, fontWeight: 600, marginBottom: 5 }}>{n.kicker}</div>
+      <div style={{ fontFamily: cvStyles.body, fontSize: compact ? 13 : 14, lineHeight: 1.55, color: cvStyles.ink }}>{n.body}</div>
+    </div>
+  );
+}
+window.CoverRetireNote = CoverRetireNote;
+
 // V19.1 (fixed post-audit): results.paycheck.atAge is the age the WHOLE household has
 // stopped working — real-engine.js picks whichever partner's retirement lands LATER ON THE
 // CALENDAR, using each partner's own current age as the clock. Two partners can both have
@@ -368,9 +406,15 @@ window.cvTheme = cvTheme;
 // ============================================================================
 window.CompassIO = {
   SCHEMA: 'compass-retirement-plan',
+  // V19.20 (F8): savedAt is when the plan's numbers were last EDITED (the stored stamp, or
+  // null if nobody knows); exportedAt is when this file was made. Before V19.20 savedAt was the
+  // save time, so save → load — the advertised way to move devices — reset the clock to today.
   buildPlanJSON: function (params) {
+    var stored = null;
+    try { stored = localStorage.getItem('compassParamsSavedAt'); } catch (e) {}
+    var st = window.PlanRefresh.fileStamps(stored, new Date().toISOString());
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.19', savedAt: new Date().toISOString(),
+      schema: this.SCHEMA, version: '19.20', savedAt: st.savedAt, exportedAt: st.exportedAt,
       params: params || {}
     }, null, 2);
   },
@@ -414,7 +458,12 @@ window.CompassIO = {
     // run through parsePlan, so this is the one place that covers both.
     // Only set on the ok path — a rejected file must not leave a stale value behind for the
     // next unrelated edit to consume.
-    this._pendingSavedAt = (typeof obj.savedAt === 'string' && obj.savedAt) ? obj.savedAt : null;
+    // V19.20 (F8): only a file that also carries exportedAt (V19.20+) has a real edit date in
+    // savedAt; anything else hands over UNKNOWN_STAMP, which clears the clock to "we don't know".
+    this._pendingSavedAt = window.PlanRefresh.fileEditStamp(obj);
+    // V19.20 (F1, F6): tells the app shell's setParams boundary that the next write is a
+    // DIFFERENT plan, so the old plan's retirement-age record and wizard position are dropped.
+    this._justLoaded = true;
     return res;
   },
   pickPlanFile: function (onResult) {
@@ -594,6 +643,7 @@ function CoverDesktop(props) {
                 {cvDangerLine(results)}
               </div>
             )}
+            <CoverRetireNote warnings={props.retireWarnings} />
           </div>
         </div>
 
@@ -697,7 +747,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.19</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.20</div>
         </div>
       </section>
     </div>
@@ -994,7 +1044,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.19">
+    <CoverChrome active="rework" tag="V19.20">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -1117,7 +1167,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.19">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.20">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1312,7 +1362,7 @@ function CoverWelcome({ params, savedAt, hasSession, score, onScore,
         </div>
         {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         <div style={{ marginTop: 32 }}>{privacy}</div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.19</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.20</div>
       </div>
     );
   }
@@ -1408,7 +1458,7 @@ function CoverWelcome({ params, savedAt, hasSession, score, onScore,
       <hr style={{ border: 0, borderTop: `1px solid ${cvStyles.rule}`, margin: isMobile ? '28px 0 16px' : '40px 0 18px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
         {privacy}
-        <span style={{ ...cvKicker }}>V19.19</span>
+        <span style={{ ...cvKicker }}>V19.20</span>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-// cover-app/plan-refresh.js — V19.19
+// cover-app/plan-refresh.js — V19.20 (V19.19 origin)
 // The two stateful bits of the Welcome/update work, extracted as PURE functions so they
 // can be proven in node rather than reasoned about in a browser.
 //
@@ -20,10 +20,35 @@
   //   pendingSavedAt  a just-loaded file's own savedAt, consumed once (CompassIO.parsePlan).
   //   nowISO          caller-supplied clock, so tests are deterministic.
   // Returns an ISO string to write, or null to write nothing.
+  //
+  // V19.20 (F8): returns { write: iso } | { clear: true } | null. A loaded file whose edit date
+  // is unknown (UNKNOWN_STAMP) CLEARS the stamp — "we don't know" — rather than stamping today.
+  var UNKNOWN_STAMP = '__unknown__';
   function decideStamp(isFirstPersist, pendingSavedAt, nowISO) {
     if (isFirstPersist) return null;
-    if (typeof pendingSavedAt === 'string' && pendingSavedAt) return pendingSavedAt;
-    return nowISO;
+    if (pendingSavedAt === UNKNOWN_STAMP) return { clear: true };
+    if (typeof pendingSavedAt === 'string' && pendingSavedAt) return { write: pendingSavedAt };
+    return { write: nowISO };
+  }
+
+  function validISO(v) {
+    return typeof v === 'string' && v !== '' && v !== UNKNOWN_STAMP && isFinite(Date.parse(v));
+  }
+
+  // V19.20 (F8): the two dates a saved file carries. savedAt is when the plan's NUMBERS were last
+  // edited (the stored stamp, or null when nobody knows); exportedAt is when the file was made.
+  // Before V19.20 savedAt was the save time, so save→load reset the staleness clock to today.
+  function fileStamps(storedStampISO, nowISO) {
+    return { savedAt: validISO(storedStampISO) ? storedStampISO : null, exportedAt: nowISO };
+  }
+
+  // V19.20 (F8): the edit date to adopt from a parsed file. Only a file that also carries
+  // exportedAt was written by V19.20+, so only then is savedAt really an edit date. A V19.19
+  // file's savedAt is its SAVE time and must not be trusted as one.
+  function fileEditStamp(obj) {
+    if (!obj || typeof obj !== 'object') return UNKNOWN_STAMP;
+    if (!validISO(obj.exportedAt)) return UNKNOWN_STAMP;
+    return validISO(obj.savedAt) ? obj.savedAt : UNKNOWN_STAMP;
   }
 
   var MS_PER_DAY = 86400000;
@@ -155,6 +180,106 @@
     return out;
   }
 
+  // ---- V19.20 (F4): checking one update box ------------------------------------
+
+  // Same parser and rules as the questionnaire's entry boxes (NumericEntry.validateDraft),
+  // so the two ways of entering a number agree. Whole numbers only; ages 18–100 (the
+  // engine's own currentAge range); money zero or more with no cap.
+  var ENTRY_RULES = {
+    age:   { precision: 0, min: 18, max: 100 },
+    money: { precision: 0, min: 0, max: Infinity }
+  };
+  function numericEntry() {
+    if (root && root.NumericEntry) return root.NumericEntry;
+    if (typeof require === 'function') return require('./numeric-entry.js');
+    return null;
+  }
+  // Returns { status: 'unchanged' } | { status: 'changed', value } |
+  //         { status: 'invalid', reason: 'number'|'precision'|'range' }.
+  // A blank box is 'unchanged' (keeps the stored value) — never zero.
+  function checkEntry(kind, raw, stored) {
+    var text = (raw === null || raw === undefined) ? '' : String(raw);
+    if (text.trim() === '') return { status: 'unchanged' };
+    var r = numericEntry().validateDraft(text, ENTRY_RULES[kind] || ENTRY_RULES.money);
+    if (!r.ok) return { status: 'invalid', reason: r.reason };
+    if (r.value === stored) return { status: 'unchanged' };
+    return { status: 'changed', value: r.value };
+  }
+  function entryMessage(kind, reason) {
+    if (kind === 'age') {
+      if (reason === 'precision') return 'Use whole years, like 64.';
+      if (reason === 'range') return 'Enter an age from 18 to 100.';
+      return 'Type your age in digits, like 64.';
+    }
+    if (reason === 'precision') return 'Use whole dollars, without cents.';
+    if (reason === 'range') return 'This can’t be negative.';
+    return 'Type the full amount in digits, like 600000 — not 600k.';
+  }
+
+  // ---- V19.20 (F1): retirement age moved by the app, not the user -------------------
+
+  // normalizeParams forces retirement age to come after current age. When an age update
+  // crosses the retirement age, the app moves it silently and models another working year.
+  // This tracks that move so the Cover can keep saying so until the user picks an age.
+  //   record      the stored record, or null: { user?: {from,to}, spouse?: {from,to} }
+  //   prev        params before this write
+  //   requested   what the caller asked to store (pre-normalization)
+  //   normalized  what was actually stored
+  // Returns the new record, or null when nothing is outstanding.
+  function trackOne(rec, prevR, reqR, normR) {
+    reqR = Number(reqR);
+    if (isFinite(reqR) && normR !== reqR) {
+      return { from: (rec && rec.to === reqR) ? rec.from : reqR, to: normR };
+    }
+    if (prevDiffers(prevR, reqR)) return null;     // the user chose a retirement age
+    if (rec && normR !== rec.to) return null;        // no longer true
+    return rec || null;
+  }
+  function prevDiffers(a, b) { return Number(a) !== Number(b); }
+  function trackRetireMove(record, prev, requested, normalized) {
+    var r = record || {}, p = prev || {}, q = requested || {}, n = normalized || {};
+    var out = {};
+    var u = trackOne(r.user, p.retireAge, q.retireAge, n.retireAge);
+    if (u) out.user = u;
+    if (n.hasPartner) {
+      var s = trackOne(r.spouse, p.spouseRetireAge, q.spouseRetireAge, n.spouseRetireAge);
+      if (s) out.spouse = s;
+    }
+    return (out.user || out.spouse) ? out : null;
+  }
+  function retireMoveWarnings(record, params) {
+    var w = [];
+    if (!record || !params) return w;
+    if (record.user && params.retireAge === record.user.to) {
+      w.push({ who: 'user', from: record.user.from, to: record.user.to });
+    }
+    if (params.hasPartner && record.spouse && params.spouseRetireAge === record.spouse.to) {
+      w.push({ who: 'spouse', from: record.spouse.from, to: record.spouse.to });
+    }
+    return w;
+  }
+  // Fields normalization moved on a write, excluding the ones the user typed themselves.
+  function adjustedFields(before, normalizedAfter, notes, typed) {
+    var out = [], seen = {};
+    (notes || []).forEach(function (f) {
+      if (seen[f] || (typed && typed.indexOf(f) !== -1)) return;
+      seen[f] = true;
+      if (before && normalizedAfter && before[f] !== normalizedAfter[f]) {
+        out.push({ field: f, from: before[f], to: normalizedAfter[f] });
+      }
+    });
+    return out;
+  }
+
+  // ---- V19.20 (F2): the update summary's headline ------------------------------------
+  function updateHeadline(before, after) {
+    if (after == null) return 'Working out where that leaves you…';
+    if (before == null) return 'Here’s where you stand.';
+    if (after > before) return 'Better than you left it.';
+    if (after < before) return 'Worth a closer look.';
+    return 'Right where you left it.';
+  }
+
   var api = {
     decideStamp: decideStamp,
     describeStaleness: describeStaleness,
@@ -162,7 +287,16 @@
     applyFieldEdits: applyFieldEdits,
     stepsFor: stepsFor,
     syncPriorWages: syncPriorWages,
-    STALE_MONTHS: STALE_MONTHS
+    STALE_MONTHS: STALE_MONTHS,
+    UNKNOWN_STAMP: UNKNOWN_STAMP,
+    fileStamps: fileStamps,
+    fileEditStamp: fileEditStamp,
+    checkEntry: checkEntry,
+    entryMessage: entryMessage,
+    trackRetireMove: trackRetireMove,
+    retireMoveWarnings: retireMoveWarnings,
+    adjustedFields: adjustedFields,
+    updateHeadline: updateHeadline
   };
 
   if (typeof module === 'object' && module.exports) module.exports = api;
