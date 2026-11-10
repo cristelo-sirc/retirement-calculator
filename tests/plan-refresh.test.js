@@ -21,14 +21,15 @@ test('decideStamp: the mount write never stamps', () => {
 
 test('decideStamp: an ordinary edit stamps now', () => {
   const now = '2026-08-10T12:00:00.000Z';
-  assert.equal(PR.decideStamp(false, null, now), now);
-  assert.equal(PR.decideStamp(false, '', now), now);
-  assert.equal(PR.decideStamp(false, undefined, now), now);
+  // V19.20: decideStamp returns { write } / { clear } / null (F8).
+  assert.deepEqual(PR.decideStamp(false, null, now), { write: now });
+  assert.deepEqual(PR.decideStamp(false, '', now), { write: now });
+  assert.deepEqual(PR.decideStamp(false, undefined, now), { write: now });
 });
 
 test('decideStamp: a loaded file keeps its own date, so loading an old plan does not reset the clock', () => {
   const fileDate = '2025-06-01T00:00:00.000Z';
-  assert.equal(PR.decideStamp(false, fileDate, '2026-08-10T00:00:00.000Z'), fileDate);
+  assert.deepEqual(PR.decideStamp(false, fileDate, '2026-08-10T00:00:00.000Z'), { write: fileDate });
 });
 
 // ---------------------------------------------------------------- staleness copy

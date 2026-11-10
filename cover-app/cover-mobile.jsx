@@ -224,7 +224,7 @@
   }
 
   // ── Results view ──────────────────────────────────────────────────────────
-  function CoverView({ results, vc, partner, dirty, goQuiz, params, setParams }) {
+  function CoverView({ results, vc, partner, dirty, goQuiz, params, setParams, retireWarnings }) {
     // V19.3: exact move deltas at the FULL path count, from the same computeMoves
     // source the desktop Results cards and Try Changes bars read.
     const moves = React.useMemo(() => ME.computeMoves(params, results.successRate), [params, results]);
@@ -258,6 +258,7 @@
             <p style={{ fontSize: 13, lineHeight: 1.5, color: cm.ink70, margin: '0 auto 12px', maxWidth: 300 }}>
               {window.cvDangerLine(results)}</p>
           )}
+          {window.CoverRetireNote && <window.CoverRetireNote warnings={retireWarnings} compact />}
           <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
             textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and this fills in with your real plan.'}</p>
           {!dirty && (
@@ -354,7 +355,7 @@
       sessionStorage.setItem(VISITED_KEY, JSON.stringify(visited)); } catch (e) {}
   }
 
-  function WizardView({ params, update, setParams, partner, hideReturning, adjustNote }) {
+  function WizardView({ params, update, setParams, partner, hideReturning, adjustNote, onFinish }) {
     const chapters = CHAPTERS();
     const [chapter, setChapter] = React.useState(loadChapter);
     const [visited, setVisited] = React.useState(loadVisited);
@@ -390,6 +391,11 @@
         return v;
       });
       if (window._coverNav) window._coverNav('cover');
+      // V19.20 (F3): the phone shell keeps its OWN record of the visible tab (set from
+      // initialTab only at mount), so _coverNav alone changed the shell's screen but left this
+      // tab on the wizard — the finish button did nothing. _coverNav still runs: it also clears
+      // adjustNote / freshStart.
+      if (onFinish) onFinish();
     };
 
     const ch = chapters[chapter];
@@ -740,10 +746,12 @@
         {tab === 'cover'
           ? <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
               <CoverView results={results} vc={vc} partner={partner} dirty={dirty}
-                goQuiz={() => setTab('quiz')} params={params} setParams={setParams} />
+                goQuiz={() => setTab('quiz')} params={params} setParams={setParams}
+                retireWarnings={props.retireWarnings} />
             </main>
           : <WizardView params={params} update={update} setParams={setParams} partner={partner}
-              hideReturning={suppressReturning} adjustNote={props.adjustNote} />}
+              hideReturning={suppressReturning} adjustNote={props.adjustNote}
+              onFinish={() => setTab('cover')} />}
       </div>
     );
   }
