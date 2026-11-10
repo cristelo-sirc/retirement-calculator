@@ -1,5 +1,16 @@
 # Change log
 
+## 19.20.0 — 2026-11-10
+
+- Phone: the "See your results →" button at the end of Input Data now actually takes you to your results. Before, it did nothing — the phone screen and the app each kept their own record of which page you were on, and only one was updated.
+- "Update my numbers" now checks each box as you type. Shorthand like "600k" or "1.2m", an age with a decimal ("55.5"), or an age outside 18–100 shows a short message in red and the Next button waits until it's fixed. Before, those boxes said "changed", then quietly kept the old number — and "55.5" was stored as an age, which made the Results paycheck read $0. Clearing a box puts the stored number back; typing the stored number back reads "unchanged".
+- When an age update passes your retirement age, Compass has to move the retirement age (it can only plan a retirement that's still ahead). It used to do this silently. Now the update summary lists it under "Adjusted by Compass", and Results shows a "Check your retirement age" note — on desktop and phone — until you set a retirement age yourself in Input Data. The note says plainly that the plan now assumes more working and saving than you may have, so the score may read better than your situation. Modeling someone who has already retired is not supported yet; it's on the backlog as its own piece of work.
+- Saved plan files now record when the plan's numbers were last edited, separately from when the file was saved. Before, saving and reopening a two-year-old plan made the Welcome screen say "updated today". Files saved by earlier versions don't carry a trustworthy edit date, so opening one now says Compass doesn't know when it was last updated, rather than guessing.
+- "Start over" (and opening any saved file) starts Input Data at chapter 1 with no chapters ticked, instead of reopening on the last chapter of the previous plan.
+- If a screen ever fails to draw, you now get a short "Something went wrong on this screen" page that says your plan is still saved, with Reload and "Save plan to a file" buttons — instead of a blank page. The app also now checks that the calculation engine really loaded, not just that a file arrived.
+- When the update summary doesn't know your earlier score, it says "Here's where you stand." instead of wrongly claiming "Right where you left it."
+- No changes to any calculation. The built-in sample still reads 64/100. Test suite grew from 136 to 167 checks, including one that fails loudly if a built-in default ever changes (that would quietly relabel every untouched sample plan as a personal one).
+
 ## 19.19.0 — 2026-08-10
 
 - The Welcome screen now shows you your plan instead of just three buttons. Your score sits at the top, with your retirement age, spending and horizon beneath it, and a short list of the figures that go stale on their own while a plan sits unopened — your ages, your balances, your salaries, your Social Security estimates, and your pension if you have one — each showing the value you last entered.

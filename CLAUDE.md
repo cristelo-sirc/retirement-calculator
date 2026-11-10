@@ -5,10 +5,10 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 (`engine.js`) through the `real-engine.js` adapter. `engine.js` is reused as a pure math library
 &mdash; only its DOM init is bypassed.
 
-**Current Version:** 19.19
+**Current Version:** 19.20
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
-**Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`)
+**Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`, `compassParamsSavedAt`, `compassRetireAgeMoved`)
 
 **Where the history lives.** `CHANGELOG.md` is the concise release record. `CLAUDE-legacy.md` holds
 the pre-V18 architecture (Part I), the V18.0&ndash;V19.8 detailed releases (Part II), and the
@@ -220,6 +220,9 @@ These are known, deliberate limits currently live in the app. Don't "fix" them s
   part-time start, mortgage payoff, Roth conversion start, and the spouse equivalents) and silently
   clamp values the user had set. V19.19's update flow asks for age directly instead, so correctness
   depends on the user acting on the prompt rather than being guaranteed by the app.
+- **No "already retired" state (V19.20).** When a person's age reaches their retirement age, the
+  retirement age is moved forward and the plan models more working years, so the score reads
+  optimistic. Disclosed in the update summary and by a persistent Cover note; not fixed (BACKLOG).
 - **The FRA-year SS earnings test is not modeled.** The engine always applies the under-FRA limit; the
   special rule for the year a person reaches FRA needs a birth month the annual model lacks. Disclosed
   in the SS claim-age tooltip, an `engine.js` comment, and the README.
@@ -311,6 +314,10 @@ Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
   decision and is tested.
 - **A loaded file carries its own `savedAt`** (set by `CompassIO.parsePlan`, consumed once), so opening
   a 2025 plan does not reset the clock to today.
+- **V19.20: a file's `savedAt` is the EDIT date; `exportedAt` is the save time.** V19.19 files wrote the
+  save time into `savedAt`, so only a file that also has `exportedAt` is trusted
+  (`PlanRefresh.fileEditStamp`). Anything else loads as `UNKNOWN_STAMP`, which CLEARS the stamp.
+  `decideStamp` returns `{ write }` / `{ clear: true }` / `null` &mdash; not a bare string.
 - **It cannot be backfilled.** Plans stored before V19.19 have no stamp; the Welcome screen says it
   doesn't know rather than guessing.
 
@@ -324,12 +331,46 @@ Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
   are shown and the steps you are then walked through must not disagree.
 - **Prior-year wages follow salary** only when they were already in step; a deliberately different
   figure is preserved (`syncPriorWages`).
+- **V19.20: every box is judged by `PlanRefresh.checkEntry`** (the questionnaire's own
+  `NumericEntry.validateDraft`; whole numbers; ages 18&ndash;100; money &ge; 0). Only `'changed'` values
+  reach the writer, as numbers. `'invalid'` blocks Next. A cleared box refills on blur.
+
+### Normalizer side effects are disclosed, not silent (V19.20)
+
+- `normalizeParams` forces `retireAge > currentAge`, so **the app has no "already retired" state**:
+  `stepsFor`'s retired branch is unreachable from stored plans (pinned in `tests/state-fix.test.js`).
+  A plan whose age passed its retirement age is modeled as still working. Accepted as a disclosed
+  accuracy risk (Cris, 2026-11-10); the real fix is engine work, in BACKLOG.
+- `PlanRefresh.trackRetireMove` runs at the `setParams` boundary and keeps a record in
+  `localStorage['compassRetireAgeMoved']`; the Cover shows `CoverRetireNote` (shared desktop/mobile
+  builder `cvRetireMoveNote`) while the stored retirement age still equals the moved one. The user
+  setting a retirement age clears it; so do Start over and any file load.
+- **`CompassIO._justLoaded`** is set on every successful `parsePlan` and consumed at the `setParams`
+  boundary: a loaded file is a DIFFERENT plan, so it drops the retirement-age record and the wizard
+  position (`compassChapter` / `compassChaptersVisited` in sessionStorage).
+- Live testing must back up and restore `compassRetireAgeMoved` alongside the other two keys.
+
+### Error states (V19.20)
+
+- `_engineReady` resolves true only if `window.simulatePath` is a function &mdash; a broken engine.js
+  still fires `load`.
+- `<App />` is wrapped in `AppErrorBoundary`: recovery screen + `console.error`. A boundary can hide
+  bugs, so **every live audit must read the console**. To test it, replace a shared builder (e.g.
+  `window.cvOutcomes`) with a thrower and open the Cover; Reload restores it.
+- **The phone shell keeps its own `tab` state.** A child that calls `_coverNav` while `CoverMobile` is
+  mounted must also change that tab (`WizardView`'s `onFinish`), or nothing visible happens.
 
 ### Testing and verification
 
 - **Grade flows against executable invariants, not documentation.** When explaining a computed value,
   compare against the computed value itself, not the raw inputs feeding it.
 - **The untouched-DEFAULTS regression gate is 64/100**, asserted in `audit-adapter.test.js`.
+- **DEFAULTS are pinned** in `tests/state-fix.test.js` (V19.20). "Sample plan" is detected by exact
+  equality with DEFAULTS in five places, so changing a default relabels every stored sample plan &mdash;
+  decide a migration before updating the pin. Suite: 167 checks.
+- **The built-in browser can't beat the Welcome score** to the "Update my numbers" click, even at
+  10,000 paths (tool round trips are slower), so the unknown-before-score path is covered by
+  `updateHeadline` tests, not a live repro.
 - **Permanent invariants worth knowing:** the household-cash identity (guaranteed income + portfolio
   withdrawals == spending + taxes + surplus banked, within $2, for every fully-retired solvent year),
   the balance identity, `normalizeParams` idempotence, and per-owner earnings-test attribution.
