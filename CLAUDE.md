@@ -8,8 +8,9 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 **Current Version:** 19.22
 **Resume point (2026-11-10):** V19.22 (F9 linked-settings notes) shipped and live-verified desktop
 (1680px) + 375px emulation in the built-in browser, console clean, 10,000-path screens open. NEXT: none
-queued &mdash; pick from BACKLOG. Waiting on Cris: iPhone Safari 7-day storage test (F11) and a real-phone
-look at the V19.21 guardrail line and the V19.22 "Check these settings" note.
+queued &mdash; pick from BACKLOG. Cris phone-checked the V19.21 guardrail line and V19.22 note on his
+iPhone (OK, 2026-11-10). Still open: iPhone Safari 7-day storage test (F11) &mdash; raised 2026-11-10, needs
+8 days away from the site, so no result before ~2026-11-18.
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 **Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`, `compassParamsSavedAt`, `compassRetireAgeMoved`)
