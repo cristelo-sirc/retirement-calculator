@@ -5,7 +5,7 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 (`engine.js`) through the `real-engine.js` adapter. `engine.js` is reused as a pure math library
 &mdash; only its DOM init is bypassed.
 
-**Current Version:** 19.20
+**Current Version:** 19.21
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 **Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`, `compassParamsSavedAt`, `compassRetireAgeMoved`)
@@ -16,8 +16,8 @@ V19.9&ndash;V19.18 detailed releases (Part III, archived 2026-08-06). Every stan
 releases produced has been promoted into this file &mdash; read the archive only when you need
 forensics on a specific release. `BACKLOG.md` and audit reports are local working records, not published.
 
-Six releases intentionally changed `engine.js` math: **V18.11**, **V19.5**, **V19.6**, **V19.9**,
-**V19.10**, **V19.18**. Everything else is display-layer.
+Seven releases intentionally changed `engine.js` math: **V18.11**, **V19.5**, **V19.6**, **V19.9**,
+**V19.10**, **V19.18**, **V19.21**. Everything else is display-layer.
 
 ---
 
@@ -168,6 +168,35 @@ exception:** `mortgagePayment` and `monthlyRent` are entered MONTHLY and the ada
 ### Spending Contract
 `spending` EXCLUDES housing and healthcare. `propertyTax` = property tax + homeowners insurance
 combined. No spending is drawn during accumulation. Fixed mortgage is not inflated.
+
+### Guardrails (V19.21)
+- **The gauge is what the portfolio pays**, not the lifestyle budget: (lifestyle &times; multiplier +
+  housing + healthcare + tax estimate &minus; net wages &minus; pensions &minus; part-time &minus; SS) &divide;
+  start-of-year balance, floored at 0. Pre-V19.21 it was lifestyle &divide; balance, so 98% of the sample
+  plan's cuts fired while the real draw was under the ceiling. Housing/health are computed BEFORE the
+  guardrail block for this (pure reorder; they never depend on lifestyle).
+- **Tax estimate = last year's `finalTax` &times; (1 + inflation)**, used only when last year's
+  `guardrailTaxState` (who is working + whether a Roth conversion ran) equals this year's. Transition
+  years (first retired year, partner retires, conversions start/stop) count no tax &mdash; an accepted
+  one-year understatement. The first draft used `totalSalary === 0`, which zeroed tax for every year a
+  partner worked and carried a conversion year's tax into the year after (found by the Fable review).
+- **IRMAA estimate** is exact from the 2-year MAGI lookback once `i >= 2`; before that, last year's
+  `irmaa` under the same state rule.
+- **Raises are capped at 1.0** (they only win back trims; no-op raises aren't counted). Uncapped, the
+  corrected gauge (~0% when income covers the budget) drove multipliers to ~2x, and the down-year reset
+  then dropped spending 25%+ in one year in ~46% of futures. The capital-preservation reset is now inert.
+- **Known, accepted:** when income covers most of the budget, one 10% step can cross both thresholds,
+  so trim and win-back can alternate year to year (BACKLOG).
+- **`guardrailMinSpending` (fraction) floors the multiplier on cuts.** At the floor, cuts stop and no
+  trigger is counted; a path that still depletes fails honestly. Absent (legacy DOM app) = no floor.
+  The floor applies to lifestyle only; housing and healthcare are never trimmed.
+- **`guardrailMult` is logged per year**; the adapter's `guardrailSummary` (`cutShare`, `typicalLow`)
+  feeds `cvGuardrailLine` on both layouts. `null` when guardrails are off.
+- Unchanged by design: cuts persist until won back; a win-back needs rate &lt; the win-back threshold AND
+  a grown balance; the block gates on the USER's retire age. The floor is relative to the plan AFTER
+  any slow-go reduction.
+- **Guardrails-off output must stay byte-identical** across any guardrail change &mdash; that was the
+  V19.21 release gate (old vs new `compute()` JSON, 15 variants, 5,000 paths).
 
 ### Taxable Account Tax Drag Is Real
 A 100% taxable portfolio with 60% gain ratio loses ~10&ndash;15% of every withdrawal to cap gains +
@@ -367,7 +396,7 @@ Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
 - **The untouched-DEFAULTS regression gate is 64/100**, asserted in `audit-adapter.test.js`.
 - **DEFAULTS are pinned** in `tests/state-fix.test.js` (V19.20). "Sample plan" is detected by exact
   equality with DEFAULTS in five places, so changing a default relabels every stored sample plan &mdash;
-  decide a migration before updating the pin. Suite: 167 checks.
+  decide a migration before updating the pin. Suite: 186 checks.
 - **The built-in browser can't beat the Welcome score** to the "Update my numbers" click, even at
   10,000 paths (tool round trips are slower), so the unknown-before-score path is covered by
   `updateHeadline` tests, not a live repro.

@@ -100,6 +100,16 @@ test('B1. household-cash identity holds for every fully-retired solvent year acr
     `${allViolations.length}/${checked} scenarios had unfunded years: ` + JSON.stringify(allViolations.slice(0, 5)));
 });
 
+test('B1 (V19.21). household-cash identity still holds with guardrails on (new gauge + 75% floor)', () => {
+  const scenarios = grid().map(p => Object.assign({}, p, { enableGuardrails: true,
+    guardrailCeiling: 0.06, guardrailFloor: 0.04, guardrailAdjustment: 0.10, guardrailMinSpending: 0.75 }));
+  const bad = scenarios.map(p => cashViolations(p)).filter(v => v.length);
+  assert.equal(bad.length, 0, `${bad.length}/${scenarios.length} scenarios had unfunded years: ` + JSON.stringify(bad.slice(0, 3)));
+  // The grid must actually exercise cuts, or this check proves nothing.
+  const { simulatePath } = require('./audit-helpers.js').loadFinancialEngine();
+  assert.ok(scenarios.some(p => simulatePath(p, 0).log.some(y => y.guardrailMult < 1)), 'some scenario trims spending');
+});
+
 test('B1. the audit repro ($1M pre-tax, $200k spend, $500k conversion) is funded to <$1', () => {
   const p = auditParams({
     currentAge: 65, retireAge: 65, endAge: 85,

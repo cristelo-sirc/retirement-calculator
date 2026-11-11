@@ -35,6 +35,9 @@ const ENGINE_PARAM_NAMES = new Set([
   'lifestyleSpending', 'lifestyleInflation', 'enableSpendingReduction',
   'spendingReductionAge', 'spendingReductionPercent',
   'enableGuardrails', 'guardrailCeiling', 'guardrailFloor', 'guardrailAdjustment',
+  // V19.21: spending floor for guardrail cuts. NOT in collectInputs() — the legacy DOM app has
+  // no such input; the engine treats an absent value as no floor.
+  'guardrailMinSpending',
   'housingType', 'mortgagePrincipal', 'mortgageLastAge', 'propertyTax', 'monthlyRent',
   'healthcarePre65', 'healthcare65', 'healthcareInflation',
   'stockAllocation', 'enableGlidePath', 'endingStockAllocation',
