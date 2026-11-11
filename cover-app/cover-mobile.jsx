@@ -258,6 +258,10 @@
             <p style={{ fontSize: 13, lineHeight: 1.5, color: cm.ink70, margin: '0 auto 12px', maxWidth: 300 }}>
               {window.cvDangerLine(results)}</p>
           )}
+          {window.cvGuardrailLine && window.cvGuardrailLine(results) && (
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: cm.ink70, margin: '0 auto 12px', maxWidth: 300 }}>
+              {window.cvGuardrailLine(results)}</p>
+          )}
           {window.CoverRetireNote && <window.CoverRetireNote warnings={retireWarnings} compact />}
           <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
             textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and this fills in with your real plan.'}</p>
@@ -617,8 +621,9 @@
             <MSub title="Strategy">
               <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
               {params.enableGuardrails && <MStep field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12} onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
-              {params.enableGuardrails && <MStep field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
+              {params.enableGuardrails && <MStep field="guardrailFloor" label="Win back trims below" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
               {params.enableGuardrails && <MStep field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30} onChange={v => update('guardrailAdjustment', v)} suffix="%" />}
+              {params.enableGuardrails && <MStep field="guardrailMinSpending" label="Never cut spending below" value={params.guardrailMinSpending} step={5} min={50} max={100} onChange={v => update('guardrailMinSpending', v)} suffix="%" />}
             </MSub>
           </React.Fragment>)}
 

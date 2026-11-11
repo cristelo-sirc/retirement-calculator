@@ -273,7 +273,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
           </div>
           {/* On-screen version stamp (lives here since fill-mode chrome has no footer tag). */}
           <div style={{ marginTop: 'auto', padding: '18px 26px 0', fontFamily: cvi.body, fontSize: 10,
-            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.20</div>
+            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.21</div>
         </div>
 
         {/* Chapter content + pinned footer */}
@@ -508,10 +508,12 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
                   onChange={v => update('enableGuardrails', v)} theme={theme} />
                 {params.enableGuardrails && <CField field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12}
                   onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
-                {params.enableGuardrails && <CField field="guardrailFloor" label="Floor (raise below)" value={params.guardrailFloor} step={0.5} min={1} max={12}
+                {params.enableGuardrails && <CField field="guardrailFloor" label="Win back trims below" value={params.guardrailFloor} step={0.5} min={1} max={12}
                   onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
                 {params.enableGuardrails && <CField field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30}
                   onChange={v => update('guardrailAdjustment', v)} suffix="%" theme={theme} />}
+                {params.enableGuardrails && <CField field="guardrailMinSpending" label="Never cut spending below" value={params.guardrailMinSpending} step={5} min={50} max={100}
+                  onChange={v => update('guardrailMinSpending', v)} suffix="%" theme={theme} />}
               </CSub>
             </React.Fragment>)}
 

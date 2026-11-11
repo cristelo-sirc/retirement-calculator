@@ -359,5 +359,16 @@ test('2c. guardrails: ceiling cuts and floor raises move spending as configured'
   const raise = simulatePath({
     ...base, lifestyleSpending: 20000, stockReturn: 0.05, stockAllocation: 1 // 2% draw, growing portfolio
   }, 0);
-  close(raise.log[1].spending, 22000, 'floor raise is exactly 10% when portfolio grew');
+  // V19.21: raises only win back earlier trims — a plan never cut stays exactly at plan.
+  close(raise.log[1].spending, 20000, 'no raise above plan (V19.21 cap)');
+  assert.ok(raise.log.every(y => y.guardrailMult === 1), 'multiplier never exceeds 1');
+
+  // V19.21: after trims, good markets win them back 10% at a time, capped at plan:
+  // 1 -> .9 -> .81 ... -> .891 -> .9801 -> 1 (not 1.078).
+  const back = simulatePath({ ...base, endAge: 85, stockReturn: 0.10 }, 0);
+  const m = back.log.map(y => y.guardrailMult);
+  close(Math.min(...m), 0.81, 'trimmed twice first');
+  assert.ok(m.some((v, k) => k > 0 && v > m[k - 1]), 'a trim is won back');
+  close(m[m.length - 1], 1, 'fully won back, capped at plan');
+  assert.ok(Math.max(...m) <= 1, 'never above plan');
 });

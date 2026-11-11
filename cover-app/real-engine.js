@@ -1,4 +1,4 @@
-// real-engine.js — V19.20 adapter
+// real-engine.js — V19.21 adapter
 // Drop-in replacement for mock-engine.js: exposes the SAME window.MockEngine API
 // the mockup screens read, but compute() runs the app's REAL Monte Carlo
 // (window.simulatePath from engine.js) and reshapes the output into the §12 shape.
@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.20';
+      s.src = 'engine.js?v=19.21';
       // V19.20 (F5): a script with a syntax error, or one that throws at top level, still
       // fires 'load'. Ready means the math actually arrived, not merely that a file did.
       s.onload = function () {
@@ -69,6 +69,7 @@
     stockReturn: 7.0, bondReturn: 3.5, stockVol: 17, bondVol: 6.0,
 
     enableGuardrails: false, guardrailCeiling: 6.0, guardrailFloor: 4.0, guardrailAdjustment: 10,
+    guardrailMinSpending: 75,  // V19.21: % of planned spending guardrail cuts may never go below
 
     bracketGrowth: 2.5, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 60,
 
@@ -100,6 +101,7 @@
     stockReturn: [0, 30], bondReturn: [0, 30], stockVol: [0, 60], bondVol: [0, 40],
     bracketGrowth: [0, 20], stateTaxRate: [0, 60], taxableGainRatio: [0, 100],
     guardrailCeiling: [0, 30], guardrailFloor: [0, 30], guardrailAdjustment: [0, 100],
+    guardrailMinSpending: [50, 100],
     spendingReductionPercent: [0, 100], numPaths: [500, 10000]
   };
   var ENUMS = {
@@ -236,6 +238,7 @@
       guardrailCeiling: (m.guardrailCeiling != null ? m.guardrailCeiling : 6) / 100,
       guardrailFloor: (m.guardrailFloor != null ? m.guardrailFloor : 4) / 100,
       guardrailAdjustment: (m.guardrailAdjustment != null ? m.guardrailAdjustment : 10) / 100,
+      guardrailMinSpending: (m.guardrailMinSpending != null ? m.guardrailMinSpending : 75) / 100,
 
       housingType: m.housingType || 'own',
       mortgagePrincipal: (m.housingType === 'own') ? (m.mortgagePayment || 0) : 0,  // engine ×12 (monthly payment)
@@ -271,6 +274,29 @@
     var results = [];
     for (var i = 0; i < real.numPaths; i++) results.push(window.simulatePath(real, i));
     return results;
+  }
+
+  // V19.21: the score alone can't show how much belt-tightening guardrails assumed, so this
+  // reports it. cutShare = % of ALL paths whose lifestyle spending was ever trimmed below plan
+  // (by at least half a percent, so the line never says "bottoms out at 100%");
+  // typicalLow = the median, over those trimmed paths, of each one's lowest spending level (% of
+  // plan). Reads the engine's logged guardrailMult. null when guardrails are off.
+  function guardrailSummaryOf(results, m) {
+    if (!m || !m.enableGuardrails || !results.length) return null;
+    var lows = [];
+    for (var i = 0; i < results.length; i++) {
+      var log = results[i].log || [], low = 1;
+      for (var j = 0; j < log.length; j++) {
+        var g = log[j].guardrailMult;
+        if (typeof g === 'number' && g < low) low = g;
+      }
+      if (Math.round(low * 100) < 100) lows.push(low);   // a trim that would display as 100% isn't reported
+    }
+    lows.sort(function (a, b) { return a - b; });
+    return {
+      cutShare: Math.round((lows.length / results.length) * 100),
+      typicalLow: lows.length ? Math.round(lows[Math.floor((lows.length - 1) / 2)] * 100) : null
+    };
   }
 
   // A path "succeeds" if it NEVER went broke AND finishes with at least the legacy goal
@@ -544,6 +570,7 @@
     var medianLog = p50.log;
     var successRate = successOf(results, goal);
     var depletionSummary = depletionSummaryOf(results);  // V19.6 (2d): danger-age insight
+    var guardrailSummary = guardrailSummaryOf(results, m); // V19.21: how deep guardrail cuts went
 
     // Paycheck (monthly) from the median path. V18.11 (item 7): feature the HOUSEHOLD'S fully-retired
     // year (both partners have stopped working) so the breakdown matches the "once you both stop working"
@@ -682,7 +709,8 @@
       roughLegacy: roughLegacy, strongLegacy: strongLegacy,
       paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
-      yearTables: yearTables, depletionSummary: depletionSummary, medianDepletion: medianDepletion
+      yearTables: yearTables, depletionSummary: depletionSummary, medianDepletion: medianDepletion,
+      guardrailSummary: guardrailSummary
     }, v);
   }
 

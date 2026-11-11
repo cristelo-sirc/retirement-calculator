@@ -63,6 +63,16 @@ function cvDangerLine(results) {
 }
 window.cvDangerLine = cvDangerLine;
 
+// V19.21: the score can't show how much belt-tightening guardrails assumed, so say it.
+// Shared by desktop and mobile. results.guardrailSummary is null when guardrails are off.
+function cvGuardrailLine(results) {
+  var g = results && results.guardrailSummary;
+  if (!g || !g.cutShare || g.typicalLow == null) return null;
+  return 'With guardrails on, Compass trims your other spending in ' + g.cutShare + '% of futures. ' +
+    'In a typical one, it bottoms out at ' + g.typicalLow + '% of plan.';
+}
+window.cvGuardrailLine = cvGuardrailLine;
+
 // V19.20 (F1): the persistent Cover note for a retirement age the APP moved because the
 // person's age reached it. Shared by desktop and mobile (same discipline as cvDangerLine).
 // warnings come from PlanRefresh.retireMoveWarnings — empty means no note. Disclosure only:
@@ -185,7 +195,7 @@ function cvGlanceFacts(params, results) {
       sub: 'average, before inflation' },
     { label: 'Guardrail adjustment',
       value: p.enableGuardrails ? (Number(p.guardrailAdjustment || 0)).toFixed(0) + '%' : 'Off',
-      sub: p.enableGuardrails ? 'spending change when markets swing' : 'spending guardrails off' }
+      sub: p.enableGuardrails ? 'spending change when markets swing; never below ' + Number(p.guardrailMinSpending != null ? p.guardrailMinSpending : 75).toFixed(0) + '% of plan' : 'spending guardrails off' }
   ];
   return facts;
 }
@@ -414,7 +424,7 @@ window.CompassIO = {
     try { stored = localStorage.getItem('compassParamsSavedAt'); } catch (e) {}
     var st = window.PlanRefresh.fileStamps(stored, new Date().toISOString());
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.20', savedAt: st.savedAt, exportedAt: st.exportedAt,
+      schema: this.SCHEMA, version: '19.21', savedAt: st.savedAt, exportedAt: st.exportedAt,
       params: params || {}
     }, null, 2);
   },
@@ -643,6 +653,12 @@ function CoverDesktop(props) {
                 {cvDangerLine(results)}
               </div>
             )}
+            {cvGuardrailLine(results) && (
+              <div style={{ fontFamily: cvStyles.body, fontSize: 14, color: cvStyles.ink70,
+                marginTop: 10, maxWidth: 440, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                {cvGuardrailLine(results)}
+              </div>
+            )}
             <CoverRetireNote warnings={props.retireWarnings} />
           </div>
         </div>
@@ -747,7 +763,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.20</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.21</div>
         </div>
       </section>
     </div>
@@ -1044,7 +1060,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.20">
+    <CoverChrome active="rework" tag="V19.21">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -1167,7 +1183,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.20">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.21">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1362,7 +1378,7 @@ function CoverWelcome({ params, savedAt, hasSession, score, onScore,
         </div>
         {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         <div style={{ marginTop: 32 }}>{privacy}</div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.20</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.21</div>
       </div>
     );
   }
@@ -1458,7 +1474,7 @@ function CoverWelcome({ params, savedAt, hasSession, score, onScore,
       <hr style={{ border: 0, borderTop: `1px solid ${cvStyles.rule}`, margin: isMobile ? '28px 0 16px' : '40px 0 18px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
         {privacy}
-        <span style={{ ...cvKicker }}>V19.20</span>
+        <span style={{ ...cvKicker }}>V19.21</span>
       </div>
     </div>
   );

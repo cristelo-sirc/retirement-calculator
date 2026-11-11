@@ -1,5 +1,16 @@
 # Change log
 
+## 19.21.0 — 2026-11-10
+
+- Spending guardrails no longer turn a failing plan into a perfect score. Before, a plan that scored 9/100 read 100/100 with guardrails on, because spending could be cut again and again with no limit (to a quarter of plan or less) and "never ran out" still counted as success. Measured on the built-in sample at $160k spending: 9 without guardrails, 100 with them before this release, 49 now.
+- New setting under Spending guardrails, on desktop and phone: "Never cut spending below" (50–100%, starts at 75%). Guardrails never trim your other spending below that share of plan. If the money still runs out at that level, that future counts as running out. Plans saved earlier get 75%. Housing and healthcare are never trimmed, as before.
+- Guardrails now measure the right thing. They used to compare your spending budget alone to your portfolio, ignoring the Social Security and pensions paying for part of it (and the housing, healthcare and taxes the portfolio also pays). So they cut spending in years the portfolio was drawing well under the ceiling: 98% of the sample plan's cuts happened that way. Now the withdrawal rate is what the portfolio actually has to pay that year, including an estimate of taxes and Medicare surcharges (last year's bill, grown by inflation). In a year when your tax situation changes — the first retired year, a partner retiring, Roth conversions starting or stopping — last year's bill would mislead, so no tax estimate is counted that year.
+- Raises in good markets now only win back earlier trims; spending never rises above what you planned. With the corrected measure, uncapped raises could nearly double spending for people whose Social Security or pension covers most of their budget, and then drop it by a quarter or more after a single down year. The "Floor (raise below)" setting is renamed "Win back trims below".
+- Results now says how much belt-tightening the score assumes, on desktop and phone: for example "With guardrails on, Compass trims your other spending in 76% of futures. In a typical one, it bottoms out at 75% of plan." Plan at a Glance shows the new limit.
+- Plans with guardrails off are unaffected: their results are byte-identical to 19.20 (checked across 15 plan variations at 5,000 futures). The built-in sample still reads 64/100. Plans with guardrails on will score differently, usually lower, because the old score was too optimistic.
+- Reviewed independently before release; the review's findings (couples with a partner still working, the year after Roth conversions end, oversized raises) are fixed here and pinned by tests.
+- Test suite grew from 167 to 186 checks, including hand-worked examples of each guardrail rule, proof that the old engine fails them, and the household-cash check re-run with guardrails on.
+
 ## 19.20.0 — 2026-11-10
 
 - Phone: the "See your results →" button at the end of Input Data now actually takes you to your results. Before, it did nothing — the phone screen and the app each kept their own record of which page you were on, and only one was updated.

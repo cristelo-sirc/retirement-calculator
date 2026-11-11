@@ -1835,6 +1835,16 @@
                 let previousYearBalance = userPreTax + userRoth + spousePreTax + spouseRoth + taxable;
                 let guardrailSpendingMultiplier = 1.0;  // Cumulative adjustment from guardrails
                 let guardrailTriggersThisPath = 0;
+                // V19.21: the gauge's tax estimate is last year's tax bill grown by inflation, used only when
+                // last year's tax situation matches this year's: the same people working and Roth conversions
+                // still running (or still stopped). In a year where that changes (first retired year, partner
+                // retires, conversions start or end) no estimate is counted: last year's bill would mislead.
+                // guardrailMinMult is the lowest share of planned spending a cut may reach; absent (the
+                // legacy DOM app never sends it) means no lower limit, the pre-V19.21 behavior.
+                let guardrailPrevTax = 0;
+                let guardrailPrevIrmaa = 0;
+                let guardrailPrevTaxState = -1;   // -1 = no prior year
+                const guardrailMinMult = Number.isFinite(params.guardrailMinSpending) ? params.guardrailMinSpending : 0;
 
                 const filingStatus = params.spouseAge > 0 ? 'MFJ' : 'Single';
                 const yearsToRun = params.endAge - params.currentAge;
@@ -2021,34 +2031,8 @@
                         }
                     }
 
-                    // 4. Spending
-                    let baseLifestyle = params.lifestyleSpending;
-                    if (params.enableSpendingReduction && currentYearAge >= params.spendingReductionAge) baseLifestyle *= (1 - params.spendingReductionPercent);
-
-                    // Apply Guardrails (Guyton-Klinger style)
-                    const currentTotalBalance = userPreTax_startOfYear + spousePreTax_startOfYear + taxable_startOfYear + userRoth_startOfYear + spouseRoth_startOfYear;
-                    if (params.enableGuardrails && currentYearAge >= params.retireAge && currentTotalBalance > 0 && i > 0) {
-                        // Calculate projected withdrawal rate (spending / portfolio value)
-                        const projectedWithdrawalRate = (baseLifestyle * inflation * guardrailSpendingMultiplier) / currentTotalBalance;
-
-                        // Ceiling guardrail: if withdrawal rate too high, reduce spending
-                        if (projectedWithdrawalRate > params.guardrailCeiling) {
-                            guardrailSpendingMultiplier *= (1 - params.guardrailAdjustment);
-                            guardrailTriggersThisPath++;
-                        }
-                        // Floor guardrail: if withdrawal rate very low AND portfolio grew, allow increase
-                        else if (projectedWithdrawalRate < params.guardrailFloor && currentTotalBalance > previousYearBalance) {
-                            guardrailSpendingMultiplier *= (1 + params.guardrailAdjustment);
-                            guardrailTriggersThisPath++;
-                        }
-                        // Capital preservation: never increase beyond original if portfolio dropped
-                        if (currentTotalBalance < previousYearBalance && guardrailSpendingMultiplier > 1.0) {
-                            guardrailSpendingMultiplier = Math.min(guardrailSpendingMultiplier, 1.0);
-                        }
-                    }
-
-                    let lifestyle = retirementStarted ? baseLifestyle * inflation * guardrailSpendingMultiplier : 0;
-
+                    // V19.21: housing and healthcare are computed before the guardrail gauge, which needs
+                    // them (they never depend on lifestyle spending, so the order change moves no number).
                     let housing = 0;
                     if (retirementStarted && params.housingType === 'own') {
                         // mortgagePrincipal is the fixed monthly principal-and-interest payment.
@@ -2073,6 +2057,57 @@
                     if (spouseRetired && spouseCurrentAge > 0) {
                         health += (spouseCurrentAge >= 65 ? params.healthcare65 : params.healthcarePre65) * healthInfl;
                     }
+
+                    // 4. Spending
+                    let baseLifestyle = params.lifestyleSpending;
+                    if (params.enableSpendingReduction && currentYearAge >= params.spendingReductionAge) baseLifestyle *= (1 - params.spendingReductionPercent);
+
+                    // Apply Guardrails (Guyton-Klinger style)
+                    const currentTotalBalance = userPreTax_startOfYear + spousePreTax_startOfYear + taxable_startOfYear + userRoth_startOfYear + spouseRoth_startOfYear;
+                    // V19.21: this year's tax situation, for the gauge's tax-estimate rule (see guardrailPrevTax).
+                    const guardrailTaxState = (userWorking ? 1 : 0) + (spouseWorking ? 2 : 0) + (rothConversion > 0 ? 4 : 0);
+                    if (params.enableGuardrails && currentYearAge >= params.retireAge && currentTotalBalance > 0 && i > 0) {
+                        // V19.21: the gauge measures what the PORTFOLIO must pay this year: spending +
+                        // housing + healthcare + estimated taxes, minus wages, pensions, part-time pay and
+                        // Social Security, as a share of the portfolio. Before V19.21 it divided the lifestyle
+                        // budget alone by the portfolio, ignoring the income paying for it, so it cut spending
+                        // in years the portfolio was drawing well below the ceiling.
+                        const guardrailTaxUsable = guardrailPrevTaxState === guardrailTaxState;
+                        const guardrailTaxEstimate = guardrailTaxUsable ? guardrailPrevTax * (1 + params.lifestyleInflation) : 0;
+                        // IRMAA is known exactly once there's a 2-year MAGI lookback (the real Medicare rule, as the
+                        // tax loop below applies it); before that, last year's surcharge under the same rule as tax.
+                        const guardrailIrmaaEstimate = (medicareCount > 0 && i >= 2 && magiHistory[i - 2] != null)
+                            ? calculateIRMAA(magiHistory[i - 2], filingStatus, bracketMult) * medicareCount
+                            : (guardrailTaxUsable ? guardrailPrevIrmaa * (1 + params.lifestyleInflation) : 0);
+                        const guardrailIncome = userNetSalary + spouseNetSalary + otherIncome + ptIncome + ssIncome;
+                        const guardrailPortfolioNeed = Math.max(0, baseLifestyle * inflation * guardrailSpendingMultiplier + housing + health + guardrailTaxEstimate + guardrailIrmaaEstimate - guardrailIncome);
+                        const projectedWithdrawalRate = guardrailPortfolioNeed / currentTotalBalance;
+
+                        // Ceiling guardrail: if withdrawal rate too high, reduce spending
+                        if (projectedWithdrawalRate > params.guardrailCeiling) {
+                            // V19.21: never trim below the lowest spending the person will accept. At that
+                            // level cuts stop; if the money still runs out, the path is a real failure.
+                            if (guardrailSpendingMultiplier > guardrailMinMult) {
+                                guardrailSpendingMultiplier = Math.max(guardrailMinMult, guardrailSpendingMultiplier * (1 - params.guardrailAdjustment));
+                                guardrailTriggersThisPath++;
+                            }
+                        }
+                        // Floor guardrail: if withdrawal rate very low AND portfolio grew, allow increase
+                        // V19.21: raises only win back earlier trims; spending never rises above plan. Uncapped,
+                        // the corrected gauge (near 0% when income covers the budget) raised spending ~2x, and the
+                        // down-year reset below then dropped it 25%+ in one year in about half of futures.
+                        else if (projectedWithdrawalRate < params.guardrailFloor && currentTotalBalance > previousYearBalance && guardrailSpendingMultiplier < 1) {
+                            guardrailSpendingMultiplier = Math.min(1, guardrailSpendingMultiplier * (1 + params.guardrailAdjustment));
+                            guardrailTriggersThisPath++;
+                        }
+                        // Capital preservation: never increase beyond original if portfolio dropped
+                        // (inert since V19.21's raise cap keeps the multiplier at or below 1; kept as a guard)
+                        if (currentTotalBalance < previousYearBalance && guardrailSpendingMultiplier > 1.0) {
+                            guardrailSpendingMultiplier = Math.min(guardrailSpendingMultiplier, 1.0);
+                        }
+                    }
+
+                    let lifestyle = retirementStarted ? baseLifestyle * inflation * guardrailSpendingMultiplier : 0;
 
                     const baseSpending = lifestyle + housing + health;
 
@@ -2313,11 +2348,15 @@
                         wdRoth: withdrawals_converged.userRoth + withdrawals_converged.spouseRoth,
                         inflation: inflation,
                         isSolvent: isSolvent,
-                        surplusBanked: surplusCash // V19.5 (F-SURPLUS): leftover guaranteed-income cash banked into taxable this year
+                        surplusBanked: surplusCash, // V19.5 (F-SURPLUS): leftover guaranteed-income cash banked into taxable this year
+                        guardrailMult: guardrailSpendingMultiplier // V19.21: share of planned lifestyle spending after guardrail cuts/raises (1 = as planned)
                     });
 
                     // Update previous year balance for guardrails
                     previousYearBalance = totalBal;
+                    guardrailPrevTax = finalTax;              // V19.21: feeds next year's gauge tax estimate
+                    guardrailPrevIrmaa = irmaa;
+                    guardrailPrevTaxState = guardrailTaxState;
                 }
                 return { log: pathLog, finalBalance: userPreTax + spousePreTax + userRoth + spouseRoth + taxable, totalTax: totalTaxPaid, solvent: isSolvent, depletionAge: depletionAge, everDepleted: everDepleted, firstDepletionAge: firstDepletionAge, guardrailTriggers: guardrailTriggersThisPath };
             }
@@ -2604,6 +2643,7 @@
                         paths: simulationResults.map(r => ({
                             balances: r.log.map(y => y.totalBal),
                             spending: r.log.map(y => y.spending),
+                            guardrailMult: r.log.map(y => y.guardrailMult ?? 1), // V19.21
                             taxes: r.log.map(y => y.taxBill),
                             ssIncome: r.log.map(y => y.ssIncome || 0),
                             pensionIncome: r.log.map(y => y.pensionIncome || 0),

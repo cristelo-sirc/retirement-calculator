@@ -62,7 +62,8 @@ function loadAdapter() {
       'window.__mapToReal = mapToReal; window.__buildBalancePath = buildBalancePath;' +
       ' window.__successOf = successOf; window.__runPaths = runPaths;' +
       ' window.__tableRowsOf = tableRowsOf; window.__buildYearTables = buildYearTables;' +
-      ' window.__computeMoves = computeMoves; window.__DEFAULTS = DEFAULTS; window.MockEngine = {');
+      ' window.__computeMoves = computeMoves; window.__DEFAULTS = DEFAULTS;' +
+      ' window.__guardrailSummaryOf = guardrailSummaryOf; window.MockEngine = {');
   // Give the adapter the real simulatePath so runPaths / compute work headlessly.
   const eng = loadFinancialEngine();
   const window = { simulatePath: eng.simulatePath };
@@ -83,6 +84,7 @@ function loadAdapter() {
     tableRowsOf: window.__tableRowsOf,
     buildYearTables: window.__buildYearTables,
     computeMoves: window.__computeMoves,
+    guardrailSummaryOf: window.__guardrailSummaryOf,
     DEFAULTS: window.__DEFAULTS
   };
 }
