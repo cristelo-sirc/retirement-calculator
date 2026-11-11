@@ -6,6 +6,10 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 &mdash; only its DOM init is bypassed.
 
 **Current Version:** 19.21
+**Resume point (2026-11-10):** V19.21 (honest guardrails) shipped and live-verified desktop + 375px
+emulation in the built-in browser. NEXT: F9 linked-fields (V19.22), plan approved in
+`F9-LINKED-FIELDS-PLAN-2026-11-10.md` (local). Waiting on Cris: iPhone Safari 7-day storage test (F11)
+and a real-phone look at the V19.21 guardrail line and input.
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 **Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`, `compassParamsSavedAt`, `compassRetireAgeMoved`)
@@ -330,6 +334,8 @@ Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
   score is wanted without a freeze; use `compute()` when the full result object is needed.
 - **Dropping safe-to-spend from a screen removes two thirds of its wait.** That is why the Welcome
   screen shows retirement age, spending and horizon rather than the safe-to-spend figure.
+- **Machine-dependent (V19.21):** the desktop app's built-in browser ran two 5,000-path `compute()` calls in
+  ~0.7s total on Cris's Mac &mdash; far under the Chrome figures above. Re-measure before relying on either.
 - **Don't batch several `compute()` calls into one Chrome MCP `javascript_tool` evaluation** &mdash;
   the CDP call times out at 45s and the tab looks frozen. Drive one screen at a time.
 
