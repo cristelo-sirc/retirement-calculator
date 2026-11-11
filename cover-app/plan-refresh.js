@@ -1,4 +1,4 @@
-// cover-app/plan-refresh.js — V19.20 (V19.19 origin)
+// cover-app/plan-refresh.js — V19.22 (V19.19 origin)
 // The two stateful bits of the Welcome/update work, extracted as PURE functions so they
 // can be proven in node rather than reasoned about in a browser.
 //
@@ -280,6 +280,69 @@
     return 'Right where you left it.';
   }
 
+  // ---- V19.22 (F9): linked settings that contradict each other --------------------
+  // Input Data enforces each linked rule only on the box being edited, so changing the OTHER
+  // box (or a stored plan, a loaded file, the update flow) can leave a pair that silently
+  // drops income or moves a cut. Disclosure only: nothing here changes params or math.
+  // Reads UI-level params (whole-number percents). Each conflict names the box to fix
+  // (`field`, a param key) so the same text appears inline and on Results.
+  // Rule 6 (stocks by end above stocks now) is deliberately absent: a rising glide path is
+  // allowed on purpose (Cris, 2026-11-10). Rules 8-13 are sensible engine readings.
+  function num(v) { return typeof v === 'number' && isFinite(v); }
+  function pct(v) { return Number(v).toFixed(1) + '%'; }
+  function findConflicts(p) {
+    var out = [];
+    if (!p || typeof p !== 'object') return out;
+    if (p.enablePartTime && num(p.partTimeStartAge) && num(p.partTimeEndAge) &&
+        p.partTimeEndAge < p.partTimeStartAge) {
+      out.push({ id: 'partTimeEnd', field: 'partTimeEndAge',
+        text: 'Your part-time income is set to stop at ' + p.partTimeEndAge + ', before it starts at ' +
+          p.partTimeStartAge + ', so the plan counts none of it. Set “To your age” to ' +
+          p.partTimeStartAge + ' or later.' });
+    }
+    if (p.hasPartner && p.spouseEnablePartTime && num(p.spousePartTimeStartAge) && num(p.spousePartTimeEndAge) &&
+        p.spousePartTimeEndAge < p.spousePartTimeStartAge) {
+      out.push({ id: 'spousePartTimeEnd', field: 'spousePartTimeEndAge',
+        text: 'Your partner’s part-time income is set to stop at ' + p.spousePartTimeEndAge +
+          ', before it starts at ' + p.spousePartTimeStartAge + ', so the plan counts none of it. Set “To partner’s age” to ' +
+          p.spousePartTimeStartAge + ' or later.' });
+    }
+    if (p.enableRothConversion && num(p.rothConversionStartAge) && num(p.rothConversionEndAge) &&
+        p.rothConversionEndAge < p.rothConversionStartAge) {
+      out.push({ id: 'rothEnd', field: 'rothConversionEndAge',
+        text: 'Roth conversions are set to stop at ' + p.rothConversionEndAge + ', before they start at ' +
+          p.rothConversionStartAge + ', so the plan converts nothing. Set the conversions’ “To age” to ' +
+          p.rothConversionStartAge + ' or later.' });
+    }
+    if (p.enableWindfall && num(p.windfallAge) && num(p.currentAge) && p.windfallAge < p.currentAge) {
+      out.push({ id: 'windfallPast', field: 'windfallAge',
+        text: 'Your windfall is set for age ' + p.windfallAge + ', but you’re ' + p.currentAge +
+          ' now, so the plan leaves it out. Already received it? Then it belongs in your balances. ' +
+          'Still coming? Update the age.' });
+    }
+    if (p.enableSpendingReduction && num(p.spendingReductionAge) && num(p.retireAge) &&
+        p.spendingReductionAge < p.retireAge) {
+      out.push({ id: 'slowDownEarly', field: 'spendingReductionAge',
+        text: 'Your spending slow-down age (' + p.spendingReductionAge + ') comes before you retire (' +
+          p.retireAge + '), so the cut applies from your first year of retirement. If you meant that, set it to ' +
+          p.retireAge + '. If not, choose a later age.' });
+    }
+    if (p.enableGuardrails && num(p.guardrailCeiling) && num(p.guardrailFloor) &&
+        p.guardrailFloor >= p.guardrailCeiling) {
+      out.push({ id: 'guardrailOrder', field: 'guardrailFloor',
+        text: '“Win back trims below” (' + pct(p.guardrailFloor) + ') is set at or above “Ceiling (cut above)” (' +
+          pct(p.guardrailCeiling) + '). It should be the lower of the two, so there’s a range where spending holds steady. ' +
+          'Set it below ' + pct(p.guardrailCeiling) + '.' });
+    }
+    return out;
+  }
+  // The inline note for one box, or null.
+  function conflictNote(conflicts, field) {
+    if (!conflicts || !conflicts.length) return null;
+    for (var i = 0; i < conflicts.length; i++) if (conflicts[i].field === field) return conflicts[i].text;
+    return null;
+  }
+
   var api = {
     decideStamp: decideStamp,
     describeStaleness: describeStaleness,
@@ -296,7 +359,9 @@
     trackRetireMove: trackRetireMove,
     retireMoveWarnings: retireMoveWarnings,
     adjustedFields: adjustedFields,
-    updateHeadline: updateHeadline
+    updateHeadline: updateHeadline,
+    findConflicts: findConflicts,
+    conflictNote: conflictNote
   };
 
   if (typeof module === 'object' && module.exports) module.exports = api;

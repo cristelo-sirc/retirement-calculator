@@ -1,5 +1,13 @@
 # Change log
 
+## 19.22.0 — 2026-11-10
+
+- Compass now tells you when two linked settings contradict each other. Input Data only checked a box against its partner while you were editing that box, so changing the other one (raising "From your age" past "To your age", say), or opening an older plan, could leave a pair that quietly dropped income or moved a cut. Six cases are now flagged: your part-time income ending before it starts, the same for your partner, Roth conversions ending before they start, a windfall age you've already passed, a spending slow-down before you retire, and "Win back trims below" set at or above "Ceiling (cut above)".
+- Each one shows a short note right under the box to fix in Input Data, and the same note on Results ("Check this setting") on desktop and phone. Fix the setting and the note goes away. The windfall note asks whether you've already received it, since that changes the right fix.
+- Nothing is changed for you: the score still uses your settings exactly as entered. Checked by comparing full results before and after on the sample plan and six broken-setting plans, which came out identical.
+- "Stocks by end" can now be higher than "Stocks now". A glide path that moves into stocks is a real strategy and the calculation already handled it; only the input box blocked it. The glide-path help text and the Charts description now say which way your mix moves.
+- Test suite grew from 186 to 199 checks.
+
 ## 19.21.0 — 2026-11-10
 
 - Spending guardrails no longer turn a failing plan into a perfect score. Before, a plan that scored 9/100 read 100/100 with guardrails on, because spending could be cut again and again with no limit (to a quarter of plan or less) and "never ran out" still counted as success. Measured on the built-in sample at $160k spending: 9 without guardrails, 100 with them before this release, 49 now.

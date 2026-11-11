@@ -12,7 +12,7 @@
   window._engineReady = new Promise(function (resolve) {
     document.addEventListener('DOMContentLoaded', function () {
       var s = document.createElement('script');
-      s.src = 'engine.js?v=19.21';
+      s.src = 'engine.js?v=19.22';
       // V19.20 (F5): a script with a syntax error, or one that throws at top level, still
       // fires 'load'. Ready means the math actually arrived, not merely that a file did.
       s.onload = function () {

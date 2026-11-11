@@ -45,7 +45,8 @@
     background: 'transparent', color: cm.ink, fontSize: 22, lineHeight: 1, display: 'flex',
     alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: '0 0 auto', fontFamily: cm.body };
 
-  function MStep({ field, label, value, onChange, min = 0, max = 9999999, step = 1, format, suffix }) {
+  // V19.22 (F9): `note` is a linked-settings conflict from PlanRefresh.findConflicts, shown under the box.
+  function MStep({ field, label, value, onChange, min = 0, max = 9999999, step = 1, format, suffix, note }) {
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
@@ -57,6 +58,8 @@
             borderRadius: 2, textAlign: 'center', fontFamily: cm.display, fontSize: 28, color: cm.ink,
             fontVariantNumeric: 'tabular-nums', cursor: 'text' }}
           errorStyle={{ marginTop: 7, color: cm.clay, fontSize: 11, lineHeight: 1.35 }} />
+        {note && <div role="note" style={{ marginTop: 8, borderLeft: `2px solid ${cm.clay}`, paddingLeft: 9,
+          color: cm.ink, fontSize: 13, lineHeight: 1.45 }}>{note}</div>}
       </div>
     );
   }
@@ -263,6 +266,7 @@
               {window.cvGuardrailLine(results)}</p>
           )}
           {window.CoverRetireNote && <window.CoverRetireNote warnings={retireWarnings} compact />}
+          {window.CoverConflictNote && <window.CoverConflictNote params={params} compact />}
           <p style={{ fontSize: 14, lineHeight: 1.55, color: cm.ink70, margin: '0 auto', maxWidth: 300,
             textWrap: 'pretty' }}>{dirty ? results.verdictBlurb : 'These are example numbers, not yours yet. Enter your data and this fills in with your real plan.'}</p>
           {!dirty && (
@@ -361,6 +365,9 @@
 
   function WizardView({ params, update, setParams, partner, hideReturning, adjustNote, onFinish }) {
     const chapters = CHAPTERS();
+    // V19.22 (F9): settings that contradict each other, shown under the box to fix.
+    const conflicts = window.PlanRefresh.findConflicts(params);
+    const noteFor = k => window.PlanRefresh.conflictNote(conflicts, k);
     const [chapter, setChapter] = React.useState(loadChapter);
     const [visited, setVisited] = React.useState(loadVisited);
     const [sheet, setSheet] = React.useState(false);
@@ -486,7 +493,7 @@
             <MSub title="One-time windfall">
               <MToggle field="windfall" label="One-time windfall" value={params.enableWindfall} onChange={v => update('enableWindfall', v)} />
               {params.enableWindfall && <MStep field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000} onChange={v => update('windfallAmount', v)} format={money} />}
-              {params.enableWindfall && <MStep field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge} onChange={v => update('windfallAge', v)} />}
+              {params.enableWindfall && <MStep field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge} onChange={v => update('windfallAge', v)} note={noteFor('windfallAge')} />}
             </MSub>
           </React.Fragment>)}
 
@@ -530,7 +537,7 @@
             </MSub>
             <MSub title="Later-life changes">
               <MToggle field="spendingReduction" label="Spend less later in life" value={params.enableSpendingReduction} onChange={v => update('enableSpendingReduction', v)} />
-              {params.enableSpendingReduction && <MStep field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} />}
+              {params.enableSpendingReduction && <MStep field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} note={noteFor('spendingReductionAge')} />}
               {params.enableSpendingReduction && <MStep field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" />}
             </MSub>
             <MSub title="Legacy goal & inflation">
@@ -564,14 +571,14 @@
               <MToggle field="partTime" label={partner ? 'Your part-time / other income' : 'Part-time / other income'} value={params.enablePartTime} onChange={v => update('enablePartTime', v)} />
               {params.enablePartTime && <MStep field="partTimeIncome" label="Your amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
               {params.enablePartTime && <MStep field="partTimeStartAge" label="From your age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} />}
-              {params.enablePartTime && <MStep field="partTimeEndAge" label="To your age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} />}
+              {params.enablePartTime && <MStep field="partTimeEndAge" label="To your age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} note={noteFor('partTimeEndAge')} />}
             </MSub>
             {partner && (
               <MSub title="Partner's part-time income">
                 <MToggle field="partTime" label="Partner's part-time income" value={params.spouseEnablePartTime} onChange={v => update('spouseEnablePartTime', v)} />
                 {params.spouseEnablePartTime && <MStep field="partTimeIncome" label="Partner's amount / yr" value={params.spousePartTimeIncome} step={1000} min={0} max={200000} onChange={v => update('spousePartTimeIncome', v)} format={v => '$' + v.toLocaleString()} />}
                 {params.spouseEnablePartTime && <MStep field="partTimeStartAge" label="From partner's age" value={params.spousePartTimeStartAge} min={params.spouseAge} max={params.endAge} onChange={v => update('spousePartTimeStartAge', v)} />}
-                {params.spouseEnablePartTime && <MStep field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} />}
+                {params.spouseEnablePartTime && <MStep field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} note={noteFor('spousePartTimeEndAge')} />}
               </MSub>
             )}
           </React.Fragment>)}
@@ -593,13 +600,13 @@
             </MSub>
             <MSub title="Glide path">
               <MToggle field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} />
-              {params.enableGlidePath && <MStep field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
+              {params.enableGlidePath && <MStep field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={100} onChange={v => update('glidePathEndStock', v)} suffix="%" />}
             </MSub>
             <MSub title="Roth conversions">
               <MToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} />
               {params.enableRothConversion && <MStep field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} />}
               {params.enableRothConversion && <MStep field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} />}
-              {params.enableRothConversion && <MStep field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} />}
+              {params.enableRothConversion && <MStep field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} note={noteFor('rothConversionEndAge')} />}
             </MSub>
           </React.Fragment>)}
 
@@ -621,7 +628,7 @@
             <MSub title="Strategy">
               <MToggle field="guardrails" label="Spending guardrails" value={params.enableGuardrails} onChange={v => update('enableGuardrails', v)} />
               {params.enableGuardrails && <MStep field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12} onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
-              {params.enableGuardrails && <MStep field="guardrailFloor" label="Win back trims below" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" />}
+              {params.enableGuardrails && <MStep field="guardrailFloor" label="Win back trims below" value={params.guardrailFloor} step={0.5} min={1} max={12} onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" note={noteFor('guardrailFloor')} />}
               {params.enableGuardrails && <MStep field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30} onChange={v => update('guardrailAdjustment', v)} suffix="%" />}
               {params.enableGuardrails && <MStep field="guardrailMinSpending" label="Never cut spending below" value={params.guardrailMinSpending} step={5} min={50} max={100} onChange={v => update('guardrailMinSpending', v)} suffix="%" />}
             </MSub>

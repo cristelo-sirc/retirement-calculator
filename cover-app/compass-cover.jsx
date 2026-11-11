@@ -111,6 +111,37 @@ function CoverRetireNote({ warnings, compact }) {
 }
 window.CoverRetireNote = CoverRetireNote;
 
+// V19.22 (F9): linked settings that contradict each other (PlanRefresh.findConflicts), shown
+// on Results on both layouts. Same text as the inline note under the box in Input Data.
+// Disclosure only: the score is computed from the settings as entered.
+function cvConflictNote(params) {
+  var list = window.PlanRefresh ? window.PlanRefresh.findConflicts(params) : [];
+  if (!list.length) return null;
+  return { kicker: list.length > 1 ? 'Check these settings' : 'Check this setting',
+    items: list.map(function (c) { return c.text; }),
+    footer: 'The score uses these settings as entered. Fix them in Input Data to clear this note.' };
+}
+window.cvConflictNote = cvConflictNote;
+
+function CoverConflictNote({ params, compact }) {
+  var n = cvConflictNote(params);
+  if (!n) return null;
+  var body = { fontFamily: cvStyles.body, fontSize: compact ? 13 : 14, lineHeight: 1.55, color: cvStyles.ink };
+  return (
+    <div role="note" style={{ borderLeft: `3px solid ${cvStyles.clay}`, background: cvStyles.paperWarm,
+      padding: compact ? '12px 14px' : '14px 18px', textAlign: 'left', margin: compact ? '0 0 14px' : '20px auto 0',
+      maxWidth: compact ? 'none' : 520 }}>
+      <div style={{ fontFamily: cvStyles.body, fontSize: 11, letterSpacing: '0.16em', textTransform: 'uppercase',
+        color: cvStyles.clay, fontWeight: 600, marginBottom: 5 }}>{n.kicker}</div>
+      {n.items.length === 1
+        ? <div style={body}>{n.items[0]}</div>
+        : <ul style={{ ...body, margin: 0, paddingLeft: 18 }}>{n.items.map((t, i) => <li key={i} style={{ marginBottom: 4 }}>{t}</li>)}</ul>}
+      <div style={{ ...body, color: cvStyles.ink70, fontSize: compact ? 12 : 13, marginTop: 6 }}>{n.footer}</div>
+    </div>
+  );
+}
+window.CoverConflictNote = CoverConflictNote;
+
 // V19.1 (fixed post-audit): results.paycheck.atAge is the age the WHOLE household has
 // stopped working — real-engine.js picks whichever partner's retirement lands LATER ON THE
 // CALENDAR, using each partner's own current age as the clock. Two partners can both have
@@ -424,7 +455,7 @@ window.CompassIO = {
     try { stored = localStorage.getItem('compassParamsSavedAt'); } catch (e) {}
     var st = window.PlanRefresh.fileStamps(stored, new Date().toISOString());
     return JSON.stringify({
-      schema: this.SCHEMA, version: '19.21', savedAt: st.savedAt, exportedAt: st.exportedAt,
+      schema: this.SCHEMA, version: '19.22', savedAt: st.savedAt, exportedAt: st.exportedAt,
       params: params || {}
     }, null, 2);
   },
@@ -660,6 +691,7 @@ function CoverDesktop(props) {
               </div>
             )}
             <CoverRetireNote warnings={props.retireWarnings} />
+            <CoverConflictNote params={params} />
           </div>
         </div>
 
@@ -763,7 +795,7 @@ function CoverDesktop(props) {
             </div>
           </div>
 
-          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.21</div>
+          <div style={{ ...cvKicker, textAlign: 'center', marginTop: 48 }}>V19.22</div>
         </div>
       </section>
     </div>
@@ -1060,7 +1092,7 @@ function CoverAdjust(props) {
     : null);
 
   return (
-    <CoverChrome active="rework" tag="V19.21">
+    <CoverChrome active="rework" tag="V19.22">
       <div style={{ maxWidth: 1000, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, textAlign: 'center', marginBottom: 10 }}>Try Changes · live</div>
         <h1 style={{ fontFamily: cvStyles.display, fontSize: 44, textAlign: 'center', margin: '0 0 8px',
@@ -1183,7 +1215,7 @@ function CoverCharts(props) {
   // V19.1: honest sample-state labeling, matching Cover/Questionnaire/Rework.
   const dirty = JSON.stringify(params) !== JSON.stringify(window.MockEngine.DEFAULTS);
   return (
-    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.21">
+    <CoverChrome active="chart" bg={cvStyles.paperWarm} tag="V19.22">
       <div style={{ maxWidth: 1040, margin: '0 auto', padding: '48px 32px 0' }}>
         <div style={{ ...cvKicker, marginBottom: 10 }}>The Charts · {(results.numPaths || 0).toLocaleString()} paths</div>
         {!dirty && (
@@ -1223,8 +1255,13 @@ function CoverCharts(props) {
               of stocks," even with the glide-path toggle off — when the chart actually draws a
               flat line. Copy now describes whichever is true. */}
           <p style={{ fontSize: 14.5, lineHeight: 1.6, color: cvStyles.ink70, maxWidth: 620, margin: '0 0 24px' }}>
-            {params.enableGlidePath
+            {/* V19.22 (F9 rule 6): a rising glide path is allowed, so say which way it moves. */}
+            {params.enableGlidePath && params.glidePathEndStock < params.stockAllocation
               ? 'Your glide path eases out of stocks as you age, so a crash late in retirement does less damage when you can least afford it.'
+              : params.enableGlidePath && params.glidePathEndStock > params.stockAllocation
+              ? `Your glide path moves into stocks as you age, from ${params.stockAllocation}% to ${params.glidePathEndStock}%. That aims for more growth later, but a crash late in retirement would hit a bigger share of your money.`
+              : params.enableGlidePath
+              ? `Your glide path starts and ends at ${params.stockAllocation}% stocks, so your mix stays flat for the whole plan.`
               : `Your mix stays flat at ${params.stockAllocation}% stocks for the whole plan. Turn on the glide path in Input Data if you'd rather ease out of stocks as you age.`}
           </p>
           <GlidePathChart results={results} theme={theme} width={960} height={240} />
@@ -1378,7 +1415,7 @@ function CoverWelcome({ params, savedAt, hasSession, score, onScore,
         </div>
         {err && <div style={{ color: cvStyles.clay, fontSize: 13, marginTop: 16, maxWidth: 430 }}>{err}</div>}
         <div style={{ marginTop: 32 }}>{privacy}</div>
-        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.21</div>
+        <div style={{ ...cvKicker, marginTop: 'clamp(28px,6vw,48px)' }}>V19.22</div>
       </div>
     );
   }
@@ -1474,7 +1511,7 @@ function CoverWelcome({ params, savedAt, hasSession, score, onScore,
       <hr style={{ border: 0, borderTop: `1px solid ${cvStyles.rule}`, margin: isMobile ? '28px 0 16px' : '40px 0 18px' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
         {privacy}
-        <span style={{ ...cvKicker }}>V19.21</span>
+        <span style={{ ...cvKicker }}>V19.22</span>
       </div>
     </div>
   );
