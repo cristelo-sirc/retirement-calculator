@@ -94,7 +94,7 @@ const FIELD_INFO = {
   rothConversionEndAge: { help: 'Last conversion year.', detail: 'Often set just before Social Security or required withdrawals begin, to keep the conversion years in lower tax brackets.' },
 
   stockAllocation: { help: 'Share of your portfolio in stocks today.', detail: 'The rest sits in bonds. More stock means higher expected growth but bigger swings — the balance between reward and the risk of a bad sequence early in retirement.' },
-  glidePath: { help: 'Automatically shift toward bonds as you age.', detail: 'Automatically dials stock exposure down over retirement, reducing the chance a market crash hits while you’re drawing heavily. Trades some growth for stability.' },
+  glidePath: { help: 'Gradually change your stock share over the plan.', detail: 'Moves your stock share step by step from today’s allocation to the ending one. Most people dial stocks down, reducing the chance a market crash hits while they’re drawing heavily, which trades some growth for stability. You can also set the ending share higher if you want more growth later.' },
   glidePathEndStock: { help: 'Stock share at the end of the plan.', detail: 'The glide path moves gradually from today’s stock allocation to this percentage at your ending age. The rest is held in bonds.' },
 
   // ── Fine-tuning (chapter 8; formerly the collapsed "Advanced assumptions" block) ──

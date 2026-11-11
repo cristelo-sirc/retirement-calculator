@@ -19,7 +19,8 @@ const cviKicker = { fontFamily: cvi.body, fontSize: 12, letterSpacing: '0.18em',
   textTransform: 'uppercase', color: cvi.ink70 };
 
 // Editable field with optional step buttons, helper line + info icon.
-function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 1, suffix, format, theme }) {
+// V19.22 (F9): `note` is a linked-settings conflict from PlanRefresh.findConflicts, shown under the box.
+function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 1, suffix, format, theme, note }) {
   const info = field && window.FIELD_INFO[field];
   return (
     <div>
@@ -38,6 +39,8 @@ function CField({ field, label, value, onChange, min = 0, max = 9999999, step = 
           borderRadius: 2, textAlign: 'center', fontFamily: cvi.display, fontSize: 26, color: cvi.ink,
           fontVariantNumeric: 'tabular-nums', cursor: 'text' }}
         errorStyle={{ marginTop: 6, color: cvi.clay, fontSize: 10.5, lineHeight: 1.35 }} />
+      {note && <div role="note" style={{ marginTop: 8, borderLeft: `2px solid ${cvi.clay}`, paddingLeft: 8,
+        color: cvi.ink, fontSize: 11.5, lineHeight: 1.45, textWrap: 'pretty' }}>{note}</div>}
     </div>
   );
 }
@@ -198,6 +201,9 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
   // screen no longer re-runs the simulation on every field commit (typing got snappier).
   const theme = window.cvTheme();
   const partner = params.hasPartner;
+  // V19.22 (F9): settings that contradict each other, shown under the box to fix.
+  const conflicts = window.PlanRefresh.findConflicts(params);
+  const noteFor = k => window.PlanRefresh.conflictNote(conflicts, k);
   // Questionnaire values stay exact after entry; compact rounding belongs on summary screens.
   const money = v => fmt(v);
 
@@ -273,7 +279,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
           </div>
           {/* On-screen version stamp (lives here since fill-mode chrome has no footer tag). */}
           <div style={{ marginTop: 'auto', padding: '18px 26px 0', fontFamily: cvi.body, fontSize: 10,
-            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.21</div>
+            letterSpacing: '0.14em', textTransform: 'uppercase', color: cvi.ink50 }}>V19.22</div>
         </div>
 
         {/* Chapter content + pinned footer */}
@@ -346,7 +352,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
                 {params.enableWindfall && <CField field="windfallAmount" label="Amount" value={params.windfallAmount} step={10000} min={0} max={5000000}
                   onChange={v => update('windfallAmount', v)} format={money} theme={theme} />}
                 {params.enableWindfall && <CField field="windfallAge" label="At age" value={params.windfallAge} min={params.currentAge} max={params.endAge}
-                  onChange={v => update('windfallAge', v)} theme={theme} />}
+                  onChange={v => update('windfallAge', v)} theme={theme} note={noteFor('windfallAge')} />}
               </CSub>
             </React.Fragment>)}
 
@@ -399,7 +405,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
               </CSub>
               <CSub title="Later-life changes">
                 <CToggle field="spendingReduction" label="Spend less later in life" value={params.enableSpendingReduction} onChange={v => update('enableSpendingReduction', v)} theme={theme} />
-                {params.enableSpendingReduction && <CField field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} theme={theme} />}
+                {params.enableSpendingReduction && <CField field="spendingReductionAge" label="Slow-down age" value={params.spendingReductionAge} min={params.retireAge} max={params.endAge} onChange={v => update('spendingReductionAge', v)} theme={theme} note={noteFor('spendingReductionAge')} />}
                 {params.enableSpendingReduction && <CField field="spendingReductionPercent" label="Cut spending by" value={params.spendingReductionPercent} min={0} max={60} onChange={v => update('spendingReductionPercent', v)} suffix="%" theme={theme} />}
               </CSub>
               <CSub title="Legacy goal & inflation">
@@ -435,14 +441,14 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
                 <CToggle field="partTime" label={partner ? 'Your part-time / other income' : 'Part-time / other income'} value={params.enablePartTime} onChange={v => update('enablePartTime', v)} theme={theme} />
                 {params.enablePartTime && <CField field="partTimeIncome" label="Your amount / yr" value={params.partTimeIncome} step={1000} min={0} max={200000} onChange={v => update('partTimeIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
                 {params.enablePartTime && <CField field="partTimeStartAge" label="From your age" value={params.partTimeStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('partTimeStartAge', v)} theme={theme} />}
-                {params.enablePartTime && <CField field="partTimeEndAge" label="To your age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} theme={theme} />}
+                {params.enablePartTime && <CField field="partTimeEndAge" label="To your age" value={params.partTimeEndAge} min={params.partTimeStartAge} max={params.endAge} onChange={v => update('partTimeEndAge', v)} theme={theme} note={noteFor('partTimeEndAge')} />}
               </CSub>
               {partner && (
                 <CSub title="Partner's part-time income">
                   <CToggle field="partTime" label="Partner's part-time income" value={params.spouseEnablePartTime} onChange={v => update('spouseEnablePartTime', v)} theme={theme} />
                   {params.spouseEnablePartTime && <CField field="partTimeIncome" label="Partner's amount / yr" value={params.spousePartTimeIncome} step={1000} min={0} max={200000} onChange={v => update('spousePartTimeIncome', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
                   {params.spouseEnablePartTime && <CField field="partTimeStartAge" label="From partner's age" value={params.spousePartTimeStartAge} min={params.spouseAge} max={params.endAge} onChange={v => update('spousePartTimeStartAge', v)} theme={theme} />}
-                  {params.spouseEnablePartTime && <CField field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} theme={theme} />}
+                  {params.spouseEnablePartTime && <CField field="partTimeEndAge" label="To partner's age" value={params.spousePartTimeEndAge} min={params.spousePartTimeStartAge} max={params.endAge} onChange={v => update('spousePartTimeEndAge', v)} theme={theme} note={noteFor('spousePartTimeEndAge')} />}
                 </CSub>
               )}
             </React.Fragment>)}
@@ -466,13 +472,13 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
               </CSub>
               <CSub title="Glide path">
                 <CToggle field="glidePath" label="Glide path" value={params.enableGlidePath} onChange={v => update('enableGlidePath', v)} theme={theme} />
-                {params.enableGlidePath && <CField field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={params.stockAllocation} onChange={v => update('glidePathEndStock', v)} suffix="%" theme={theme} />}
+                {params.enableGlidePath && <CField field="glidePathEndStock" label="Stocks by end" value={params.glidePathEndStock} min={0} max={100} onChange={v => update('glidePathEndStock', v)} suffix="%" theme={theme} />}
               </CSub>
               <CSub title="Roth conversions">
                 <CToggle field="rothConversion" label="Roth conversions" value={params.enableRothConversion} onChange={v => update('enableRothConversion', v)} theme={theme} />
                 {params.enableRothConversion && <CField field="rothConversionAmount" label="Amount / yr" value={params.rothConversionAmount} step={5000} min={0} max={500000} onChange={v => update('rothConversionAmount', v)} format={v => '$' + v.toLocaleString()} theme={theme} />}
                 {params.enableRothConversion && <CField field="rothConversionStartAge" label="From age" value={params.rothConversionStartAge} min={params.currentAge} max={params.endAge} onChange={v => update('rothConversionStartAge', v)} theme={theme} />}
-                {params.enableRothConversion && <CField field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} theme={theme} />}
+                {params.enableRothConversion && <CField field="rothConversionEndAge" label="To age" value={params.rothConversionEndAge} min={params.rothConversionStartAge} max={params.endAge} onChange={v => update('rothConversionEndAge', v)} theme={theme} note={noteFor('rothConversionEndAge')} />}
               </CSub>
             </React.Fragment>)}
 
@@ -509,7 +515,7 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
                 {params.enableGuardrails && <CField field="guardrailCeiling" label="Ceiling (cut above)" value={params.guardrailCeiling} step={0.5} min={1} max={12}
                   onChange={v => update('guardrailCeiling', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
                 {params.enableGuardrails && <CField field="guardrailFloor" label="Win back trims below" value={params.guardrailFloor} step={0.5} min={1} max={12}
-                  onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} />}
+                  onChange={v => update('guardrailFloor', Math.round(v * 10) / 10)} format={v => v.toFixed(1)} suffix="%" theme={theme} note={noteFor('guardrailFloor')} />}
                 {params.enableGuardrails && <CField field="guardrailAdjustment" label="Adjustment size" value={params.guardrailAdjustment} step={1} min={1} max={30}
                   onChange={v => update('guardrailAdjustment', v)} suffix="%" theme={theme} />}
                 {params.enableGuardrails && <CField field="guardrailMinSpending" label="Never cut spending below" value={params.guardrailMinSpending} step={5} min={50} max={100}
