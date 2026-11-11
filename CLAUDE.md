@@ -5,11 +5,11 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 (`engine.js`) through the `real-engine.js` adapter. `engine.js` is reused as a pure math library
 &mdash; only its DOM init is bypassed.
 
-**Current Version:** 19.21
-**Resume point (2026-11-10):** V19.21 (honest guardrails) shipped and live-verified desktop + 375px
-emulation in the built-in browser. NEXT: F9 linked-fields (V19.22), plan approved in
-`F9-LINKED-FIELDS-PLAN-2026-11-10.md` (local). Waiting on Cris: iPhone Safari 7-day storage test (F11)
-and a real-phone look at the V19.21 guardrail line and input.
+**Current Version:** 19.22
+**Resume point (2026-11-10):** V19.22 (F9 linked-settings notes) shipped and live-verified desktop
+(1680px) + 375px emulation in the built-in browser, console clean, 10,000-path screens open. NEXT: none
+queued &mdash; pick from BACKLOG. Waiting on Cris: iPhone Safari 7-day storage test (F11) and a real-phone
+look at the V19.21 guardrail line and the V19.22 "Check these settings" note.
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 **Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`, `compassParamsSavedAt`, `compassRetireAgeMoved`)
@@ -238,6 +238,18 @@ Deriving values instead of using actual simulation data causes mismatches.
 
 ---
 
+### Linked settings (V19.22)
+- **`PlanRefresh.findConflicts(params)` is disclosure only.** Six contradictory pairs (part-time end &lt;
+  start, you and partner; Roth end &lt; start; windfall age &lt; current age; slow-down age &lt; retire age;
+  guardrail win-back &ge; ceiling) are flagged; nothing is auto-fixed and `normalizeParams` is untouched,
+  so stored plans keep their results. Reads UI-level params (whole-number percents).
+- Each conflict carries `field` (the param key of the box to fix). Inline notes go through the `note`
+  prop on `CField` / `MStep` (keyed by param, NOT by the FIELD_INFO `field`, which partners share);
+  Results uses the shared `cvConflictNote` / `CoverConflictNote` on both layouts.
+- **A rising glide path is allowed on purpose** (Cris, 2026-11-10): "Stocks by end" max is 100, not
+  "Stocks now". Copy that describes the glide path must branch on direction (Charts does).
+- Fixing a broken pair: the stepper's +/&minus; clamps to the box's min, so one tap repairs it.
+
 ## Shipped Accuracy Disclosures
 
 These are known, deliberate limits currently live in the app. Don't "fix" them silently.
@@ -402,7 +414,7 @@ Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
 - **The untouched-DEFAULTS regression gate is 64/100**, asserted in `audit-adapter.test.js`.
 - **DEFAULTS are pinned** in `tests/state-fix.test.js` (V19.20). "Sample plan" is detected by exact
   equality with DEFAULTS in five places, so changing a default relabels every stored sample plan &mdash;
-  decide a migration before updating the pin. Suite: 186 checks.
+  decide a migration before updating the pin. Suite: 199 checks.
 - **The built-in browser can't beat the Welcome score** to the "Update my numbers" click, even at
   10,000 paths (tool round trips are slower), so the unknown-before-score path is covered by
   `updateHeadline` tests, not a live repro.
