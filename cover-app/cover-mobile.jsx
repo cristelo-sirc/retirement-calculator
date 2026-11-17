@@ -64,20 +64,25 @@
     );
   }
 
-  function MToggle({ field, label, value, onChange }) {
+  // V19.23: `lockedNote` (a string) shows the switch as unavailable with the reason under it.
+  function MToggle({ field, label, value, onChange, lockedNote }) {
+    const locked = !!lockedNote;
+    const shown = locked ? false : value;
     return (
       <div style={{ marginBottom: 22 }}>
         <FieldHead field={field} label={label} />
         {/* V19.15: pill 46×26 → 48×28 (handoff touch-target spec), row ≥44px tall. */}
-        <button onClick={() => onChange(!value)} aria-label={label} aria-pressed={value} style={{ display: 'flex', alignItems: 'center', gap: 12,
-          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, minHeight: 44 }}>
-          <span style={{ width: 48, height: 28, borderRadius: 99, background: value ? cm.sage : cm.ink20,
+        <button onClick={() => { if (!locked) onChange(!value); }} disabled={locked} aria-label={label} aria-pressed={shown} style={{ display: 'flex', alignItems: 'center', gap: 12,
+          background: 'transparent', border: 'none', cursor: locked ? 'default' : 'pointer', padding: 0, minHeight: 44, opacity: locked ? 0.6 : 1 }}>
+          <span style={{ width: 48, height: 28, borderRadius: 99, background: shown ? cm.sage : cm.ink20,
             position: 'relative', transition: 'background 180ms', flex: '0 0 auto' }}>
-            <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 24, height: 24,
+            <span style={{ position: 'absolute', top: 2, left: shown ? 22 : 2, width: 24, height: 24,
               borderRadius: '50%', background: cm.paper, transition: 'left 180ms' }} />
           </span>
-          <span style={{ fontFamily: cm.display, fontSize: 19, color: cm.ink }}>{value ? 'On' : 'Off'}</span>
+          <span style={{ fontFamily: cm.display, fontSize: 19, color: cm.ink }}>{locked ? 'Not available' : (value ? 'On' : 'Off')}</span>
         </button>
+        {locked && <div role="note" style={{ marginTop: 8, borderLeft: `2px solid ${cm.clay}`, paddingLeft: 9,
+          color: cm.ink, fontSize: 13, lineHeight: 1.45 }}>{lockedNote}</div>}
       </div>
     );
   }
@@ -264,6 +269,10 @@
           {window.cvGuardrailLine && window.cvGuardrailLine(results) && (
             <p style={{ fontSize: 13, lineHeight: 1.5, color: cm.ink70, margin: '0 auto 12px', maxWidth: 300 }}>
               {window.cvGuardrailLine(results)}</p>
+          )}
+          {window.cvPenaltyLine && window.cvPenaltyLine(results) && (
+            <p style={{ fontSize: 13, lineHeight: 1.5, color: cm.ink70, margin: '0 auto 12px', maxWidth: 300 }}>
+              {window.cvPenaltyLine(results)}</p>
           )}
           {window.CoverRetireNote && <window.CoverRetireNote warnings={retireWarnings} compact />}
           {window.CoverConflictNote && <window.CoverConflictNote params={params} compact />}
@@ -479,6 +488,9 @@
             <MStep field="endAge" label="Plan to age" value={params.endAge} onChange={v => update('endAge', v)} min={params.retireAge + 1} max={110} />
             {partner && <MStep field="spouseAge" label="Partner's age" value={params.spouseAge} onChange={v => update('spouseAge', v)} min={20} max={85} />}
             {partner && <MStep field="spouseRetireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} />}
+            {/* V19.23: Rule of 55, shown only for a person who stops work before 60; locked before 55. */}
+            {params.retireAge < 60 && <MToggle field="penaltyFreeEarly" label="Use the Rule of 55" value={params.penaltyFreeEarly} onChange={v => update('penaltyFreeEarly', v)} lockedNote={params.retireAge < 55 ? window.FIELD_INFO.penaltyFreeEarly.lockNote : null} />}
+            {partner && params.spouseRetireAge < 60 && <MToggle field="spousePenaltyFreeEarly" label="Partner uses the Rule of 55" value={params.spousePenaltyFreeEarly} onChange={v => update('spousePenaltyFreeEarly', v)} lockedNote={params.spouseRetireAge < 55 ? window.FIELD_INFO.spousePenaltyFreeEarly.lockNote : null} />}
           </React.Fragment>)}
 
           {/* ── Chapter 2 · What you've saved ── */}

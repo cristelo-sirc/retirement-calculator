@@ -15,6 +15,14 @@ const FIELD_INFO = {
   },
   currentAge: { help: 'How old you are today.', detail: 'Today’s age is the starting snapshot: the chart shows exactly the balances you enter, with no growth added yet. The first projected year runs from this age to your next birthday.' },
   retireAge: { help: 'The age you stop working for pay.', detail: 'Salary and saving continue through the year before this age. Retirement spending and withdrawals begin in the year that starts at this age.' },
+  // V19.23: Rule of 55 switch (shown only for a person who stops work before 60). lockNote is
+  // shown instead of a working switch when they stop before 55, where the rule cannot apply.
+  penaltyFreeEarly: { help: 'Skips the 10% penalty on withdrawals before 59\u00BD.',
+    detail: 'If you leave your job at 55 or later, money taken from that employer\u2019s 401(k) is usually free of the 10% early-withdrawal penalty (the \u201CRule of 55\u201D). On: none of your pre-tax withdrawals before 59\u00BD are charged the penalty. Off: they are charged 10% (half that in the year you turn 59\u00BD). The rule only covers money left in that employer\u2019s plan; moving it to an IRA loses the exemption. Roth withdrawals are treated as penalty-free either way.',
+    lockNote: 'Not available: you stop work before 55, so the 10% penalty is counted on your pre-tax withdrawals before 59\u00BD.' },
+  spousePenaltyFreeEarly: { help: 'Skips the 10% penalty on your partner\u2019s withdrawals before 59\u00BD.',
+    detail: 'If your partner leaves their job at 55 or later, money taken from that employer\u2019s 401(k) is usually free of the 10% early-withdrawal penalty (the \u201CRule of 55\u201D). On: none of your partner\u2019s pre-tax withdrawals before 59\u00BD are charged the penalty. Off: they are charged 10% (half that in the year your partner turns 59\u00BD). The rule only covers money left in that employer\u2019s plan; moving it to an IRA loses the exemption. Roth withdrawals are treated as penalty-free either way.',
+    lockNote: 'Not available: your partner stops work before 55, so the 10% penalty is counted on their pre-tax withdrawals before 59\u00BD.' },
   spouseRetireAge: { help: 'When your partner stops working.', detail: 'Your partner’s salary and contributions continue through the year before this age, then stop in the yearly period that starts at this age.' },
   endAge: { help: 'The birthday your plan must reach.', detail: 'The ending balance is measured when you reach this age. For example, a plan from age 50 to 90 contains 40 yearly periods and funds spending through the year that begins at 89.' },
   spouseAge: { help: 'How old your partner is today.', detail: 'Used to time your partner’s retirement and Social Security separately from yours.' },

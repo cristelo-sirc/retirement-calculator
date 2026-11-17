@@ -1,5 +1,16 @@
 # Change log
 
+## 19.23.0 — built 2026-11-16, NOT YET RELEASED (code is in the project folder and on branch `v19.23-rule-of-55`; version stamps still read 19.22)
+
+- Compass can now count the 10% early-withdrawal penalty on pre-tax retirement money taken before 59&frac12;, and it knows the "Rule of 55". Before, it never charged the penalty and did not say so.
+- New switch in Input Data, chapter 1, on desktop and phone, one per person: "Use the Rule of 55". It appears only for someone who stops work before 60. On (the starting value): no penalty. Off: 10% on that person's pre-tax withdrawals before 59, 5% in the age-59 year, nothing from 60.
+- Someone who stops work before 55 cannot use the rule, so the penalty is always counted for them and the switch reads "Not available" with the reason under it.
+- Results now states which assumption the score rests on, on desktop and phone: for example "Assumes no 10% early-withdrawal penalty before 59&frac12; (Rule of 55)."
+- Scores change only where someone stops work before 55 (they go down, correctly; one example couple retiring at 52 went from 93 to 90). Everything else is unaffected: results are identical to 19.22 whenever no penalty is charged (checked across 15 plan variations at 5,000 futures). The built-in sample still reads 64/100.
+- The "Delay retirement" card now re-decides the rule at the later age, so its number matches what tapping the card gives.
+- Simplifications: half the penalty in the age-59 year (the model has no birth months); Roth withdrawals are treated as penalty-free; the switch is all-or-nothing per person; withdrawals are not re-ordered to avoid the penalty. Not modeled: leaving work at 54 in the year you turn 55, 72(t) payment schedules, and the public-safety age-50 rule (those people see a penalty they would not pay).
+- Test suite grew from 199 to 214 checks: hand-worked penalty years, the guardrail gauge pinned from both sides, and confirmation that each new check fails when the piece it guards is removed.
+
 ## 19.22.0 — 2026-11-10
 
 - Compass now tells you when two linked settings contradict each other. Input Data only checked a box against its partner while you were editing that box, so changing the other one (raising "From your age" past "To your age", say), or opening an older plan, could leave a pair that quietly dropped income or moved a cut. Six cases are now flagged: your part-time income ending before it starts, the same for your partner, Roth conversions ending before they start, a windfall age you've already passed, a spending slow-down before you retire, and "Win back trims below" set at or above "Ceiling (cut above)".

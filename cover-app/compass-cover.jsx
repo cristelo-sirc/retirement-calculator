@@ -73,6 +73,26 @@ function cvGuardrailLine(results) {
 }
 window.cvGuardrailLine = cvGuardrailLine;
 
+// V19.23: which early-withdrawal assumption the score rests on. Shared by desktop and mobile.
+// results.earlyPenaltySummary is null when nobody stops work before 60 (nothing to say).
+// Per person: 'charged' | 'tooEarly' (charged: they stop before 55) | 'free' | null.
+function cvPenaltyLine(results) {
+  var e = results && results.earlyPenaltySummary;
+  if (!e) return null;
+  var paysU = e.user === 'charged' || e.user === 'tooEarly';
+  var paysS = e.spouse === 'charged' || e.spouse === 'tooEarly';
+  var tail = ' pre-tax withdrawals before 59\u00BD';
+  var free = 'Assumes no 10% early-withdrawal penalty before 59\u00BD (Rule of 55).';
+  if (!paysU && !paysS) return free;
+  if (!(results.params && results.params.hasPartner)) return 'Counts the 10% early-withdrawal penalty on' + tail + '.';
+  if (paysU && paysS) return 'Counts the 10% early-withdrawal penalty on both partners\u2019' + tail + '.';
+  var line = 'Counts the 10% early-withdrawal penalty on ' + (paysU ? 'your' : 'your partner\u2019s') + tail;
+  var other = paysU ? e.spouse : e.user;
+  if (other === 'free') line += '; ' + (paysU ? 'your partner\u2019s' : 'yours') + ' are assumed penalty-free (Rule of 55)';
+  return line + '.';
+}
+window.cvPenaltyLine = cvPenaltyLine;
+
 // V19.20 (F1): the persistent Cover note for a retirement age the APP moved because the
 // person's age reached it. Shared by desktop and mobile (same discipline as cvDangerLine).
 // warnings come from PlanRefresh.retireMoveWarnings — empty means no note. Disclosure only:
@@ -688,6 +708,12 @@ function CoverDesktop(props) {
               <div style={{ fontFamily: cvStyles.body, fontSize: 14, color: cvStyles.ink70,
                 marginTop: 10, maxWidth: 440, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
                 {cvGuardrailLine(results)}
+              </div>
+            )}
+            {cvPenaltyLine(results) && (
+              <div style={{ fontFamily: cvStyles.body, fontSize: 14, color: cvStyles.ink70,
+                marginTop: 10, maxWidth: 440, marginLeft: 'auto', marginRight: 'auto', lineHeight: 1.5 }}>
+                {cvPenaltyLine(results)}
               </div>
             )}
             <CoverRetireNote warnings={props.retireWarnings} />

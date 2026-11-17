@@ -6,11 +6,13 @@ React shell loading the "Compass" components in `cover-app/`, backed by the real
 &mdash; only its DOM init is bypassed.
 
 **Current Version:** 19.22
-**Resume point (2026-11-10):** V19.22 (F9 linked-settings notes) shipped and live-verified desktop
-(1680px) + 375px emulation in the built-in browser, console clean, 10,000-path screens open. NEXT: none
-queued &mdash; pick from BACKLOG. Cris phone-checked the V19.21 guardrail line and V19.22 note on his
-iPhone (OK, 2026-11-10). Still open: iPhone Safari 7-day storage test (F11) &mdash; raised 2026-11-10, needs
-8 days away from the site, so no result before ~2026-11-18.
+**Resume point (2026-11-16):** V19.23 (Rule of 55 / early-withdrawal penalty) is BUILT BUT NOT RELEASED.
+The code is in this folder and on GitHub branch `v19.23-rule-of-55` (not merged; the live site is still
+V19.22 and every version stamp here still reads 19.22). Approved by Cris 2026-11-16 (option B). Suite
+214/214. NEXT: the release steps listed in BACKLOG ("Rule of 55 ... BUILT, NOT RELEASED") &mdash; version
+bump, merge, deploy, live desktop + phone checks. The switch has only been compile-checked, never seen
+on screen. Earlier: V19.22 shipped and live-verified 2026-11-10. Still open: iPhone Safari 7-day storage
+test (F11) &mdash; raised 2026-11-10, no result before ~2026-11-18.
 **GitHub Repo:** https://github.com/cristelo-sirc/retirement-calculator
 **GitHub Pages:** https://cristelo-sirc.github.io/retirement-calculator/
 **Tech Stack:** HTML5, CSS3, React + Babel (self-hosted in `vendor/`), Chart.js v3.9.1, localStorage (`compassParams`, `compassParamsSavedAt`, `compassRetireAgeMoved`)
@@ -22,7 +24,8 @@ releases produced has been promoted into this file &mdash; read the archive only
 forensics on a specific release. `BACKLOG.md` and audit reports are local working records, not published.
 
 Seven releases intentionally changed `engine.js` math: **V18.11**, **V19.5**, **V19.6**, **V19.9**,
-**V19.10**, **V19.18**, **V19.21**. Everything else is display-layer.
+**V19.10**, **V19.18**, **V19.21**. Everything else is display-layer. **V19.23** (built 2026-11-16,
+release pending) will be the eighth.
 
 ---
 
@@ -203,6 +206,37 @@ combined. No spending is drawn during accumulation. Fixed mortgage is not inflat
 - **Guardrails-off output must stay byte-identical** across any guardrail change &mdash; that was the
   V19.21 release gate (old vs new `compute()` JSON, 15 variants, 5,000 paths).
 
+### Early-withdrawal penalty and the Rule of 55 (V19.23 &mdash; built 2026-11-16, release pending)
+- **The engine charges the penalty only for a flagged person**: `params.userEarlyPenalty` /
+  `params.spouseEarlyPenalty`. Absent (the legacy DOM app never sends them) = no penalty, the
+  pre-V19.23 behavior. Rate by the person's age at the start of the year: 10% under 59, 5% in the
+  age-59 year (no birth months), 0 from 60. Base = that person's DISCRETIONARY pre-tax withdrawal.
+  Roth withdrawals, taxable withdrawals and Roth conversions are never penalized.
+- **The penalty is inside `finalTax` / `taxBill`** (added to `newTax` in the convergence loop), so the
+  withdrawal is grossed up to pay it and the household-cash identity holds unchanged. It is also logged
+  on its own as `earlyPenalty`. The year table's Taxes figure therefore includes it.
+- **Guardrail gauge:** `guardrailPrevTax` excludes the penalty; the gauge adds a separate estimate =
+  last year's pre-tax withdrawal per person &times; THIS year's rate &times; (1 + inflation), under the same
+  `guardrailTaxUsable` rule. That is why nothing is carried into the age-59 half year or the first
+  penalty-free year. Pinned from both sides in `tests/early-penalty.test.js` (R55-6/7/8).
+- **The Rule of 55 is decided in ONE place: `earlyPenaltyApplies(switchOn, retireAge)`** in
+  `real-engine.js`. Stops work before 55 = charged whatever the switch says; 55&ndash;59 = charged only
+  when the switch is off; 60+ = never charged (the switch is hidden and inert, so no hidden state can
+  move a score). `mapToReal`, `computeMoves` and `earlyPenaltySummaryOf` all call it.
+- **`computeMoves` patches the REAL params directly**, bypassing `mapToReal`. Any future param that
+  depends on retirement age must be re-decided inside the delay patch, as `userEarlyPenalty` is, or
+  the card scores a different plan from the one tapping it produces (pinned by R55-13).
+- **UI params:** `penaltyFreeEarly` / `spousePenaltyFreeEarly` (booleans, default true). Old plans lack
+  the keys and get true, so results are unchanged for anyone stopping work at 55+. `CToggle` /
+  `MToggle` take `lockedNote`: the switch reads "Not available" with the reason when it cannot apply.
+- **Results line:** shared builder `cvPenaltyLine(results)` reads `results.earlyPenaltySummary`
+  (`null` when nobody stops work before 60).
+- **Release gate, run 2026-11-16:** old vs new engine identical with nobody flagged (15 variants,
+  5,000 paths, every logged field); Cris's saved plan 59 with the switch on, 55 off.
+- **Known, accepted:** withdrawal order is not penalty-aware (a couple with one penalized partner may
+  show an avoidable penalty; BACKLOG option C). A still-working partner whose account is tapped
+  before they retire is charged only if they are flagged, which follows their own retirement age.
+
 ### Taxable Account Tax Drag Is Real
 A 100% taxable portfolio with 60% gain ratio loses ~10&ndash;15% of every withdrawal to cap gains +
 NIIT + state tax. For $1M taxable-only with $70k spending over 30 years, 0% success is correct.
@@ -274,6 +308,11 @@ These are known, deliberate limits currently live in the app. Don't "fix" them s
   in the SS claim-age tooltip, an `engine.js` comment, and the README.
 - **Ending balances are future (nominal) dollars**, labeled as such, with the today's-dollars toggle
   on Charts.
+- **Early-withdrawal penalty (V19.23, pending release).** Half penalty in the age-59 year; Roth
+  withdrawals treated as penalty-free; all-or-nothing per person; no penalty-aware withdrawal order.
+  Leaving at 54 in the year you turn 55, 72(t) schedules and the public-safety age-50 rule are not
+  modeled, so those people see a penalty they would not pay. Disclosed in the switch's tooltip, the
+  README and the CHANGELOG.
 - **Guardrail adjustment displays "Off"** when `enableGuardrails` is false, since the percentage is
   inert in that state.
 - **The privacy blurb claims privacy of INPUTS only.** The app makes zero network calls in app code
@@ -415,7 +454,8 @@ Measured in Chrome on the deployed app, 5,000 paths, three identical runs:
 - **The untouched-DEFAULTS regression gate is 64/100**, asserted in `audit-adapter.test.js`.
 - **DEFAULTS are pinned** in `tests/state-fix.test.js` (V19.20). "Sample plan" is detected by exact
   equality with DEFAULTS in five places, so changing a default relabels every stored sample plan &mdash;
-  decide a migration before updating the pin. Suite: 199 checks.
+  decide a migration before updating the pin. Suite: 214 checks (199 before V19.23). V19.23 added two
+  keys; an old stored sample plan still normalizes to exactly DEFAULTS (pinned by R55-11).
 - **The built-in browser can't beat the Welcome score** to the "Update my numbers" click, even at
   10,000 paths (tool round trips are slower), so the unknown-before-score path is covered by
   `updateHeadline` tests, not a live repro.

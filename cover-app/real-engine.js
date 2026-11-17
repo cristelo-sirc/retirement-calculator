@@ -73,6 +73,12 @@
 
     bracketGrowth: 2.5, enableTCJASunset: false, stateTaxRate: 0, taxableGainRatio: 60,
 
+    // V19.23: "Use the Rule of 55", one switch per person. On = no 10% early-withdrawal penalty
+    // on that person's pre-tax withdrawals before 59 1/2. It only decides anything for a person who
+    // stops work at 55-59 (see earlyPenaltyApplies). Old plans lack the key and get true, which
+    // reproduces their prior results whenever the person stops work at 55 or later.
+    penaltyFreeEarly: true, spousePenaltyFreeEarly: true,
+
     numPaths: 5000            // Monte Carlo paths — SINGLE SOURCE for every screen's odds (user-editable in Advanced)
   };
 
@@ -169,6 +175,31 @@
     return { params: out, changed: notes.length > 0, notes: notes };
   }
 
+  // ---- V19.23: who is charged the 10% early-withdrawal penalty ---------------------
+  // The ONE place the Rule of 55 is decided; mapToReal, computeMoves and the Results summary
+  // all call it, so they cannot drift.
+  //   stops work before 55  -> charged (the rule cannot apply), whatever the switch says
+  //   stops work at 55-59   -> charged only when the switch is off
+  //   stops work at 60+     -> not charged (the switch is not shown and has no effect)
+  // A missing switch value (older callers) counts as on.
+  function earlyPenaltyApplies(switchOn, retireAge) {
+    if (!(retireAge < 60)) return false;
+    return !(switchOn !== false && retireAge >= 55);
+  }
+  // What Results says is assumed. null = nobody stops work before 60, so there is nothing to say.
+  // Per person: 'charged' | 'tooEarly' (charged because they stop before 55) | 'free' | null.
+  function earlyPenaltySummaryOf(m) {
+    function one(switchOn, retireAge) {
+      if (!(retireAge < 60)) return null;
+      if (retireAge < 55) return 'tooEarly';
+      return earlyPenaltyApplies(switchOn, retireAge) ? 'charged' : 'free';
+    }
+    var user = one(m.penaltyFreeEarly, m.retireAge);
+    var spouse = m.hasPartner ? one(m.spousePenaltyFreeEarly, m.spouseRetireAge) : null;
+    if (!user && !spouse) return null;
+    return { user: user, spouse: spouse };
+  }
+
   // ---- Map mockup params -> real engine params (collectInputs() shape) ----------
   // Real engine stores rates/allocations as FRACTIONS and income as ANNUAL dollars.
   function mapToReal(m, numPaths) {
@@ -257,6 +288,9 @@
       bondVol: (m.bondVol != null ? m.bondVol : 6) / 100,
       bracketGrowth: (m.bracketGrowth != null ? m.bracketGrowth : 2.5) / 100,
       enableTCJASunset: !!m.enableTCJASunset,
+      // V19.23: early-withdrawal penalty, decided per person by earlyPenaltyApplies (Rule of 55).
+      userEarlyPenalty: earlyPenaltyApplies(m.penaltyFreeEarly, m.retireAge),
+      spouseEarlyPenalty: partner ? earlyPenaltyApplies(m.spousePenaltyFreeEarly, m.spouseRetireAge) : false,
       stateTaxRate: (m.stateTaxRate || 0) / 100,
       taxableGainRatio: (m.taxableGainRatio != null ? m.taxableGainRatio : 60) / 100
     };
@@ -372,12 +406,16 @@
     var RETIRE_CAP = 80;
     var delayedRet = Math.min(RETIRE_CAP, m.retireAge + 2);
     if (delayedRet > m.retireAge) {
-      var r1 = successOf(runPaths(Object.assign({}, real, { retireAge: delayedRet })), goal);
+      // V19.23: retiring later can cross 55 (the Rule of 55 starts to apply) or 60 (no early
+      // years left), so the penalty flag is re-decided at the delayed age. Without this the card
+      // would score a different plan from the one tapping it produces.
+      var delayPatch = { retireAge: delayedRet, userEarlyPenalty: earlyPenaltyApplies(m.penaltyFreeEarly, delayedRet) };
+      var r1 = successOf(runPaths(Object.assign({}, real, delayPatch)), goal);
       var delayYrs = delayedRet - m.retireAge;
       moves.push({ id: 'delay', title: 'Delay retirement ' + delayYrs + (delayYrs === 1 ? ' year' : ' years'),
         detail: 'Retire at ' + delayedRet + ' instead of ' + m.retireAge,
         note: 'at ' + delayedRet, rate: r1, delta: r1 - base });
-      combinedPatch.retireAge = delayedRet;
+      Object.assign(combinedPatch, delayPatch);
     }
 
     // Cut spending 10% (always available)
@@ -710,7 +748,8 @@
       paycheck: paycheck,
       path: path, incomeByYear: incomeByYear, allocByYear: allocByYear, paths: paths, totalSavings: totalSavings,
       yearTables: yearTables, depletionSummary: depletionSummary, medianDepletion: medianDepletion,
-      guardrailSummary: guardrailSummary
+      guardrailSummary: guardrailSummary,
+      earlyPenaltySummary: earlyPenaltySummaryOf(m)   // V19.23: which early-withdrawal assumption is in use
     }, v);
   }
 
@@ -734,6 +773,7 @@
   window.MockEngine = {
     DEFAULTS: DEFAULTS, compute: compute, scoreAsync: scoreAsync, computeMoves: computeMoves,
     normalizeParams: normalizeParams,
+    earlyPenaltyApplies: earlyPenaltyApplies,   // V19.23: shared with the Input Data switch
     formatCurrency: formatCurrency, formatPct: formatPct, clone: clone, ssFactor: ssFactor
   };
 })();

@@ -38,6 +38,9 @@ const ENGINE_PARAM_NAMES = new Set([
   // V19.21: spending floor for guardrail cuts. NOT in collectInputs() — the legacy DOM app has
   // no such input; the engine treats an absent value as no floor.
   'guardrailMinSpending',
+  // V19.23: early-withdrawal penalty flags, one per person. NOT in collectInputs() — the legacy
+  // DOM app has no such input; the engine treats an absent flag as no penalty.
+  'userEarlyPenalty', 'spouseEarlyPenalty',
   'housingType', 'mortgagePrincipal', 'mortgageLastAge', 'propertyTax', 'monthlyRent',
   'healthcarePre65', 'healthcare65', 'healthcareInflation',
   'stockAllocation', 'enableGlidePath', 'endingStockAllocation',

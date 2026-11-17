@@ -60,6 +60,12 @@ Additional disclosed limitations:
   the single year a person reaches full retirement age (that rule needs a birth month the annual
   model does not track). Only affects people who claim before 67 while still earning.
 - The flat state-tax rate does not honor state-specific Social Security or pension exemptions.
+- **Early-withdrawal penalty (V19.23).** The 10% penalty on pre-tax withdrawals before 59&frac12; is
+  counted per person unless the "Use the Rule of 55" switch applies (it needs that person to stop
+  work at 55 or later). It is all-or-nothing per person, uses half the penalty in the age-59 year,
+  treats Roth withdrawals as penalty-free, and does not re-order withdrawals to avoid the penalty.
+  Leaving work at 54 in the year you turn 55, 72(t) payment schedules, and the public-safety age-50
+  rule are not modeled.
 
 ## Verification
 

@@ -51,8 +51,12 @@ const cviStepBtn = {
 };
 
 // On/off toggle field (e.g. glide path).
-function CToggle({ field, label, value, onChange, theme }) {
+// V19.23: `lockedNote` (a string) shows the switch as unavailable with the reason under it.
+// Used where a setting cannot apply, so a switch that does nothing never looks live.
+function CToggle({ field, label, value, onChange, theme, lockedNote }) {
   const info = field && window.FIELD_INFO[field];
+  const locked = !!lockedNote;
+  const shown = locked ? false : value;
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -62,15 +66,17 @@ function CToggle({ field, label, value, onChange, theme }) {
       </div>
       {info && <div style={{ fontSize: 11.5, lineHeight: 1.4, color: cvi.ink70, marginBottom: 8,
         textWrap: 'pretty' }}>{info.help}</div>}
-      <button onClick={() => onChange(!value)} aria-label={label} aria-pressed={value} style={{ display: 'flex', alignItems: 'center', gap: 10,
-        background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-        <span style={{ width: 40, height: 22, borderRadius: 99, background: value ? cvi.sage : cvi.ink20,
+      <button onClick={() => { if (!locked) onChange(!value); }} disabled={locked} aria-label={label} aria-pressed={shown} style={{ display: 'flex', alignItems: 'center', gap: 10,
+        background: 'transparent', border: 'none', cursor: locked ? 'default' : 'pointer', padding: 0, opacity: locked ? 0.6 : 1 }}>
+        <span style={{ width: 40, height: 22, borderRadius: 99, background: shown ? cvi.sage : cvi.ink20,
           position: 'relative', transition: 'background 180ms', flex: '0 0 auto' }}>
-          <span style={{ position: 'absolute', top: 2, left: value ? 20 : 2, width: 18, height: 18,
+          <span style={{ position: 'absolute', top: 2, left: shown ? 20 : 2, width: 18, height: 18,
             borderRadius: '50%', background: cvi.paper, transition: 'left 180ms' }} />
         </span>
-        <span style={{ fontFamily: cvi.display, fontSize: 18, color: cvi.ink }}>{value ? 'On' : 'Off'}</span>
+        <span style={{ fontFamily: cvi.display, fontSize: 18, color: cvi.ink }}>{locked ? 'Not available' : (value ? 'On' : 'Off')}</span>
       </button>
+      {locked && <div role="note" style={{ marginTop: 8, borderLeft: `2px solid ${cvi.clay}`, paddingLeft: 8,
+        color: cvi.ink, fontSize: 11.5, lineHeight: 1.45, textWrap: 'pretty' }}>{lockedNote}</div>}
     </div>
   );
 }
@@ -334,6 +340,9 @@ function CoverInputs(props) { const { params: extP, setParams: extSP, freshStart
                 <CField field="endAge" label="Plan to age" value={params.endAge} onChange={v => update('endAge', v)} min={params.retireAge + 1} max={110} theme={theme} />
                 {partner && <CField field="spouseAge" label="Partner's age" value={params.spouseAge} onChange={v => update('spouseAge', v)} min={20} max={85} theme={theme} />}
                 {partner && <CField field="spouseRetireAge" label="Partner retires at" value={params.spouseRetireAge} onChange={v => update('spouseRetireAge', v)} min={params.spouseAge + 1} max={80} theme={theme} />}
+                {/* V19.23: Rule of 55, shown only for a person who stops work before 60; locked before 55. */}
+                {params.retireAge < 60 && <CToggle field="penaltyFreeEarly" label="Use the Rule of 55" value={params.penaltyFreeEarly} onChange={v => update('penaltyFreeEarly', v)} theme={theme} lockedNote={params.retireAge < 55 ? window.FIELD_INFO.penaltyFreeEarly.lockNote : null} />}
+                {partner && params.spouseRetireAge < 60 && <CToggle field="spousePenaltyFreeEarly" label="Partner uses the Rule of 55" value={params.spousePenaltyFreeEarly} onChange={v => update('spousePenaltyFreeEarly', v)} theme={theme} lockedNote={params.spouseRetireAge < 55 ? window.FIELD_INFO.spousePenaltyFreeEarly.lockNote : null} />}
               </div>
             )}
 

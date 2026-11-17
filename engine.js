@@ -1844,6 +1844,10 @@
                 let guardrailPrevTax = 0;
                 let guardrailPrevIrmaa = 0;
                 let guardrailPrevTaxState = -1;   // -1 = no prior year
+                // V19.23: last year's discretionary pre-tax withdrawals per person, so the gauge can
+                // estimate this year's early-withdrawal penalty at THIS year's rate (see below).
+                let guardrailPrevUserPreTaxWd = 0;
+                let guardrailPrevSpousePreTaxWd = 0;
                 const guardrailMinMult = Number.isFinite(params.guardrailMinSpending) ? params.guardrailMinSpending : 0;
 
                 const filingStatus = params.spouseAge > 0 ? 'MFJ' : 'Single';
@@ -2062,6 +2066,17 @@
                     let baseLifestyle = params.lifestyleSpending;
                     if (params.enableSpendingReduction && currentYearAge >= params.spendingReductionAge) baseLifestyle *= (1 - params.spendingReductionPercent);
 
+                    // V19.23: 10% additional tax on pre-tax retirement-account money taken before age 59 1/2
+                    // (IRC 72(t)). Charged only for a person the adapter flags (userEarlyPenalty /
+                    // spouseEarlyPenalty); absent (the legacy DOM app never sends them) means no penalty,
+                    // the pre-V19.23 behavior. Annual model, no birth months: full 10% in years the person
+                    // starts under 59, half (5%) in the age-59 year, none from 60. Applies to DISCRETIONARY
+                    // pre-tax withdrawals only: Roth withdrawals and Roth conversions are not penalized.
+                    const userEarlyPenaltyRate = params.userEarlyPenalty
+                        ? (currentYearAge < 59 ? 0.10 : (currentYearAge < 60 ? 0.05 : 0)) : 0;
+                    const spouseEarlyPenaltyRate = (params.spouseEarlyPenalty && spouseCurrentAge > 0)
+                        ? (spouseCurrentAge < 59 ? 0.10 : (spouseCurrentAge < 60 ? 0.05 : 0)) : 0;
+
                     // Apply Guardrails (Guyton-Klinger style)
                     const currentTotalBalance = userPreTax_startOfYear + spousePreTax_startOfYear + taxable_startOfYear + userRoth_startOfYear + spouseRoth_startOfYear;
                     // V19.21: this year's tax situation, for the gauge's tax-estimate rule (see guardrailPrevTax).
@@ -2079,8 +2094,14 @@
                         const guardrailIrmaaEstimate = (medicareCount > 0 && i >= 2 && magiHistory[i - 2] != null)
                             ? calculateIRMAA(magiHistory[i - 2], filingStatus, bracketMult) * medicareCount
                             : (guardrailTaxUsable ? guardrailPrevIrmaa * (1 + params.lifestyleInflation) : 0);
+                        // V19.23: the early-withdrawal penalty is kept OUT of guardrailPrevTax and estimated
+                        // here from last year's pre-tax withdrawals at THIS year's penalty rate, so a penalty
+                        // year's charge is never carried into the first penalty-free year (or the half year).
+                        const guardrailPenaltyEstimate = guardrailTaxUsable
+                            ? (guardrailPrevUserPreTaxWd * userEarlyPenaltyRate + guardrailPrevSpousePreTaxWd * spouseEarlyPenaltyRate) * (1 + params.lifestyleInflation)
+                            : 0;
                         const guardrailIncome = userNetSalary + spouseNetSalary + otherIncome + ptIncome + ssIncome;
-                        const guardrailPortfolioNeed = Math.max(0, baseLifestyle * inflation * guardrailSpendingMultiplier + housing + health + guardrailTaxEstimate + guardrailIrmaaEstimate - guardrailIncome);
+                        const guardrailPortfolioNeed = Math.max(0, baseLifestyle * inflation * guardrailSpendingMultiplier + housing + health + guardrailTaxEstimate + guardrailIrmaaEstimate + guardrailPenaltyEstimate - guardrailIncome);
                         const projectedWithdrawalRate = guardrailPortfolioNeed / currentTotalBalance;
 
                         // Ceiling guardrail: if withdrawal rate too high, reduce spending
@@ -2119,6 +2140,7 @@
                     let finalOrdIncome = 0;
                     let finalTaxableGains = 0;
                     let irmaa = 0;
+                    let finalEarlyPenalty = 0;   // V19.23: early-withdrawal penalty inside finalTax
                     let totalNeed = baseSpending; // FIX: Initialize totalNeed before the loop
 
                     // V19.9 (B1): the loop used to hard-stop after 5 passes even when the tax bill
@@ -2238,6 +2260,12 @@
 
                         let newTax = federalOrdinaryTax + capGainsTax + niitTax + stateTax;
 
+                        // V19.23: early-withdrawal penalty on this pass's discretionary pre-tax withdrawals.
+                        // It is part of the year's tax bill, so the withdrawal is grossed up to pay it and
+                        // the household-cash identity keeps holding. Zero when no one is flagged.
+                        const earlyPenalty_this_pass = withdrawals_this_pass.userPreTax * userEarlyPenaltyRate + withdrawals_this_pass.spousePreTax * spouseEarlyPenaltyRate;
+                        newTax += earlyPenalty_this_pass;
+
                         // 5f. Check for Convergence / Finalize
                         // V19.5 (F-IRMAA-SKIP fix): converge only once BOTH the tax bill AND the
                         // total need (which now bakes in this pass's IRMAA) have stabilized. Tax
@@ -2245,6 +2273,7 @@
                         const needStable = Math.abs(totalNeed - totalNeedUsedThisPass) < 1;
                         if ((Math.abs(newTax - iterationTax) < 1 && needStable) || iteration === MAX_TAX_PASSES - 1) { // Converged if diff < $1, else safety cap (V19.9: 100, was 5)
                             finalTax = newTax;
+                            finalEarlyPenalty = earlyPenalty_this_pass;
                             withdrawals_converged = withdrawals_this_pass;
                             finalOrdIncome = currentOrdIncome;
                             finalTaxableGains = taxableGains_this_pass;
@@ -2349,12 +2378,15 @@
                         inflation: inflation,
                         isSolvent: isSolvent,
                         surplusBanked: surplusCash, // V19.5 (F-SURPLUS): leftover guaranteed-income cash banked into taxable this year
-                        guardrailMult: guardrailSpendingMultiplier // V19.21: share of planned lifestyle spending after guardrail cuts/raises (1 = as planned)
+                        guardrailMult: guardrailSpendingMultiplier, // V19.21: share of planned lifestyle spending after guardrail cuts/raises (1 = as planned)
+                        earlyPenalty: finalEarlyPenalty // V19.23: early-withdrawal penalty this year (already inside taxBill)
                     });
 
                     // Update previous year balance for guardrails
                     previousYearBalance = totalBal;
-                    guardrailPrevTax = finalTax;              // V19.21: feeds next year's gauge tax estimate
+                    guardrailPrevTax = finalTax - finalEarlyPenalty;   // V19.21: feeds next year's gauge tax estimate (V19.23: penalty estimated separately)
+                    guardrailPrevUserPreTaxWd = withdrawals_converged.userPreTax;
+                    guardrailPrevSpousePreTaxWd = withdrawals_converged.spousePreTax;
                     guardrailPrevIrmaa = irmaa;
                     guardrailPrevTaxState = guardrailTaxState;
                 }
@@ -2644,6 +2676,7 @@
                             balances: r.log.map(y => y.totalBal),
                             spending: r.log.map(y => y.spending),
                             guardrailMult: r.log.map(y => y.guardrailMult ?? 1), // V19.21
+                            earlyPenalty: r.log.map(y => y.earlyPenalty || 0), // V19.23 (always 0 here: this legacy screen never sends the flags)
                             taxes: r.log.map(y => y.taxBill),
                             ssIncome: r.log.map(y => y.ssIncome || 0),
                             pensionIncome: r.log.map(y => y.pensionIncome || 0),
